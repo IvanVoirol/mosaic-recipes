@@ -1,0 +1,2572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Palette Editor – Tech Tree</title>
+
+<!--
+=================================================================
+  PALETTES
+  A "Palette" = a crafting system: an alphabet of elements and a
+  vocabulary of recipes (ordered sequences of those elements).
+
+  Recipes are built incrementally in-app: pick a parent node, add
+  one element. Gaps (unnamed intermediate steps) are allowed while
+  prototyping but flagged in red.
+
+  Fields:
+    name      – shown in the selector
+    elements  – array of { id, name, color, emoji }   (id: lowercase, no spaces)
+    recipes   – array of { name, sequence:[ids], description? }
+=================================================================
+-->
+<script id="PALETTES_DATA" type="application/json">
+[
+  {
+    "name": "Mosaic – Nature",
+    "elements": [
+      { "id": "bamboo",  "name": "Bamboo",  "color": "#5a9e47", "emoji": "🎋" },
+      { "id": "grass",   "name": "Grass",   "color": "#7ec850", "emoji": "🌿" },
+      { "id": "dirt",    "name": "Dirt",    "color": "#a0724a", "emoji": "🟫" },
+      { "id": "stone",   "name": "Stone",   "color": "#8e8e8e", "emoji": "🪨" },
+      { "id": "crystal", "name": "Crystal", "color": "#7dd4f0", "emoji": "💎" },
+      { "id": "sand",    "name": "Sand",    "color": "#e0c97a", "emoji": "🏜️" }
+    ],
+    "recipes": [
+      { "name": "Cobble",         "sequence": ["stone"], "description": "A loose stone, the first building block." },
+      { "name": "Stone Slab",     "sequence": ["stone", "stone"], "description": "Two stones pressed flat." },
+      { "name": "Stone Wall",     "sequence": ["stone", "stone", "stone"], "description": "" },
+      { "name": "Stone Tower",    "sequence": ["stone", "stone", "stone", "stone"], "description": "Tall and defensible." },
+      { "name": "Tuft",           "sequence": ["grass"], "description": "" },
+      { "name": "Lawn",           "sequence": ["grass", "grass"], "description": "" },
+      { "name": "Thatched Floor", "sequence": ["grass", "grass", "bamboo"], "description": "Woven groundcover." },
+      { "name": "Wicker",         "sequence": ["grass", "bamboo"], "description": "" },
+      { "name": "Wicker Basket",  "sequence": ["grass", "bamboo", "bamboo"], "description": "" },
+      { "name": "Dune",           "sequence": ["sand"], "description": "" },
+      { "name": "Sandy Path",     "sequence": ["sand", "stone"], "description": "" },
+      { "name": "Sandstone Wall", "sequence": ["sand", "stone", "stone"], "description": "" }
+    ]
+  },
+  {
+    "name": "Alchemy – Elements",
+    "elements": [
+      { "id": "fire",  "name": "Fire",  "color": "#e85d04", "emoji": "🔥" },
+      { "id": "water", "name": "Water", "color": "#4cc9f0", "emoji": "💧" },
+      { "id": "earth", "name": "Earth", "color": "#6a994e", "emoji": "🌱" },
+      { "id": "air",   "name": "Air",   "color": "#c8d8e4", "emoji": "🌬️" }
+    ],
+    "recipes": [
+      { "name": "Ember",   "sequence": ["fire"], "description": "" },
+      { "name": "Flame",   "sequence": ["fire", "fire"], "description": "" },
+      { "name": "Inferno", "sequence": ["fire", "fire", "fire"], "description": "" },
+      { "name": "Spring",  "sequence": ["water"], "description": "" },
+      { "name": "Steam",   "sequence": ["fire", "water"], "description": "" },
+      { "name": "Mud",     "sequence": ["water", "earth"], "description": "" },
+      { "name": "Lava",    "sequence": ["earth", "fire"], "description": "" }
+    ]
+  }
+]
+</script>
+
+<style>
+:root {
+  --bg:#0c0c10; --surface:#14141c; --border:#252530; --text:#dddcf4;
+  --muted:#64637e; --accent:#9d7fea; --accent2:#2fd4a0; --danger:#f06b6b;
+  --warn:#f0b040; --node:#151520; --node-border:#2c2c40; --r:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font:14px/1.4 'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);}
+#app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;
+  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
+header h1{font-size:.9rem;font-weight:800;color:var(--accent);letter-spacing:.06em;white-space:nowrap;}
+.palette-bar{display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
+.palette-bar label{color:var(--muted);font-size:.78rem;white-space:nowrap;}
+.palette-bar select{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);
+  color:var(--text);border-radius:var(--r);padding:4px 8px;font:inherit;}
+
+#main{display:flex;flex:1;overflow:hidden;}
+#sidebar{width:268px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;}
+#sidebar.hidden{display:none;}
+#sidebar-resize{width:6px;flex-shrink:0;cursor:col-resize;background:var(--border);opacity:.4;transition:opacity .15s;}
+#sidebar-resize:hover{opacity:1;background:var(--accent);}
+#sidebar-resize.hidden{display:none;}
+#sidebar-show{position:absolute;left:8px;top:8px;z-index:30;display:none;width:30px;height:30px;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:1rem;}
+#sidebar-show.on{display:block;}
+#node-search{position:absolute;left:50%;transform:translateX(-50%);top:8px;z-index:25;width:260px;}
+#nodeSearchInput{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
+  border-radius:8px;padding:7px 10px;font:inherit;font-size:.8rem;}
+#nodeSearchInput:focus{outline:none;border-color:var(--accent);}
+#nodeSearchResults{margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  overflow:hidden;display:none;max-height:50vh;overflow-y:auto;}
+#nodeSearchResults.on{display:block;}
+.ns-row{padding:6px 10px;font-size:.78rem;cursor:pointer;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border);}
+.ns-row:last-child{border-bottom:none;}
+.ns-row:hover,.ns-row.hi{background:var(--accent)22;}
+.ns-row .ns-meta{color:var(--muted);font-size:.7rem;}
+
+.stabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;align-items:stretch;}
+.stabs button{flex:1;min-width:0;padding:7px 2px;background:none;border:none;color:var(--muted);
+  cursor:pointer;font:inherit;font-size:.62rem;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;
+  border-bottom:2px solid transparent;transition:color .12s;}
+.stabs button.on{color:var(--accent);border-bottom-color:var(--accent);}
+.stabs button:hover:not(.on){color:var(--text);}
+.stabs .stab-hide{flex:0 0 auto;min-width:26px;font-size:.9rem;color:var(--muted);border-left:1px solid var(--border);}
+
+.tpanel{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.tpanel.on{display:flex;}
+.tscroll{flex:1;overflow-y:auto;padding:10px;}
+.tscroll::-webkit-scrollbar{width:3px;}
+.tscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.blabel{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px;}
+.card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:12px;}
+.card.gap{border-color:#f06b6b55;background:#f06b6b0d;}
+.card-title{font-size:.86rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.card-seq{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px;}
+.card-seq span{font-size:.7rem;padding:2px 6px;border-radius:5px;}
+.seq-div{color:var(--muted);font-weight:700;padding:2px 2px !important;background:none !important;}
+.seq-div.main{color:var(--accent);}
+.card-desc{font-size:.76rem;color:var(--muted);font-style:italic;}
+.origins{display:flex;flex-direction:column;gap:4px;}
+.origin-row{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 6px;}
+.origin-cost{font-size:.68rem;color:var(--muted);background:var(--surface);border-radius:99px;padding:1px 7px;}
+.origin-tag{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);}
+.origin-rm{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0 2px;}
+.origin-rm:hover{color:var(--danger);}
+.multi-badge{font-size:.66rem;color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:0 6px;vertical-align:middle;}
+.g-badge2{font-size:.64rem;color:var(--accent2);border:1px solid var(--accent2);border-radius:99px;padding:0 7px;vertical-align:middle;font-weight:600;}
+.gpips{display:flex;gap:5px;}
+.toolbar{display:flex;gap:5px;margin:8px 0;}
+.tool{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;border:1px solid var(--border);
+  background:var(--bg);color:var(--muted);border-radius:var(--r);cursor:pointer;font:inherit;transition:.12s;}
+.tool:hover:not(.disabled){color:var(--text);border-color:var(--accent);}
+.tool.on{background:var(--accent);color:#0c0c10;border-color:var(--accent);}
+.tool.disabled{opacity:.4;cursor:default;}
+.tool .t-ic{font-size:1.05rem;line-height:1;}
+.tool .t-lb{font-size:.64rem;font-weight:600;letter-spacing:.02em;}
+.btn-xs{padding:1px 6px;font-size:.64rem;border-radius:5px;}
+.mod-axis-edit{border:1px solid var(--border);border-radius:8px;padding:8px;margin-top:8px;background:var(--bg);}
+.mod-axis-head{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.mod-axis-head .mod-axname{font-weight:600;}
+.mod-opts-edit{display:flex;flex-direction:column;gap:5px;}
+.mod-opt-row{display:flex;gap:6px;align-items:center;}
+.mod-opt-row.chosen .mod-optlabel{border-color:var(--accent);color:var(--text);}
+.mod-opt-pick{background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:.85rem;padding:0 2px;}
+.mod-opt-dots{display:flex;gap:2px;font-size:.72rem;min-width:14px;}
+.mod-elpick{display:flex;flex-wrap:wrap;gap:5px;padding:7px 2px 3px;}
+.mod-elchk{font-size:.7rem;border:1px solid var(--border);border-radius:99px;padding:2px 9px;cursor:pointer;
+  color:var(--muted);user-select:none;transition:.1s;display:inline-flex;align-items:center;gap:4px;}
+.mod-elchk:hover{border-color:var(--elc,var(--accent));color:var(--text);}
+.mod-elchk input{display:none;}
+.mod-elchk:has(input:checked){background:color-mix(in srgb, var(--elc,var(--accent)) 26%, transparent);
+  color:var(--elc,var(--accent));border-color:var(--elc,var(--accent));font-weight:600;}
+.mod-combo{margin-top:10px;padding-top:9px;border-top:1px dashed var(--border);}
+.fam-edit{border:1px solid var(--border);border-radius:8px;padding:7px;margin-top:6px;background:var(--bg);}
+.fam-edit-row{display:flex;gap:5px;align-items:center;}
+.fam-edit-seq{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:.8rem;color:var(--muted);}
+.fam-onward{margin-top:7px;padding-top:7px;border-top:1px dashed var(--border);}
+.famo-el.staged{outline:2px solid var(--accent);}
+.mod-combo-name{font-size:.82rem;margin-top:3px;}
+.gpips button,.gpip{width:26px;height:24px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font:inherit;font-size:.74rem;cursor:pointer;}
+.gpips button.on,.gpip.on{background:var(--accent);color:#0c0c10;border-color:var(--accent);font-weight:700;}
+.grow-config,.grow-promote{margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);}
+.modal-ov2{display:none;position:fixed;inset:0;background:#00000088;z-index:600;align-items:center;justify-content:center;}
+.modal-ov2.on{display:flex;}
+.grow-row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-bottom:1px solid var(--border);}
+.grow-row input[type=checkbox]{accent-color:var(--accent);}
+.grow-row .gname{flex:1;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.grow-row select,.grow-row input[type=number]{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:3px 6px;font:inherit;font-size:.74rem;}
+.grow-row input[type=number]{width:48px;}
+
+.el-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.el-pill{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:99px;
+  cursor:pointer;font-size:.78rem;font-weight:600;border:2px solid transparent;user-select:none;transition:transform .08s;}
+.el-pill:hover{transform:scale(1.08);}
+.el-pill.staged{outline:2px solid var(--accent);outline-offset:1px;}
+.el-pill.dim{opacity:.3;cursor:not-allowed;}
+
+.preview{font-size:.76rem;color:var(--muted);margin-bottom:8px;min-height:1.2em;}
+.preview b{color:var(--text);}
+.add-hint{font-size:.7rem;color:var(--muted);margin:-2px 0 8px;line-height:1.4;}
+.add-hint.warn{color:var(--warn);}
+.add-divider{border-top:1px dashed var(--border);margin:12px 0 10px;}
+.link-sep{font-size:.66rem;color:var(--muted);text-align:center;margin:12px 0 8px;text-transform:uppercase;letter-spacing:.03em;}
+.combo{position:relative;}
+.link-results{position:absolute;left:0;right:0;top:100%;z-index:40;margin-top:2px;max-height:210px;overflow-y:auto;
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:0 8px 24px #00000077;display:none;}
+.link-result{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 9px;cursor:pointer;font-size:.8rem;}
+.link-result:hover{background:#ffffff0c;}
+.link-result.hi{background:#ffffff16;box-shadow:inset 3px 0 0 var(--accent);}
+.lr-meta{font-size:.65rem;color:var(--muted);white-space:nowrap;}
+.link-empty{padding:8px 9px;font-size:.78rem;color:var(--muted);}
+.origin-label{flex:1;min-width:0;font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tip-origins-head{font-size:.68rem;color:var(--muted);margin-bottom:4px;}
+.tip-origin{display:flex;align-items:center;gap:6px;font-size:.76rem;margin-bottom:2px;}
+.tip-star{color:var(--accent);width:10px;flex-shrink:0;}
+.tip-cost{margin-left:auto;font-size:.64rem;color:var(--muted);}
+
+input.f,textarea.f{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:var(--r);padding:6px 8px;font:inherit;margin-bottom:8px;}
+input.f:focus,textarea.f:focus{outline:none;border-color:var(--accent);}
+textarea.f{resize:vertical;min-height:48px;font-size:.82rem;}
+
+.btn{padding:5px 12px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;
+  font:inherit;font-size:.78rem;font-weight:600;transition:opacity .12s;}
+.btn:hover{opacity:.85;}
+.btn-accent{background:var(--accent);color:#0c0c10;border-color:var(--accent);}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--text);}
+.btn-danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+.btn-sm{padding:3px 9px;font-size:.72rem;}
+.btn-icon{padding:4px 8px;font-size:.9rem;border-radius:var(--r);background:transparent;
+  border:1px solid var(--border);color:var(--text);cursor:pointer;transition:background .12s;}
+.btn-icon:hover{background:var(--border);}
+.btn-icon:disabled{opacity:.3;cursor:default;}
+.btn-icon:disabled:hover{background:transparent;}
+.sync{font-size:.7rem;padding:2px 8px;border-radius:99px;white-space:nowrap;}
+.sync.saved{color:var(--accent2);}
+.sync.saving{color:var(--muted);}
+.sync.offline{color:var(--warn);border:1px solid var(--warn);}
+.sync.conflict{color:var(--danger);border:1px solid var(--danger);}
+.conflict-banner{display:none;align-items:center;gap:10px;padding:8px 14px;background:#f06b6b1a;border-bottom:1px solid #f06b6b55;color:var(--text);font-size:.8rem;}
+.conflict-banner.on{display:flex;}
+.conflict-banner .grow{flex:1;}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;}
+
+.recipe-row{display:flex;align-items:flex-start;gap:6px;padding:6px 8px;border-radius:var(--r);
+  margin-bottom:3px;cursor:pointer;border:1px solid transparent;transition:background .1s;}
+.recipe-row:hover{background:#ffffff07;}
+.recipe-row.sel{background:#9d7fea18;border-color:#9d7fea40;}
+.recipe-info{flex:1;min-width:0;}
+.rname{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rseq{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;}
+.rseq span{font-size:.68rem;padding:1px 5px;border-radius:4px;}
+.rdesc{font-size:.68rem;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic;}
+.rdel{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem;padding:2px 5px;border-radius:4px;}
+.rdel:hover{color:var(--danger);background:#f06b6b18;}
+
+.section-head{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px;}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.bar-label{width:64px;font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-track{flex:1;height:7px;border-radius:4px;background:var(--border);overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;transition:width .3s;}
+.bar-num{font-size:.7rem;color:var(--muted);width:20px;text-align:right;}
+
+.gap-item{padding:7px 8px;border-radius:var(--r);margin-bottom:5px;background:#f06b6b12;border:1px solid #f06b6b35;cursor:pointer;}
+.gap-item:hover{background:#f06b6b20;}
+.gap-msg{font-size:.78rem;color:var(--danger);}
+.gap-sub{font-size:.7rem;color:var(--muted);margin-top:2px;}
+
+.set-group{margin-bottom:16px;}
+.set-group label.set-label{display:block;font-size:.74rem;color:var(--text);margin-bottom:6px;font-weight:600;}
+.seg{display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.seg button{flex:1;padding:5px 4px;background:var(--bg);border:none;color:var(--muted);cursor:pointer;
+  font:inherit;font-size:.72rem;transition:background .1s,color .1s;border-right:1px solid var(--border);}
+.seg button:last-child{border-right:none;}
+.seg button.on{background:var(--accent);color:#0c0c10;font-weight:600;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.toggle-row span{font-size:.78rem;}
+.switch{position:relative;width:38px;height:20px;flex-shrink:0;}
+.switch input{opacity:0;width:0;height:0;}
+.slider{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:.2s;}
+.slider::before{content:"";position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+.switch input:checked+.slider{background:var(--accent);}
+.switch input:checked+.slider::before{transform:translateX(18px);}
+.color-row{display:flex;align-items:center;gap:8px;}
+.color-row input[type=color]{width:44px;height:30px;border:1px solid var(--border);border-radius:var(--r);background:var(--bg);cursor:pointer;}
+
+.io-wrap{padding:10px;border-top:1px solid var(--border);flex-shrink:0;}
+.io-wrap textarea{width:100%;height:64px;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:var(--r);font:.7rem/1.4 'Cascadia Code','Fira Code',monospace;padding:6px;resize:vertical;margin-bottom:6px;}
+.io-wrap textarea:focus{outline:none;border-color:var(--accent);}
+.io-status{font-size:.7rem;margin-top:5px;min-height:1em;}
+.io-status.ok{color:var(--accent2);}
+.io-status.err{color:var(--danger);}
+
+#cvs-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg);}
+canvas{display:block;width:100%;height:100%;cursor:grab;}
+canvas.dragging{cursor:grabbing;}
+#cvs-hint{position:absolute;bottom:10px;right:12px;color:var(--muted);font-size:.68rem;pointer-events:none;}
+#cvs-controls{position:absolute;top:10px;right:12px;display:flex;gap:6px;}
+#cvs-controls .btn-icon{background:var(--surface);}
+
+#tip{position:fixed;display:none;pointer-events:none;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:8px 10px;font-size:.78rem;max-width:200px;box-shadow:0 6px 24px #00000080;z-index:200;}
+#tip .tname{font-weight:700;margin-bottom:4px;}
+#tip .tseq{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:3px;}
+#tip .tseq span{font-size:.68rem;padding:1px 5px;border-radius:4px;}
+#tip .tdesc{color:var(--muted);font-size:.72rem;font-style:italic;margin-top:3px;}
+#tip .tgap{color:var(--danger);font-size:.72rem;margin-top:3px;}
+
+#modal-overlay{display:none;position:fixed;inset:0;background:#00000088;z-index:500;align-items:center;justify-content:center;}
+#modal-overlay.on{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;
+  width:480px;max-height:84vh;overflow-y:auto;box-shadow:0 12px 48px #00000099;}
+.modal h2{font-size:1rem;font-weight:700;color:var(--accent);margin-bottom:14px;}
+.modal label{display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px;}
+.modal input.f{margin-bottom:12px;}
+.el-header{display:flex;gap:6px;margin-bottom:4px;padding:0 2px;}
+.el-header span{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+.el-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.el-row input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:5px 7px;font:inherit;}
+.el-row input:focus{outline:none;border-color:var(--accent);}
+.el-row input.id{width:78px;}
+.el-row input.id:disabled{opacity:.5;cursor:not-allowed;}
+.el-row input.nm{flex:1;min-width:0;}
+.el-row input.col{width:46px;height:30px;padding:2px;cursor:pointer;}
+.el-row input.em{width:48px;text-align:center;}
+.el-row .rm-el{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 4px;}
+.el-row .reorder{display:flex;flex-direction:column;width:18px;}
+.el-row .reorder button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.5rem;line-height:1;padding:1px;}
+.el-row .reorder button:hover{color:var(--accent);}
+.el-row .rm-el:hover{color:var(--danger);}
+.el-row .inuse{font-size:.62rem;color:var(--warn);white-space:nowrap;}
+.modal-btns{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <h1>🌿 Palette Editor</h1>
+    <div class="palette-bar">
+      <label>Palette:</label>
+      <select id="palSel"></select>
+    </div>
+    <button class="btn-icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶</button>
+    <button class="btn-icon" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
+    <button class="btn-icon" id="btnEdit" title="Edit current palette">✎</button>
+    <button class="btn-icon" id="btnNew"  title="New palette">＋</button>
+    <button class="btn btn-ghost btn-sm" id="btnExport">Export</button>
+    <span id="syncStatus" class="sync" title="Storage status"></span>
+  </header>
+  <div id="conflictBanner" class="conflict-banner"></div>
+
+  <div id="main">
+    <aside id="sidebar">
+      <div class="stabs">
+        <button class="on" data-tab="build">Build</button>
+        <button data-tab="list">Recipes</button>
+        <button data-tab="validate">Gaps</button>
+        <button data-tab="stats">Stats</button>
+        <button data-tab="settings">Settings</button>
+        <button class="stab-hide" id="sidebarHide" title="Hide panel">«</button>
+      </div>
+
+      <!-- BUILD -->
+      <div class="tpanel on" id="tab-build">
+        <div class="tscroll" id="buildPanel"></div>
+      </div>
+
+      <!-- RECIPES -->
+      <div class="tpanel" id="tab-list">
+        <div style="padding:8px 10px 0">
+          <input class="f" id="searchBox" placeholder="🔍 Search recipes…" style="margin-bottom:6px">
+        </div>
+        <div class="tscroll" id="recipeList"></div>
+        <div class="io-wrap">
+          <textarea id="importTxt" placeholder="Paste exported JSON to import…"></textarea>
+          <div class="btn-row">
+            <button class="btn btn-accent btn-sm" id="btnMerge">Merge</button>
+            <button class="btn btn-ghost btn-sm" id="btnReplace">Replace</button>
+          </div>
+          <div class="io-status" id="importSt"></div>
+        </div>
+      </div>
+
+      <!-- GAPS -->
+      <div class="tpanel" id="tab-validate"><div class="tscroll" id="validatePanel"></div></div>
+
+      <!-- STATS -->
+      <div class="tpanel" id="tab-stats"><div class="tscroll" id="statsPanel"></div></div>
+
+      <!-- SETTINGS -->
+      <div class="tpanel" id="tab-settings"><div class="tscroll" id="settingsPanel"></div></div>
+    </aside>
+    <div id="sidebar-resize" title="Drag to resize · double-click to hide"></div>
+
+    <div id="cvs-wrap">
+      <canvas id="cvs"></canvas>
+      <button id="sidebar-show" title="Show panel">»</button>
+      <div id="node-search">
+        <input id="nodeSearchInput" placeholder="🔎 Find node…" autocomplete="off">
+        <div id="nodeSearchResults"></div>
+      </div>
+      <div id="cvs-controls">
+        <button class="btn-icon" id="btnFit" title="Fit tree to view">⤢</button>
+        <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
+      </div>
+      <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select</div>
+    </div>
+  </div>
+</div>
+
+<div id="tip">
+  <div class="tname" id="tip-name"></div>
+  <div class="tseq"  id="tip-seq"></div>
+  <div class="tdesc" id="tip-desc"></div>
+  <div class="tgap"  id="tip-gap"></div>
+</div>
+
+<input type="file" id="restoreInput" accept="application/json" style="display:none">
+<div id="modal-overlay">
+  <div class="modal">
+    <h2 id="modalTitle">New Palette</h2>
+    <label>Palette name</label>
+    <input class="f" id="mPalName" placeholder="e.g. Mosaic – Machines">
+    <label>Description <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+    <textarea class="f" id="mPalDesc" placeholder="What is this palette for?"></textarea>
+    <label>Elements <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(id: lowercase, no spaces · drag order sets tree top→bottom)</span></label>
+    <div class="el-header">
+      <span style="width:46px">Order</span><span style="width:78px">ID</span><span style="flex:1">Name</span>
+      <span style="width:46px">Color</span><span style="width:48px">Emoji</span>
+    </div>
+    <div id="mElRows"></div>
+    <button class="btn btn-ghost btn-sm" id="btnAddEl" style="margin-top:4px">＋ Add element</button>
+    <div class="modal-btns">
+      <button class="btn btn-ghost"  id="btnModalCancel">Cancel</button>
+      <button class="btn btn-accent" id="btnModalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="growth-overlay" class="modal-ov2">
+  <div class="modal">
+    <h2>Convert to growth series?</h2>
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px">These recipes are named like a series (e.g. “1-4”). Review the advance element and stage count, untick any you want to keep as-is, then convert.</p>
+    <div id="growthRows" style="max-height:50vh;overflow-y:auto"></div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost"  id="btnGrowthCancel">Not now</button>
+      <button class="btn btn-accent" id="btnGrowthConvert">Convert selected</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ================================================================
+//  DATA
+// ================================================================
+const RAW = JSON.parse(document.getElementById('PALETTES_DATA').textContent);
+
+// Ensure every palette/recipe has the optional fields we rely on.
+function normalise(list) {
+  list.forEach(p => {
+    if (p.description === undefined) p.description = '';
+    p.recipes.forEach(r => {
+      if (r.description === undefined) r.description = '';
+      if (!Array.isArray(r.altOrigins)) r.altOrigins = [];
+      // Growth must be {element, stages>=2}; drop anything malformed.
+      if (r.growth && !(r.growth.element && r.growth.stages >= 2)) delete r.growth;
+      // Modifiers: array of axes {name, options:[{label, elements:[]}]}. Clean malformed.
+      if (r.modifiers !== undefined){
+        if (!Array.isArray(r.modifiers)) { delete r.modifiers; }
+        else {
+          r.modifiers = r.modifiers.filter(ax=>ax && typeof ax.name==='string' && Array.isArray(ax.options));
+          r.modifiers.forEach(ax=>{ ax.options = ax.options
+            .filter(o=>o && typeof o.label==='string')
+            .map(o=>({label:o.label, elements:Array.isArray(o.elements)?o.elements:[]})); });
+          if (!r.modifiers.length) delete r.modifiers;
+        }
+      }
+      // Family: array of variants {name, element, stages>=1}. Clean malformed.
+      if (r.family !== undefined){
+        if (!Array.isArray(r.family)) { delete r.family; }
+        else {
+          r.family = r.family.filter(v=>v && typeof v.name==='string' && v.element)
+            .map(v=>({name:v.name, element:v.element, stages:Math.max(1, Math.min(12, v.stages||4))}));
+          if (!r.family.length) delete r.family;
+        }
+      }
+    });
+  });
+  return list;
+}
+
+let palettes = normalise(RAW.map(p => JSON.parse(JSON.stringify(p))));
+
+let pidx = 0, elements = [], recipes = [];
+let sel = null;        // selected node: { seq:[ids], recipe:obj|null }  (root => {seq:[],recipe:null})
+let stagedEl = null;   // element id staged to add as a child
+let buildTool = 'basic';   // creation tool: basic | chain | connect | modifier
+let famOpenVar = null, famStagedEl = null, famPreview = {};   // chain-family onward-build + stage preview
+
+// ── Persistence: shared server folder, with localStorage offline fallback ──
+const DATA_KEY = 'paletteEditorData';
+const API = 'api/palettes';
+let serverOk = false;          // is the backend reachable?
+let saveTimer = null;
+
+// Give every palette a stable id (used as the server filename).
+function ensureIds() {
+  const used = new Set();
+  palettes.forEach(p => {
+    if (!p.id) {
+      let base = (p.name || 'palette').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60) || 'palette';
+      let id = base, n = 2; while (used.has(id)) id = base + '_' + (n++);
+      p.id = id;
+    }
+    used.add(p.id);
+  });
+}
+
+function cacheLocal() { try { localStorage.setItem(DATA_KEY, JSON.stringify({ palettes, pidx })); } catch (e) {} }
+function readLocalCache() {
+  try { const s = localStorage.getItem(DATA_KEY); if (s) { const d = JSON.parse(s); if (d && Array.isArray(d.palettes) && d.palettes.length) return d.palettes; } } catch (e) {}
+  return null;
+}
+
+async function apiList() {
+  const r = await fetch(API, { cache: 'no-store' });
+  if (!r.ok) throw new Error('list failed');
+  return (await r.json()).palettes || [];
+}
+async function apiSave(p) {
+  const r = await fetch(`${API}/${encodeURIComponent(p.id)}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p)
+  });
+  if (r.status === 409) return { conflict: true, current: (await r.json()).current };
+  if (!r.ok) throw new Error('save failed');
+  return { ok: true, palette: (await r.json()).palette };
+}
+async function apiDelete(id) { try { await fetch(`${API}/${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (e) {} }
+
+// Save the CURRENT palette to the server (debounced); always mirror to localStorage.
+// force:true skips the version check (used by undo/redo and "Overwrite").
+function savePalettes(opts) {
+  ensureIds();
+  cacheLocal();
+  if (!serverOk) { setSync('offline'); return; }
+  const force = opts && opts.force;
+  const idx = pidx;
+  clearTimeout(saveTimer);
+  setSync('saving');
+  saveTimer = setTimeout(async () => {
+    const p = palettes[idx]; if (!p) return;
+    const payload = force ? { ...p, _version: undefined } : p;
+    try {
+      const res = await apiSave(payload);
+      if (res.conflict) { setSync('conflict'); showConflict(idx, res.current); }
+      else { p._version = res.palette._version; p._updated = res.palette._updated; cacheLocal(); setSync('saved'); }
+    } catch (e) { serverOk = false; setSync('offline'); }
+  }, 350);
+}
+
+async function loadStoredPalettes() {
+  try {
+    const list = await apiList();
+    serverOk = true;
+    if (list.length) { palettes = normalise(list); }
+    else {
+      // First run on a fresh server: seed it from local cache or the file's built-ins.
+      palettes = normalise(readLocalCache() || RAW.map(p => JSON.parse(JSON.stringify(p))));
+      ensureIds();
+      for (const p of palettes) { try { const res = await apiSave(p); if (res.ok) { p._version = res.palette._version; } } catch (e) {} }
+    }
+    ensureIds();
+    pidx = 0;
+    return true;
+  } catch (e) {
+    serverOk = false;                       // backend unreachable → offline mode
+    const local = readLocalCache();
+    if (local) { palettes = normalise(local); ensureIds(); return true; }
+    return false;
+  }
+}
+
+async function resetPalettesToFile() {
+  if (!confirm('Restore the palettes built into this app, overwriting the shared copies with the same name? This cannot be undone.')) return;
+  palettes = normalise(RAW.map(p => JSON.parse(JSON.stringify(p))));
+  ensureIds();
+  if (serverOk) { for (const p of palettes) { try { const res = await apiSave({ ...p, _version: undefined }); if (res.ok) p._version = res.palette._version; } catch (e) {} } }
+  cacheLocal();
+  pidx = 0; syncPalSelect(); loadPalette(0);
+}
+
+// Reload one palette from the server (used by the conflict banner).
+async function reloadFromServer(idx) {
+  try {
+    const list = await apiList();
+    const fresh = list.find(p => p.id === palettes[idx].id);
+    if (fresh) { palettes[idx] = normalise([fresh])[0]; }
+    hideConflict(); cacheLocal();
+    if (idx === pidx) loadPalette(pidx); else rebuildAll();
+    setSync('saved');
+  } catch (e) { setSync('offline'); }
+}
+
+function setSync(state) {
+  const el = document.getElementById('syncStatus'); if (!el) return;
+  const map = { saved:'✓ Saved', saving:'… Saving', offline:'⚠ Offline (local only)', conflict:'⚠ Conflict' };
+  el.className = 'sync ' + state;
+  el.textContent = serverOk || state==='offline' ? (map[state]||'') : '';
+}
+function showConflict(idx, current) {
+  const b = document.getElementById('conflictBanner');
+  const when = current && current._updated ? new Date(current._updated).toLocaleTimeString() : 'recently';
+  b.innerHTML = `<span class="grow">⚠ <b>${escHtml(palettes[idx].name)}</b> was changed elsewhere (saved ${when}). Your unsaved edits and the other version differ.</span>`;
+  const reload = document.createElement('button'); reload.className='btn btn-ghost btn-sm'; reload.textContent='Reload theirs';
+  reload.onclick = ()=> reloadFromServer(idx);
+  const over = document.createElement('button'); over.className='btn btn-danger btn-sm'; over.textContent='Keep mine (overwrite)';
+  over.onclick = ()=>{ hideConflict(); savePalettes({force:true}); };
+  b.appendChild(reload); b.appendChild(over);
+  b.classList.add('on');
+}
+function hideConflict(){ const b=document.getElementById('conflictBanner'); b.classList.remove('on'); b.innerHTML=''; }
+
+// ================================================================
+//  SETTINGS
+// ================================================================
+const DEFAULT_SETTINGS = {
+  theme:'dark', accent:'#9d7fea', edgeStyle:'curved',
+  showBadges:true, showDots:true, spacing:'comfortable',
+  gridStyle:'dots', gridSize:'medium',
+  colorBy:'off', colorDepth:1, colorMode:'lightness',   // family coloring
+  nodeWidth:190
+};
+let settings = { ...DEFAULT_SETTINGS };
+
+function loadSettings() {
+  try { const s = localStorage.getItem('paletteEditorSettings');
+        if (s) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(s) }; } catch (e) {}
+}
+function saveSettings() {
+  try { localStorage.setItem('paletteEditorSettings', JSON.stringify(settings)); } catch (e) {}
+}
+
+const THEMES = {
+  dark:     { bg:'#0c0c10', surface:'#14141c', border:'#252530', text:'#dddcf4', muted:'#64637e', node:'#151520', nodeBorder:'#2c2c40', dot:'#ffffff10' },
+  light:    { bg:'#f3f3f8', surface:'#ffffff', border:'#dcdce4', text:'#1c1c2a', muted:'#8c8ca0', node:'#ffffff', nodeBorder:'#d2d2de', dot:'#00000010' },
+  midnight: { bg:'#070b16', surface:'#0d1424', border:'#1c2842', text:'#cfe0f5', muted:'#5a6a8a', node:'#0f1a2e', nodeBorder:'#1c2842', dot:'#ffffff0c' }
+};
+let TH = THEMES.dark;
+
+function applySettings() {
+  applyNodeWidth();
+  TH = THEMES[settings.theme] || THEMES.dark;
+  const r = document.documentElement.style;
+  r.setProperty('--bg', TH.bg);
+  r.setProperty('--surface', TH.surface);
+  r.setProperty('--border', TH.border);
+  r.setProperty('--text', TH.text);
+  r.setProperty('--muted', TH.muted);
+  r.setProperty('--accent', settings.accent);
+  r.setProperty('--node', TH.node);
+  r.setProperty('--node-border', TH.nodeBorder);
+  drawTree();
+}
+
+// spacing presets (node size fixed; gaps vary)
+let NW = 170; const NH = 64;
+function applyNodeWidth(){ NW = Math.max(130, Math.min(320, settings.nodeWidth||170)); }
+function SP(){ const k=settings.spacing||'comfortable';
+  const col={compact:40,comfortable:60,spacious:100}[k]??60;
+  const row={compact:12,comfortable:26,spacious:50}[k]??26;
+  return { col:NW+col, row:NH+row }; }
+const SPACING = new Proxy({}, { get:()=>SP() });   // back-compat: SPACING[anything] → current
+
+// ================================================================
+//  PALETTE SELECT / LOAD
+// ================================================================
+const palSel = document.getElementById('palSel');
+function syncPalSelect() {
+  palSel.innerHTML = '';
+  palettes.forEach((p, i) => { const o = document.createElement('option'); o.value = i; o.textContent = p.name; palSel.appendChild(o); });
+  palSel.value = pidx;
+}
+palSel.addEventListener('change', () => loadPalette(+palSel.value));
+
+function loadPalette(idx) {
+  pidx = idx;
+  elements = palettes[idx].elements;
+  recipes  = palettes[idx].recipes;
+  sel = { seq: [], recipe: null };  // start at root
+  stagedEl = null;
+  rebuildAll();
+}
+
+// ================================================================
+//  TRIE
+// ================================================================
+function buildTrie() {
+  const root = { key:'', sequence:[], recipe:null, children:{}, edgeEl:null };
+  const sorted = [...recipes].filter(r=>!isFamily(r)).sort((a, b) => a.sequence.length - b.sequence.length);
+  sorted.forEach(r => {
+    let node = root;
+    r.sequence.forEach((elId, i) => {
+      if (!node.children[elId])
+        node.children[elId] = { key:r.sequence.slice(0,i+1).join('\x1f'), sequence:r.sequence.slice(0,i+1), recipe:null, children:{}, edgeEl:elId };
+      node = node.children[elId];
+    });
+    node.recipe = r;
+  });
+  collapseChains(root);
+  injectFamilies(root);
+  return root;
+}
+// Place each family recipe as a synthetic node under its parent, and collapse any real
+// onward-children that build from a variant's last stage onto that family node.
+function injectFamilies(root){
+  recipes.filter(isFamily).forEach((F)=>{
+    const parent = findNode(root, F.sequence); if(!parent) return;
+    const famNode = { key:F.sequence.join('\x1f')+'#fam:'+(F.id||F.name), sequence:F.sequence.slice(),
+                      recipe:F, children:{}, edgeEl:null, isFamilyNode:true, famOut:[] };
+    F.family.forEach((v,vi)=>{
+      // walk the variant's virtual stage path; reparent real onward-children onto famNode
+      let node=parent, ok=true;
+      for(let k=1;k<=v.stages;k++){ const nx=node.children[v.element]; if(!nx){ok=false;break;}
+        if(k<v.stages && nx.recipe){ ok=false; break; } node=nx; }
+      if(ok && node!==parent){ const last=node;
+        Object.entries(last.children).forEach(([el,child])=>{ famNode.children[el]=child; famNode.famOut.push({vi, el, child}); });
+        // detach the virtual stage chain from the parent (only the first variant element edge)
+        if(parent.children[v.element]===findNode(root,familyVarSeq(F,vi,1))) delete parent.children[v.element];
+      }
+    });
+    parent.children['#fam:'+(F.id||F.name)] = famNode;
+  });
+}
+// A chain node represents stages base..lastStage as one node. Remove the interior
+// virtual stage nodes and reparent any real children of the last stage directly onto
+// the chain node, so building on a chain doesn't create unnamed stage gaps.
+function findNode(root, seq){ let n=root; for(const el of seq){ n=n.children[el]; if(!n) return null; } return n; }
+function collapseChains(root){
+  recipes.filter(isGrowth).forEach(C=>{
+    const baseNode = findNode(root, C.sequence); if(!baseNode) return;
+    const E=C.growth.element, S=C.growth.stages;
+    // walk the stage path; stop early if an interior stage was promoted to a real recipe
+    let node=baseNode, ok=true;
+    for(let k=2;k<=S;k++){
+      const next=node.children[E]; if(!next){ ok=false; break; }
+      if(k<S && next.recipe){ ok=false; break; }   // promoted interior stage: leave intact
+      node=next;
+    }
+    if(!ok || node===baseNode) return;
+    const lastStage=node;
+    const moved=Object.entries(lastStage.children);   // real chain-children
+    delete baseNode.children[E];                      // drop the virtual stage chain
+    moved.forEach(([el,child])=>{ baseNode.children[el]=child; });
+  });
+}
+function trieFlatten(root){ const out=[]; (function w(n){out.push(n);sortedChildren(n).forEach(w);})(root); return out; }
+function getGaps(root){ return trieFlatten(root).filter(n => n.key !== '' && n.recipe === null); }
+function recipeBySeq(seq){ const k = seq.join('\x1f'); return recipes.find(r => !isFamily(r) && r.sequence.join('\x1f') === k) || null; }
+// Match by canonical sequence OR any alternative origin.
+function recipeByAnyOrigin(seq){ const k = seq.join('\x1f');
+  return recipes.find(r => r.sequence.join('\x1f') === k || (r.altOrigins||[]).some(o => o.join('\x1f') === k)) || null; }
+// All origins of a recipe (canonical first), each with its element count = cost.
+function recipeOrigins(r){ return [r.sequence, ...(r.altOrigins||[])]; }
+
+// ── Structural branch edits: insert / remove a step at a node's position ──
+// "Passes through S": a recipe whose first S.length elements equal S.
+function passesThrough(r, S){ if(r.sequence.length < S.length) return false;
+  for(let i=0;i<S.length;i++) if(r.sequence[i]!==S[i]) return false; return true; }
+// Insert elId just before the element that reaches node S (at index S.length-1),
+// for S's recipe and every descendant. Lengthens those branches by one.
+function insertStepBefore(S, elId, count){
+  count = Math.max(1, count||1);
+  const idx = S.length-1; if(idx<0) return 'Cannot insert before the root.';
+  const affected = recipes.filter(r=>!isFamily(r) && passesThrough(r,S));
+  if(!affected.length) return 'Nothing to insert before here.';
+  if(affected.some(r=>isModifier(r)||isFamily(r))) return 'This branch has a modifier/family node; edit those directly instead.';
+  const ins = Array(count).fill(elId);
+  const set=new Set(recipes.filter(r=>!affected.includes(r)).map(r=>r.sequence.join('\x1f')));
+  const proposed=affected.map(r=>{ const s=r.sequence.slice(); s.splice(idx,0,...ins); return {r,s}; });
+  for(const {s} of proposed){ if(set.has(s.join('\x1f'))) return 'That insertion would collide with an existing recipe.'; }
+  pushHistory();
+  proposed.forEach(({r,s})=>{ r.sequence=s; });
+  return null;
+}
+// Remove the step at node S (the element at index S.length-1) for S's recipe and every
+// descendant, pulling them one closer to the root. Used to delete an unnamed gap.
+function removeStepAt(S){
+  const idx = S.length-1; if(idx<0) return 'Cannot remove the root.';
+  const affected = recipes.filter(r=>!isFamily(r) && passesThrough(r,S) && r.sequence.length>S.length);
+  if(affected.some(r=>isModifier(r)||isFamily(r))) return 'This branch has a modifier/family node; edit those directly instead.';
+  const set=new Set(recipes.filter(r=>!affected.includes(r)).map(r=>r.sequence.join('\x1f')));
+  const proposed=affected.map(r=>{ const s=r.sequence.slice(); s.splice(idx,1); return {r,s}; });
+  for(const {s} of proposed){ if(!s.length) return 'Removing this step would empty a recipe.'; if(set.has(s.join('\x1f'))) return 'Removing this step would collide with an existing recipe.'; }
+  pushHistory();
+  proposed.forEach(({r,s})=>{ r.sequence=s; });
+  return null;
+}
+
+// ── Growth series ──
+// A growth recipe stores { element, stages>=2 }. Its `sequence` is stage 1 (base);
+// stage k = base + element×(k-1). Stages are computed, not separate recipes.
+function isGrowth(r){ return !!(r && r.growth && r.growth.element && r.growth.stages >= 2); }
+function growthStageSeq(r, k){ return r.sequence.concat(Array(Math.max(0, k-1)).fill(r.growth.element)); }
+
+// ── Chain family ──
+// A family recipe stores family:[{name, element, stages}]. Its `sequence` is the shared
+// PARENT path. Variant v, stage k (1..stages): seq = sequence + element×k. Variants are
+// virtual (computed); the family node is a synthetic child drawn under the parent.
+function isFamily(r){ return !!(r && Array.isArray(r.family) && r.family.length); }
+function familyVarSeq(r, vi, k){ const v=r.family[vi]; return r.sequence.concat(Array(Math.max(0,k)).fill(v.element)); }
+function familyVarLast(r, vi){ return familyVarSeq(r, vi, r.family[vi].stages); }
+function familyOccupied(r){ const out=[]; if(isFamily(r)) r.family.forEach((v,vi)=>{ for(let k=1;k<=v.stages;k++) out.push(familyVarSeq(r,vi,k)); }); return out; }
+
+// Every sequence a recipe "owns": canonical, alternates, growth stages, modifier combos, family variants.
+function occupiedSeqs(r){
+  if (isFamily(r)) return familyOccupied(r);          // family owns its variant stages, not its base
+  const out = [r.sequence, ...(r.altOrigins||[])];
+  if (isGrowth(r)) for (let k = 2; k <= r.growth.stages; k++) out.push(growthStageSeq(r, k));
+  if (isModifier(r)) modCombos(r).forEach(c=>{ if(c.seq.length>r.sequence.length) out.push(c.seq); });
+  return out;
+}
+// The recipe (if any) that already occupies a sequence — used to block duplicates.
+function recipeOccupying(seq){
+  const k = seq.join('\x1f');
+  return recipes.find(r => occupiedSeqs(r).some(s => s.join('\x1f') === k)) || null;
+}
+
+// ── Modifiers ──
+// A modifier recipe has modifiers:[{name, options:[{label, elements:[ids]}]}].
+// Its base = recipe.sequence; a chosen combination appends each option's elements (axis order).
+function hasModifiers(r){ return !!(r && Array.isArray(r.modifiers) && r.modifiers.length); }
+function isModifier(r){ return hasModifiers(r) && r.modifiers.every(ax=>ax.options && ax.options.length); }
+// Cartesian product of axis options -> [{labels:[], opts:[idx], seq:[]}]. Capped for safety.
+function modCombos(r){
+  if (!isModifier(r)) return [];
+  let combos = [{labels:[], opts:[], extra:[]}];
+  r.modifiers.forEach((ax)=>{
+    const next=[];
+    ax.options.forEach((opt,oi)=>{ combos.forEach(c=> next.push({
+      labels:[...c.labels, opt.label], opts:[...c.opts, oi], extra:[...c.extra, ...(opt.elements||[])] })); });
+    combos = next.length>512 ? next.slice(0,512) : next;
+  });
+  return combos.map(c=>({ labels:c.labels, opts:c.opts, seq:r.sequence.concat(c.extra) }));
+}
+// Name for a combination: base + non-empty option labels. ("Adobe Wall (Roofed, Door)")
+function comboName(r, labels){
+  const parts = labels.filter((l,i)=> (r.modifiers[i].options.find(o=>o.label===l)||{}).elements?.length);
+  return parts.length ? `${r.name} (${parts.join(', ')})` : r.name;
+}
+function prettySeq(seq){ return seq.map(id=>{const e=elements.find(x=>x.id===id);return e?`${e.emoji} ${e.name}`:id;}).join(' + '); }
+// Branch point when adding `elId` from the selected recipe. For a chain, adding its
+// advance element continues PAST the last stage instead of colliding with stage 2.
+function effectiveParentSeq(r, seq, elId){
+  // Children of a chain branch from its LAST stage (the fully grown form), for any element.
+  if (r && isGrowth(r)) return growthStageSeq(r, r.growth.stages);
+  return seq;
+}
+// Modular vs necessary — ONLY for a node reachable by multiple origins (alternate
+// parents). The part its origins share (common suffix) is necessary; the differing
+// prefix is modular (the swappable base). Nodes with one origin have no split.
+function commonSuffixLen(seqs){
+  if (!seqs.length) return 0;
+  const n=Math.min(...seqs.map(s=>s.length)); let c=0;
+  for(let i=1;i<=n;i++){ const e=seqs[0][seqs[0].length-i]; if(seqs.every(s=>s[s.length-i]===e)) c++; else break; }
+  return c;
+}
+function boundaryIndex(seq, depth){
+  const a=boundaryIndices(seq); return a.length? a[a.length-1] : 0;
+}
+// Every divider position along a recipe's path: each ancestor (or the node itself)
+// reachable by multiple origins contributes a divider where its origins diverge.
+function boundaryIndices(seq){
+  const out=new Set();
+  for(let L=1;L<=seq.length;L++){
+    const r=recipeBySeq(seq.slice(0,L));
+    if(r && (r.altOrigins||[]).length){
+      const b=L - commonSuffixLen(recipeOrigins(r));
+      if(b>0 && b<L) out.add(b);
+    }
+  }
+  return [...out].sort((x,y)=>x-y);
+}
+
+// ── Family coloring ──
+// A recipe's family key = its first N elements (N = settings.colorDepth).
+function familyKey(seq){ const n = Math.max(1, settings.colorDepth||1); return seq.slice(0, n).join('\x1f'); }
+function hexToRgb(h){ h=h.replace('#',''); if(h.length===3)h=h.split('').map(c=>c+c).join(''); const n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
+function rgbToHex(r,g,b){ const f=v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0'); return '#'+f(r)+f(g)+f(b); }
+function mix(c1,c2,t){ const a=hexToRgb(c1),b=hexToRgb(c2); return rgbToHex(a.r+(b.r-a.r)*t, a.g+(b.g-a.g)*t, a.b+(b.b-a.b)*t); }
+// The family tint for a sequence, or null when coloring is off / sequence empty.
+function familyColor(seq){
+  if (settings.colorBy!=='family' || !seq.length) return null;
+  const n = Math.max(1, settings.colorDepth||1);
+  const head = seq.slice(0, n);
+  const cols = head.map(id=>{ const e=elements.find(x=>x.id===id); return e?e.color:null; }).filter(Boolean);
+  if (!cols.length) return null;
+  if (cols.length===1) return cols[0];
+  if (settings.colorMode==='blend'){
+    // average the head element colors
+    let c = cols[0]; for (let i=1;i<cols.length;i++) c = mix(c, cols[i], 1/(i+1));
+    return c;
+  }
+  // 'lightness': keep first element's hue, vary lightness by the rest of the head key
+  let base = cols[0];
+  const variant = (familyKey(seq).split('\x1f').slice(1).join('').length % 5) - 2; // -2..+2
+  const t = variant * 0.12;
+  return t>=0 ? mix(base, '#ffffff', t) : mix(base, '#000000', -t);
+}
+// Human label for an origin: "ParentRecipe + 🪨 Stone". Falls back to the element chain
+// when the parent step isn't itself a named recipe.
+function originLabel(o){
+  const last = o[o.length-1]; const el = elements.find(e=>e.id===last);
+  const elTag = el ? `${el.emoji} ${el.name}` : last;
+  if (o.length === 1) return `▶ Start  +  ${elTag}`;
+  const parent = recipeBySeq(o.slice(0,-1));
+  return parent ? `${parent.name}  +  ${elTag}` : prettySeq(o);
+}
+
+// Element display order (index in palette's element list); used to order tree branches.
+function elOrder(id){ const i = elements.findIndex(e => e.id === id); return i < 0 ? 999 : i; }
+function sortedChildren(node){ return Object.values(node.children).sort((a,b)=> elOrder(a.edgeEl) - elOrder(b.edgeEl)); }
+
+// ================================================================
+//  LAYOUT
+// ================================================================
+function layoutTrie(root) {
+  const sp = SPACING[settings.spacing] || SPACING.comfortable;
+  const gap = sp.row - NH;            // vertical gap between stacked nodes
+  let cursor = 0;
+  (function cy(n){
+    const k = sortedChildren(n);
+    if (!k.length){ n.ly = cursor; cursor += nodeHeight(n) + gap; }
+    else { k.forEach(cy);
+      const cs = k.map(c=>c.ly + nodeHeight(c)/2);
+      n.ly = (Math.min(...cs)+Math.max(...cs))/2 - nodeHeight(n)/2; }
+  })(root);
+  (function cx(n,d){ n.lx = d * sp.col; Object.values(n.children).forEach(c=>cx(c,d+1)); })(root,0);
+  // push apart nodes that overlap within the same column (tall modifier nodes)
+  const all=[]; (function w(n){ if(n.key!=='') all.push(n); sortedChildren(n).forEach(w); })(root);
+  const cols={}; all.forEach(n=>{ (cols[n.lx]=cols[n.lx]||[]).push(n); });
+  const minGap=Math.max(10, gap);
+  Object.values(cols).forEach(list=>{ list.sort((a,b)=>a.ly-b.ly);
+    for(let i=1;i<list.length;i++){ const need=list[i-1].ly+nodeHeight(list[i-1])+minGap;
+      if(list[i].ly<need) list[i].ly=need; } });
+}
+
+// ================================================================
+//  CANVAS
+// ================================================================
+const cvs = document.getElementById('cvs'), ctx = cvs.getContext('2d'), wrap = document.getElementById('cvs-wrap');
+let pan = { x:40, y:0 }, zoom = 1;
+let layoutNodes = [], edgeBadges = [];
+let growthStage = {};   // key → previewed stage for growth nodes (transient UI state)
+let modSel = {};        // key → [optionIndex per axis] for modifier nodes (transient UI state)
+function modSelFor(r, key){
+  const cur = modSel[key];
+  if (Array.isArray(cur) && cur.length === r.modifiers.length) return cur;
+  const def = r.modifiers.map(()=>0);   // default: first option of each axis
+  modSel[key] = def; return def;
+}
+let searchQuery = '';
+
+// Keys (joined sequences) of every node on the path root→selected node.
+function pathKeySet(){
+  const set = new Set();
+  if (sel && sel.seq.length){
+    for (let i=1;i<=sel.seq.length;i++) set.add(sel.seq.slice(0,i).join('\x1f'));
+  }
+  return set;
+}
+function recipeMatches(r){
+  if (!searchQuery) return true;
+  const q = searchQuery.toLowerCase();
+  return r.name.toLowerCase().includes(q) || (r.description||'').toLowerCase().includes(q);
+}
+
+// Draw a node's element sequence as dots, shrinking to fit any length within the node.
+// A recessed darker "window" behind the dots this node ADDS (from fromIdx to n-1),
+// leaving inherited parent elements outside it.
+function drawDotsWindow(x, yBottom, fromIdx, n){
+  if(n<=fromIdx) return;
+  const avail = NW - 16; const step = Math.min(22, avail / Math.max(1,n));
+  const x0 = x + 8 + fromIdx*step - 3;
+  const w = (n-fromIdx)*step + 6;
+  ctx.save(); ctx.beginPath(); roundRect(ctx, x0, yBottom-9, w, 18, 5);
+  ctx.fillStyle = '#00000066'; ctx.fill(); ctx.restore();
+}
+function drawSeqDots(seq, x, yBottom, emoji, boundary){
+  const avail = NW - 16, n = seq.length;
+  const step = Math.min(22, avail / n);
+  const r = Math.max(3, Math.min(7, step/2 - 1));
+  const bset = Array.isArray(boundary) ? boundary : (boundary ? [boundary] : []);
+  const maxB = bset.length ? Math.max(...bset) : 0;
+  seq.forEach((id,i)=>{
+    const el = elements.find(e=>e.id===id); if(!el) return;
+    const cx = x + 8 + i*step + r;
+    if (emoji){ ctx.font=`${Math.round(r*1.8)}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillStyle='#fff9'; ctx.fillText(el.emoji, x+8+i*step, yBottom); }
+    else { ctx.beginPath(); ctx.arc(cx, yBottom, r, 0, Math.PI*2);
+      if (maxB && i < maxB){ ctx.fillStyle=el.color+'44'; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=el.color+'aa'; ctx.stroke(); }
+      else { ctx.fillStyle = el.color+'cc'; ctx.fill(); } }
+  });
+  bset.forEach(b=>{ if(b>0&&b<n){ const dx = x + 8 + b*step - step*0.18;
+    ctx.strokeStyle = TH.muted; ctx.lineWidth=1; ctx.setLineDash([2,2]);
+    ctx.beginPath(); ctx.moveTo(dx, yBottom-r-2); ctx.lineTo(dx, yBottom+r+2); ctx.stroke(); ctx.setLineDash([]); } });
+}
+
+function drawTree() {
+  const dpr = window.devicePixelRatio || 1, cw = wrap.clientWidth, ch = wrap.clientHeight;
+  cvs.width = cw*dpr; cvs.height = ch*dpr; cvs.style.width = cw+'px'; cvs.style.height = ch+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cw,ch);
+
+  // background grid (screen space, scaled by zoom so it reads as a fixed world grid)
+  drawGrid(cw, ch);
+
+  const root = buildTrie();
+  layoutTrie(root);
+  layoutNodes = trieFlatten(root);
+  edgeBadges = [];
+  curPath = pathKeySet();
+
+  ctx.save();
+  ctx.translate(pan.x, pan.y + ch/2);
+  ctx.scale(zoom, zoom);
+  layoutNodes.forEach(n => Object.values(n.children).forEach(c => drawEdge(n, c)));
+  drawAltEdges();
+  layoutNodes.forEach(drawNode);
+  ctx.restore();
+}
+let curPath = new Set();
+
+// Light converging edges for alternative origins (canonical+aliases model).
+function drawAltEdges(){
+  const byKey = {}; layoutNodes.forEach(n => { byKey[n.key] = n; });
+  recipes.forEach(r=>{
+    if (!r.altOrigins || !r.altOrigins.length) return;
+    const target = byKey[r.sequence.join('\x1f')];
+    if (!target) return;
+    r.altOrigins.forEach(o=>{
+      const parentKey = o.slice(0,-1).join('\x1f');     // '' = root
+      const src = byKey[parentKey];
+      if (!src) return;                                  // parent not on canvas → listed in card only
+      const el = elements.find(e=>e.id === o[o.length-1]);
+      const sx = src.lx + (src.key===''?NW/2:NW), sy = src.ly + NH/2;
+      const ex = target.lx, ey = target.ly + NH/2, mx = (sx+ex)/2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);
+      ctx.strokeStyle = (el?el.color:'#888') + '66';
+      ctx.lineWidth = 1.5; ctx.setLineDash([2,4]);
+      ctx.stroke(); ctx.setLineDash([]);
+      if (settings.showBadges && el){
+        const bx=mx, by=(sy+ey)/2;
+        ctx.beginPath(); ctx.arc(bx,by,8,0,Math.PI*2);
+        ctx.fillStyle = el.color+'22'; ctx.fill();
+        ctx.strokeStyle = el.color+'66'; ctx.lineWidth=1; ctx.setLineDash([2,2]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillStyle=TH.text; ctx.fillText(el.emoji,bx,by);
+        edgeBadges.push({ wx:bx, wy:by, r:8, el, alt:`Alt origin of ${r.name}: ${prettySeq(o)}` });
+      }
+      ctx.restore();
+    });
+  });
+}
+
+const GRID_BASE = { small: 28, medium: 44, large: 72 };
+function drawGrid(cw, ch) {
+  if (settings.gridStyle === 'none') return;
+
+  // Cell size in WORLD units. 'match' uses the node layout step so gridlines
+  // pass through node columns/rows; fixed sizes are square cells.
+  let cellW, cellH;
+  if (settings.gridSize === 'match') {
+    const sp = SPACING[settings.spacing] || SPACING.comfortable;
+    cellW = sp.col; cellH = sp.row;
+  } else {
+    cellW = cellH = GRID_BASE[settings.gridSize] || 44;
+  }
+
+  const gx = cellW * zoom, gy = cellH * zoom;
+  if (Math.min(gx, gy) < 6) return; // too dense when zoomed far out
+
+  // screen position of world line k: pan.x + k*cellW*zoom  (origin world 0 → pan.x)
+  const oy0 = pan.y + ch/2;                 // world y=0 in screen space
+  const ox = ((pan.x % gx) + gx) % gx;
+  const oy = ((oy0 % gy) + gy) % gy;
+
+  if (settings.gridStyle === 'lines') {
+    ctx.strokeStyle = TH.dot; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = ox; x < cw; x += gx) { ctx.moveTo(x, 0); ctx.lineTo(x, ch); }
+    for (let y = oy; y < ch; y += gy) { ctx.moveTo(0, y); ctx.lineTo(cw, y); }
+    ctx.stroke();
+  } else { // dots
+    ctx.fillStyle = TH.dot;
+    const r = Math.max(0.8, Math.min(1.6, zoom));
+    for (let x = ox; x < cw; x += gx)
+      for (let y = oy; y < ch; y += gy) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); }
+  }
+}
+
+function drawEdge(parent, child) {
+  const el = elements.find(e => e.id === child.edgeEl);
+  const color = el ? el.color : '#606080';
+  const isGap = child.recipe === null;
+  const sx = parent.lx + (parent.key === '' ? NW/2 : NW), sy = parent.ly + (parent.key===''?NH:nodeHeight(parent))/2;
+  const ex = child.lx, ey = child.ly + nodeHeight(child)/2, mx = (sx+ex)/2;
+
+  ctx.save();
+  const onPath = curPath.has(child.key);
+  ctx.beginPath();
+  if (settings.edgeStyle === 'straight') { ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); }
+  else if (settings.edgeStyle === 'stepped') { ctx.moveTo(sx,sy); ctx.lineTo(mx,sy); ctx.lineTo(mx,ey); ctx.lineTo(ex,ey); }
+  else { ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey); }
+  if (onPath) { ctx.strokeStyle = settings.accent; ctx.lineWidth = 3; }
+  else { ctx.strokeStyle = isGap ? '#f06b6b66' : color + '88'; ctx.lineWidth = isGap ? 1.5 : 2; }
+  if (isGap && !onPath) ctx.setLineDash([5,4]);
+  ctx.stroke(); ctx.setLineDash([]);
+
+  if (settings.showBadges && el) {
+    const bx = mx, by = (sy+ey)/2;
+    ctx.beginPath(); ctx.arc(bx,by,9,0,Math.PI*2);
+    ctx.fillStyle = el.color + '33'; ctx.fill();
+    ctx.strokeStyle = el.color + '88'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.font = '11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = TH.text; ctx.fillText(el.emoji, bx, by);
+    edgeBadges.push({ wx:bx, wy:by, r:9, el });
+  }
+  ctx.restore();
+}
+
+// Option-button wrapping for a modifier node: returns, per axis, rows of option indices.
+function modOptionRows(r){
+  ctx.save(); ctx.font='9px sans-serif';
+  const maxW = NW-14;
+  const out = r.modifiers.map(ax=>{
+    const rows=[]; let row=[]; let w=0;
+    ax.options.forEach((o,oi)=>{
+      const bw = ctx.measureText(o.label).width + 14;
+      if (w+bw>maxW && row.length){ rows.push(row); row=[]; w=0; }
+      row.push(oi); w += bw+3;
+    });
+    if(row.length) rows.push(row);
+    return rows;
+  });
+  ctx.restore();
+  return out;
+}
+// Per-node height. Modifier nodes grow to fit one labelled row of option buttons per axis.
+function nodeHeight(node){
+  const r = node && node.recipe;
+  if (r && isModifier(r)){
+    const rows = modOptionRows(r).reduce((s,rr)=>s+rr.length,0);
+    const labels = r.modifiers.length;                 // one axis-name line each
+    return 30 + labels*14 + rows*18 + (settings.showDots?16:6);
+  }
+  if (r && isFamily(r)){ return 28 + r.family.length*18 + 6; }
+  return NH;
+}
+
+function drawNode(node) {
+  const { lx:x, ly:y, recipe, key } = node;
+  const isRoot = key === '';
+  const isGap = !isRoot && recipe === null;
+  const isSel = sel && sel.seq.join('\x1f') === node.sequence.join('\x1f');
+  const onPath = !isRoot && curPath.has(key) && !isSel;
+  const dim = searchQuery && !isRoot && (isGap || !recipeMatches(recipe));
+
+  ctx.save();
+  if (dim) ctx.globalAlpha = 0.25;
+
+  if (isRoot) {
+    const w = NW/2;
+    ctx.fillStyle = isSel ? settings.accent+'22' : TH.node;
+    roundRect(ctx,x,y,w,NH,NH/2); ctx.fill();
+    ctx.strokeStyle = isSel ? settings.accent : TH.nodeBorder; ctx.lineWidth = isSel?2:1.5;
+    roundRect(ctx,x,y,w,NH,NH/2); ctx.stroke();
+    ctx.fillStyle = TH.muted; ctx.font='600 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('▶  Start', x+w/2, y+NH/2);
+    ctx.restore(); return;
+  }
+  if (isGap) {
+    ctx.setLineDash([4,3]);
+    ctx.strokeStyle = isSel ? '#f06b6b' : (onPath ? settings.accent : '#f06b6b88'); ctx.lineWidth = (isSel||onPath)?2:1.5;
+    roundRect(ctx,x,y,NW,NH,8); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='#f06b6baa'; ctx.font='600 10px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText('⚠ unnamed', x+8, y+8);
+    if (settings.showDots) drawSeqDots(node.sequence, x, y+NH-12, true);
+    ctx.restore(); return;
+  }
+  // recipe node
+  const H = nodeHeight(node);
+  const fam = familyColor(node.sequence);
+  if (fam && !isSel){ ctx.fillStyle = mix(TH.node, fam, 0.18); }
+  else ctx.fillStyle = isSel ? settings.accent+'1f' : TH.node;
+  roundRect(ctx,x,y,NW,H,8); ctx.fill();
+  ctx.strokeStyle = isSel ? settings.accent : (onPath ? settings.accent+'aa' : (fam ? mix(TH.nodeBorder, fam, 0.5) : TH.nodeBorder));
+  ctx.lineWidth = (isSel||onPath)?2:1;
+  roundRect(ctx,x,y,NW,H,8); ctx.stroke();
+  if (fam){ // left family bar — clip to the node's own rounded shape so corners match
+    ctx.save(); ctx.beginPath(); roundRect(ctx,x,y,NW,H,8); ctx.clip();
+    ctx.fillStyle = fam; ctx.fillRect(x,y,5,H); ctx.restore();
+  }
+  ctx.fillStyle = TH.text; ctx.font = `${isSel?700:500} 11px 'Segoe UI',sans-serif`;
+  ctx.textAlign='left'; ctx.textBaseline='top';
+  let txt = recipe.name; const maxW = NW-16;
+  while (ctx.measureText(txt).width > maxW && txt.length > 1) txt = txt.slice(0,-1);
+  if (txt !== recipe.name) txt = txt.slice(0,-1)+'…';
+  ctx.fillText(txt, x+(fam?11:8), y+9);
+  if (recipe.description) { ctx.fillStyle = settings.accent+'cc'; ctx.font='9px sans-serif'; ctx.fillText('•', x+NW-12, y+9); }
+
+  node._pips = null; node._modopts = null; node._famrows = null;
+  const key2 = node.sequence.join('\x1f');
+  if (isFamily(recipe)) {
+    ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
+    ctx.fillStyle = settings.accent2||'#2fd4a0'; ctx.fillText('FAMILY', x+NW-10, y+10);
+    node._famrows = [];
+    let ry = y+28;
+    recipe.family.forEach((v,vi)=>{
+      const el = elements.find(e=>e.id===v.element);
+      // advance element dot
+      if(el){ ctx.beginPath(); ctx.arc(x+(fam?15:12), ry+7, 5, 0, Math.PI*2); ctx.fillStyle=el.color; ctx.fill(); }
+      // variant name
+      ctx.fillStyle = TH.text; ctx.font='10px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+      let vn=v.name; while(ctx.measureText(vn).width>NW-95 && vn.length>1) vn=vn.slice(0,-1);
+      ctx.fillText(vn, x+(fam?24:21), ry+7);
+      // stage pips
+      const pn=Math.min(v.stages,6); let px=x+NW-10-pn*12;
+      for(let k=1;k<=pn;k++){ ctx.beginPath(); roundRect(ctx, px, ry+1, 10, 12, 3);
+        ctx.fillStyle = k===v.stages?(settings.accent):(TH.bg||'#0c0c10'); ctx.fill();
+        ctx.strokeStyle = TH.nodeBorder; ctx.lineWidth=1; ctx.stroke();
+        ctx.fillStyle = k===v.stages?'#0c0c10':TH.muted; ctx.font='8px sans-serif'; ctx.textAlign='center';
+        ctx.fillText(k, px+5, ry+7.5); px+=12; }
+      node._famrows.push({ vi, x:x, y:ry, w:NW, h:16 });
+      ry += 18;
+    });
+  } else if (hasModifiers(recipe)) {
+    ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
+    ctx.fillStyle = settings.accent; ctx.fillText('MOD', x+NW-10, y+10);
+    if (isModifier(recipe)) {
+      // appearance: every option of every axis as a button; one axis per row-group
+      const selv = modSelFor(recipe, key2);
+      node._modopts = [];
+      ctx.textBaseline='middle';
+      let by = y+26; const bh=15;
+      const rowsByAxis = modOptionRows(recipe);
+      recipe.modifiers.forEach((ax,ai)=>{
+        // axis name line
+        ctx.font='700 8px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillStyle = TH.muted; ctx.fillText((ax.name||'Axis').toUpperCase(), x+(fam?11:8), by+5);
+        by += 12;
+        rowsByAxis[ai].forEach(row=>{
+          let bx = x+(fam?11:8);
+          row.forEach(oi=>{
+            const opt = ax.options[oi]; const on = selv[ai]===oi;
+            ctx.font='9px sans-serif';
+            const tw = ctx.measureText(opt.label).width + 12;
+            ctx.beginPath(); roundRect(ctx, bx, by, tw, bh, 4);
+            ctx.fillStyle = on ? settings.accent : (TH.bg||'#0c0c10'); ctx.fill();
+            ctx.strokeStyle = on ? settings.accent : TH.nodeBorder; ctx.lineWidth=1; ctx.stroke();
+            ctx.fillStyle = on ? '#0c0c10' : TH.muted; ctx.textAlign='left'; ctx.textBaseline='middle';
+            ctx.fillText(opt.label, bx+6, by+bh/2+0.5);
+            node._modopts.push({ ax:ai, opt:oi, x:bx, y:by, w:tw, h:bh });
+            bx += tw + 3;
+          });
+          by += bh + 2;
+        });
+      });
+      if (settings.showDots){
+        const combo = modCombos(recipe).find(c=>c.opts.join(',')===selv.join(','));
+        if (combo){ drawDotsWindow(x, by+8, recipe.sequence.length, combo.seq.length); drawSeqDots(combo.seq, x, by+8, false); }
+      }
+    } else if (settings.showDots) {
+      drawSeqDots(recipe.sequence, x, y+nodeHeight(node)-12, false);
+    }
+  } else if (isGrowth(recipe)) {
+    // CHAIN tag
+    ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
+    ctx.fillStyle = settings.accent2 || '#2fd4a0'; ctx.fillText('CHAIN', x+NW-10, y+10);
+    // No corner element badge: the advance element is shown by the incoming edge.
+    const st = Math.min(recipe.growth.stages, growthStage[key2] || 1);
+    const pw=15, ph=14, gap=3, py=y+26, x0=x+8;
+    node._pips = [];
+    for (let k=1;k<=recipe.growth.stages;k++){
+      const px = x0 + (k-1)*(pw+gap);
+      if (px+pw > x+NW-6) break;   // don't overflow node width
+      const on = k===st;
+      ctx.beginPath(); roundRect(ctx, px, py, pw, ph, 3);
+      ctx.fillStyle = on ? settings.accent : (TH.bg||'#0c0c10'); ctx.fill();
+      ctx.strokeStyle = on ? settings.accent : TH.nodeBorder; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle = on ? '#0c0c10' : TH.muted; ctx.font=`${on?700:500} 9px sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(k, px+pw/2, py+ph/2+0.5);
+      node._pips.push({ stage:k, x:px, y:py, w:pw, h:ph });
+    }
+    // dots for the SELECTED stage's full element sequence (like the prototype)
+    if (settings.showDots){ const ss=growthStageSeq(recipe, st); drawDotsWindow(x, y+NH-10, recipe.sequence.length, ss.length); drawSeqDots(ss, x, y+NH-10, false); }
+  } else if (settings.showDots) {
+    drawSeqDots(recipe.sequence, x, y+NH-14, false, boundaryIndices(recipe.sequence));
+  }
+  ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath(); }
+
+// ================================================================
+//  CANVAS INTERACTION
+// ================================================================
+const tip = document.getElementById('tip');
+let dragging=false, dStart={x:0,y:0}, pStart={x:0,y:0};
+
+function s2w(sx,sy){ const ch=wrap.clientHeight; return { x:(sx-pan.x)/zoom, y:(sy-pan.y-ch/2)/zoom }; }
+function nodeAt(sx,sy){ const {x:wx,y:wy}=s2w(sx,sy);
+  return layoutNodes.find(n=>{ const w=n.key===''?NW/2:NW; const h=n.key===''?NH:nodeHeight(n); return wx>=n.lx&&wx<=n.lx+w&&wy>=n.ly&&wy<=n.ly+h; })||null; }
+function badgeAt(sx,sy){ const {x:wx,y:wy}=s2w(sx,sy);
+  return edgeBadges.find(b=>{ const dx=wx-b.wx,dy=wy-b.wy; return dx*dx+dy*dy <= (b.r+3)*(b.r+3); })||null; }
+
+cvs.addEventListener('mousedown', e=>{ dragging=true; dStart={x:e.clientX,y:e.clientY}; pStart={...pan}; cvs.classList.add('dragging'); });
+cvs.addEventListener('mousemove', e=>{
+  if (dragging){ pan.x=pStart.x+(e.clientX-dStart.x); pan.y=pStart.y+(e.clientY-dStart.y); drawTree(); return; }
+  const rect=wrap.getBoundingClientRect(); const lx=e.clientX-rect.left, ly=e.clientY-rect.top;
+  const node = nodeAt(lx,ly);
+  // Chain pips: show the default arrow cursor (not grab) to signal they're stage toggles.
+  let overPip = false;
+  if (node && node._pips){
+    const {x:wx,y:wy} = s2w(lx,ly);
+    overPip = node._pips.some(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
+  }
+  cvs.style.cursor = overPip ? 'default' : '';
+  if (node && node.key!==''){
+    const isGap = node.recipe===null;
+    const r = node.recipe;
+    const origins = (!isGap && r.altOrigins && r.altOrigins.length) ? recipeOrigins(r) : null;
+    document.getElementById('tip-name').textContent = isGap?'⚠ Unnamed node':r.name;
+    if (origins){
+      document.getElementById('tip-seq').innerHTML =
+        `<div class="tip-origins-head">${origins.length} ways to make this</div>` +
+        origins.map((o,i)=>
+          `<div class="tip-origin">${i===0?'<span class="tip-star">★</span>':'<span class="tip-star">↳</span>'}`
+          + `<span>${escHtml(originLabel(o))}</span><span class="tip-cost">cost ${o.length}</span></div>`).join('');
+    } else {
+      document.getElementById('tip-seq').innerHTML = node.sequence.map(id=>{const el=elements.find(e=>e.id===id);
+        return el?`<span style="background:${el.color}33;color:${el.color}">${el.emoji} ${el.name}</span>`:'';}).join('');
+    }
+    document.getElementById('tip-desc').textContent = (!isGap && r.description) ? r.description : '';
+    document.getElementById('tip-gap').textContent = isGap ? 'Intermediate step with no recipe. Click to name it.' : '';
+    showTip(e); return;
+  }
+  const badge = badgeAt(lx,ly);
+  if (badge){
+    document.getElementById('tip-name').innerHTML = `${badge.el.emoji} <span style="color:${badge.el.color}">${badge.el.name}</span>`;
+    document.getElementById('tip-seq').innerHTML = '';
+    document.getElementById('tip-desc').textContent = badge.alt ? '' : 'Element added at this step';
+    document.getElementById('tip-gap').textContent = badge.alt || '';
+    showTip(e); return;
+  }
+  tip.style.display='none';
+});
+function showTip(e){ tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-8)+'px'; }
+
+cvs.addEventListener('mouseup', e=>{
+  const moved = Math.abs(e.clientX-dStart.x)+Math.abs(e.clientY-dStart.y) > 3;
+  dragging=false; cvs.classList.remove('dragging');
+  if (moved) return;
+  const rect=wrap.getBoundingClientRect();
+  const node = nodeAt(e.clientX-rect.left, e.clientY-rect.top);
+  if (node){
+    const {x:wx,y:wy} = s2w(e.clientX-rect.left, e.clientY-rect.top);
+    // Clicking a growth pip sets the previewed stage.
+    if (node._pips){
+      const pip = node._pips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
+      if (pip){ growthStage[node.key] = pip.stage; }
+    }
+    // Clicking a modifier option button selects that option for its axis.
+    if (node._modopts){
+      const mo = node._modopts.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
+      if (mo){ const v=modSelFor(node.recipe, node.key).slice(); v[mo.ax]=mo.opt; modSel[node.key]=v; }
+    }
+    sel = { seq:[...node.sequence], recipe:node.recipe }; stagedEl=null; renderBuild(); renderList(); drawTree();
+  }
+});
+cvs.addEventListener('mouseleave', ()=>{ dragging=false; tip.style.display='none'; cvs.classList.remove('dragging'); });
+cvs.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const ch = wrap.clientHeight;
+  // world point under cursor before zoom
+  const wx = (mx - pan.x) / zoom;
+  const wy = (my - pan.y - ch/2) / zoom;
+  const nz = Math.min(3, Math.max(0.2, zoom * (e.deltaY < 0 ? 1.1 : 0.91)));
+  // keep that world point pinned under the cursor
+  pan.x = mx - wx * nz;
+  pan.y = my - ch/2 - wy * nz;
+  zoom = nz;
+  drawTree();
+}, {passive:false});
+
+// ── touch: 1 finger = pan + tap-select, 2 fingers = pinch-zoom ──
+let tStart=null, tPan=null, tZoom=1, tDist=0, tMid={x:0,y:0}, tMoved=false;
+function dist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+cvs.addEventListener('touchstart', e=>{
+  if (e.touches.length===1){ const t=e.touches[0]; tStart={x:t.clientX,y:t.clientY}; tPan={...pan}; tMoved=false; }
+  else if (e.touches.length===2){ tDist=dist(e.touches); tZoom=zoom; tPan={...pan};
+    tMid={x:(e.touches[0].clientX+e.touches[1].clientX)/2, y:(e.touches[0].clientY+e.touches[1].clientY)/2}; }
+}, {passive:false});
+cvs.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  const rect=wrap.getBoundingClientRect(), ch=wrap.clientHeight;
+  if (e.touches.length===1 && tStart){ const t=e.touches[0];
+    pan.x=tPan.x+(t.clientX-tStart.x); pan.y=tPan.y+(t.clientY-tStart.y);
+    if (Math.abs(t.clientX-tStart.x)+Math.abs(t.clientY-tStart.y)>6) tMoved=true; drawTree(); }
+  else if (e.touches.length===2){ const d=dist(e.touches);
+    const mx=tMid.x-rect.left, my=tMid.y-rect.top;
+    const wx=(mx-tPan.x)/tZoom, wy=(my-tPan.y-ch/2)/tZoom;
+    const nz=Math.min(3, Math.max(0.2, tZoom*(d/(tDist||d))));
+    pan.x=mx-wx*nz; pan.y=my-ch/2-wy*nz; zoom=nz; drawTree(); }
+}, {passive:false});
+cvs.addEventListener('touchend', e=>{
+  if (tStart && !tMoved && e.changedTouches.length){ const t=e.changedTouches[0];
+    const rect=wrap.getBoundingClientRect();
+    const node=nodeAt(t.clientX-rect.left, t.clientY-rect.top);
+    if (node){ const {x:wx,y:wy}=s2w(t.clientX-rect.left,t.clientY-rect.top);
+        if(node._pips){ const pip=node._pips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(pip) growthStage[node.key]=pip.stage; }
+        if(node._modopts){ const mo=node._modopts.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(mo){const v=modSelFor(node.recipe,node.key).slice();v[mo.ax]=mo.opt;modSel[node.key]=v;} }
+      sel={seq:[...node.sequence],recipe:node.recipe}; stagedEl=null; renderBuild(); renderList(); drawTree(); } }
+  if (e.touches.length===0) tStart=null;
+}, {passive:false});
+window.addEventListener('resize', drawTree);
+
+// ── resizable / toggleable sidebar ──
+(function(){
+  const sb=document.getElementById('sidebar'), rz=document.getElementById('sidebar-resize'), show=document.getElementById('sidebar-show');
+  try{ const w=localStorage.getItem('paletteSidebarW'); if(w) sb.style.width=w+'px'; }catch(e){}
+  let rzDrag=false;
+  rz.addEventListener('mousedown', e=>{ rzDrag=true; e.preventDefault(); });
+  window.addEventListener('mousemove', e=>{ if(!rzDrag)return;
+    const w=Math.max(180, Math.min(560, e.clientX)); sb.style.width=w+'px'; drawTree(); });
+  window.addEventListener('mouseup', ()=>{ if(rzDrag){ rzDrag=false; try{localStorage.setItem('paletteSidebarW', parseInt(sb.style.width)||268);}catch(e){} } });
+  function hide(){ sb.classList.add('hidden'); rz.classList.add('hidden'); show.classList.add('on'); drawTree(); }
+  function unhide(){ sb.classList.remove('hidden'); rz.classList.remove('hidden'); show.classList.remove('on'); drawTree(); }
+  rz.addEventListener('dblclick', hide);
+  show.addEventListener('click', unhide);
+  const hideBtn=document.getElementById('sidebarHide'); if(hideBtn) hideBtn.addEventListener('click', hide);
+})();
+
+// ── node search / quick navigate ──
+(function(){
+  const inp=document.getElementById('nodeSearchInput'), res=document.getElementById('nodeSearchResults');
+  let hi=-1;
+  function matches(){ const q=inp.value.trim().toLowerCase(); if(!q) return [];
+    return recipes.filter(r=>r.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,30); }
+  function panToRecipe(r){
+    drawTree(); // ensure layoutNodes current
+    const node=layoutNodes.find(n=>n.recipe===r) || layoutNodes.find(n=>n.key===r.sequence.join('\x1f'));
+    if(node){ const cw=wrap.clientWidth, ch=wrap.clientHeight;
+      const ncx=node.lx+NW/2, ncy=node.ly+nodeHeight(node)/2;
+      pan.x=cw/2-ncx*zoom; pan.y=-ncy*zoom; }
+    sel={seq:[...r.sequence],recipe:r}; renderBuild(); renderList(); drawTree();
+  }
+  function render(){ const list=matches();
+    if(!list.length){ res.classList.remove('on'); res.innerHTML=''; return; }
+    res.innerHTML=''; list.forEach((r,i)=>{ const d=document.createElement('div');
+      d.className='ns-row'+(i===hi?' hi':'');
+      d.innerHTML=`<span>${escHtml(r.name)}</span><span class="ns-meta">${r.sequence.length}${isGrowth(r)?' 🌱':''}${isModifier(r)?' ⊞':''}</span>`;
+      d.onmousedown=e=>{ e.preventDefault(); inp.value=''; res.classList.remove('on'); panToRecipe(r); };
+      res.appendChild(d); });
+    res.classList.add('on');
+  }
+  inp.oninput=()=>{ hi=-1; render(); };
+  inp.onfocus=render;
+  inp.onblur=()=>setTimeout(()=>res.classList.remove('on'),150);
+  inp.onkeydown=e=>{ const list=matches();
+    if(e.key==='ArrowDown'){e.preventDefault();hi=Math.min(hi+1,list.length-1);render();}
+    else if(e.key==='ArrowUp'){e.preventDefault();hi=Math.max(hi-1,0);render();}
+    else if(e.key==='Enter'){e.preventDefault(); const r=list[hi>=0?hi:0]; if(r){inp.value='';res.classList.remove('on');panToRecipe(r);}}
+    else if(e.key==='Escape'){inp.value='';res.classList.remove('on');inp.blur();} };
+})();
+
+// Frame all nodes within the viewport.
+function fitToView() {
+  const root = buildTrie(); layoutTrie(root);
+  const ns = trieFlatten(root);
+  if (!ns.length) return;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  ns.forEach(n=>{ const w=n.key===''?NW/2:NW;
+    minX=Math.min(minX,n.lx); minY=Math.min(minY,n.ly);
+    maxX=Math.max(maxX,n.lx+w); maxY=Math.max(maxY,n.ly+NH); });
+  const cw=wrap.clientWidth, ch=wrap.clientHeight, pad=60;
+  const zw=(cw-pad*2)/(maxX-minX||1), zh=(ch-pad*2)/(maxY-minY||1);
+  zoom = Math.min(3, Math.max(0.2, Math.min(zw, zh)));
+  pan.x = pad - minX*zoom;
+  pan.y = -((minY+maxY)/2)*zoom;   // vertical center (translate already adds ch/2)
+  drawTree();
+}
+function resetView(){ zoom=1; pan={x:40,y:0}; drawTree(); }
+
+// ================================================================
+//  BUILD TAB (context-aware)
+// ================================================================
+function renderFamilyPanel(panel, F){
+  const $=id=>document.getElementById(id);
+  const card=document.createElement('div'); card.className='card';
+  let html=`<div class="card-title">🌿 Chain family <span class="g-badge2">${F.family.length} variant${F.family.length>1?'s':''}</span></div>
+    <input class="f" id="famName" value="${escAttr(F.name)}" style="margin-bottom:4px">
+    <div class="add-hint">Shared base: ${prettySeq(F.sequence)||'—'}. Each variant grows by its element.</div>
+    <div id="famVars" style="margin-top:8px">`;
+  F.family.forEach((v,vi)=>{
+    const pv = Math.min(v.stages, famPreview[vi]||v.stages);
+    const seqAt=familyVarSeq(F,vi,pv);
+    const pips=Array.from({length:v.stages},(_,i)=>i+1).map(k=>`<button class="gpip famv-pip${k===pv?' on':''}" data-vi="${vi}" data-k="${k}">${k}</button>`).join('');
+    html+=`<div class="fam-edit" data-vi="${vi}">
+      <div class="fam-edit-row">
+        <input class="f famv-name" data-vi="${vi}" value="${escAttr(v.name)}" placeholder="Variant" style="margin:0;flex:1">
+        <select class="f famv-el" data-vi="${vi}" style="margin:0;width:auto">${elements.map(e=>`<option value="${e.id}"${e.id===v.element?' selected':''}>${e.emoji} ${e.name}</option>`).join('')}</select>
+        <input class="f famv-st" data-vi="${vi}" type="number" min="1" max="12" value="${v.stages}" style="margin:0;width:46px" title="stages">
+        <button class="btn btn-ghost btn-xs famv-rm" data-vi="${vi}" title="Remove variant">✕</button>
+      </div>
+      <div class="gpips" style="margin-top:5px">${pips}</div>
+      <div class="fam-edit-seq">${seqAt.map(id=>{const e=elements.find(x=>x.id===id);return e?`<span style="color:${e.color}">${e.emoji}</span>`:'';}).join('')} <span style="margin-left:auto"></span><button class="btn btn-ghost btn-xs famv-build" data-vi="${vi}">build onward →</button></div>`;
+    if (famOpenVar===vi){
+      const from=familyVarSeq(F,vi,pv);
+      html+=`<div class="fam-onward">
+        <div class="add-hint" style="margin:0 0 4px">Adds a recipe after stage ${pv} of ${escHtml(v.name)}.</div>
+        <div class="el-pills">${elements.map(e=>{ const owner=recipeOccupying(from.concat([e.id]));
+          return `<div class="el-pill famo-el${owner?' dim':''}" data-el="${e.id}" data-vi="${vi}" style="background:${e.color}28;color:${e.color};border-color:${e.color}44" title="${owner?`"${owner.name}" already here`:'Add '+e.name}">${e.emoji} ${e.name}</div>`; }).join('')}</div>
+        <input class="f famo-name" data-vi="${vi}" placeholder="New recipe name…" style="margin:6px 0 0">
+        <button class="btn btn-accent btn-sm famo-add" data-vi="${vi}" data-k="${pv}" style="margin-top:6px">Add child after ${escHtml(v.name)} ${pv}</button>
+      </div>`;
+    }
+    html+=`</div>`;
+  });
+  html+=`</div>
+    <button class="btn btn-ghost btn-sm" id="famAdd" style="margin-top:6px">+ variant</button>
+    <div class="grow-promote"><button class="btn btn-ghost btn-sm" id="famDelete">Delete family</button></div>`;
+  card.innerHTML=html; panel.appendChild(card);
+
+  $('famName').onchange=()=>{ pushHistory(); F.name=$('famName').value.trim()||'Family'; commit(); };
+  document.querySelectorAll('.famv-name').forEach(i=>i.onchange=()=>{ pushHistory(); F.family[+i.dataset.vi].name=i.value.trim()||'Variant'; commit(); });
+  document.querySelectorAll('.famv-el').forEach(s=>s.onchange=()=>{ const vi=+s.dataset.vi;
+    if (F.family.some((x,j)=>j!==vi && x.element===s.value)){ alert('Another variant already grows by that element.'); renderBuild(); return; }
+    // block if any new stage seq collides
+    const trial={sequence:F.sequence, family:F.family.map((x,j)=>j===vi?{...x,element:s.value}:x)};
+    const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==F);
+    if(clash){ alert(`That element collides with "${clash.name}".`); renderBuild(); return; }
+    pushHistory(); F.family[vi].element=s.value; commit(); });
+  document.querySelectorAll('.famv-st').forEach(i=>i.onchange=()=>{ const vi=+i.dataset.vi, n=Math.max(1,Math.min(12,+i.value||1));
+    const trial={sequence:F.sequence, family:F.family.map((x,j)=>j===vi?{...x,stages:n}:x)};
+    const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==F);
+    if(clash){ alert(`Stage count collides with "${clash.name}".`); renderBuild(); return; }
+    pushHistory(); F.family[vi].stages=n; commit(); });
+  document.querySelectorAll('.famv-rm').forEach(b=>b.onclick=()=>{ if(F.family.length<=1){alert('A family needs at least one variant. Delete the family instead.');return;}
+    pushHistory(); F.family.splice(+b.dataset.vi,1); commit(); });
+  document.querySelectorAll('.famv-pip').forEach(b=>b.onclick=()=>{ famPreview[+b.dataset.vi]=+b.dataset.k; renderBuild(); });
+  document.querySelectorAll('.famv-build').forEach(b=>b.onclick=()=>{ const vi=+b.dataset.vi; famOpenVar = (famOpenVar===vi?null:vi); renderBuild(); });
+  document.querySelectorAll('.famo-el').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
+    famStagedEl=p.dataset.el; document.querySelectorAll('.famo-el').forEach(x=>x.classList.remove('staged')); p.classList.add('staged'); });
+  document.querySelectorAll('.famo-add').forEach(b=>b.onclick=()=>{ const vi=+b.dataset.vi, k=+b.dataset.k;
+    if(!famStagedEl){ alert('Pick an element first.'); return; }
+    const nameI=document.querySelector(`.famo-name[data-vi="${vi}"]`); const name=(nameI.value||'').trim();
+    if(!name){ nameI.focus(); return; }
+    const newSeq=familyVarSeq(F,vi,k).concat([famStagedEl]);
+    if(recipeByAnyOrigin(newSeq)){ alert('That path already produces a recipe.'); return; }
+    if(recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){ alert('Name already exists.'); return; }
+    pushHistory(); recipes.push({name, sequence:newSeq, description:'', altOrigins:[]});
+    palettes[pidx].recipes=recipes; famStagedEl=null; famOpenVar=null; commit(); });
+  $('famAdd').onclick=()=>{ const used=new Set(F.family.map(v=>v.element));
+    const free=elements.find(e=>!used.has(e.id));
+    if(!free){ alert('All elements are already used by variants.'); return; }
+    pushHistory(); F.family.push({name:'Variant', element:free.id, stages:4}); commit(); };
+  $('famDelete').onclick=()=>{ pushHistory(); recipes=recipes.filter(r=>r!==F); palettes[pidx].recipes=recipes; sel={seq:[],recipe:null}; commit(); };
+}
+
+function renderBuild() {
+  const panel = document.getElementById('buildPanel');
+  panel.innerHTML = '';
+  if (!sel) sel = { seq:[], recipe:null };
+
+  const isRoot = sel.seq.length === 0;
+  const selRecipe = isRoot ? null : ((sel.recipe && isFamily(sel.recipe)) ? sel.recipe : recipeBySeq(sel.seq));
+  const isGap = !isRoot && !selRecipe;
+
+  if (selRecipe && isFamily(selRecipe)) { renderFamilyPanel(panel, selRecipe); return; }
+
+  // ── Selected node card ──
+  const card = document.createElement('div');
+  card.className = 'card' + (isGap ? ' gap' : '');
+  if (isRoot) {
+    const pd = palettes[pidx].description;
+    card.innerHTML = `<div class="card-title">▶ Start</div>
+      <div class="card-desc">Root of <b style="color:var(--text)">${escHtml(palettes[pidx].name)}</b>. ${pd?escHtml(pd):'Add a one-element recipe below.'}</div>`;
+  } else {
+    const _bset = boundaryIndices(sel.seq); const _main = _bset.length?_bset[_bset.length-1]:0;
+    const seqHtml = sel.seq.map((id,i)=>{const el=elements.find(e=>e.id===id);
+      const div = _bset.includes(i) ? '<span class="seq-div main" title="replaceable base ends here">|</span>' : '';
+      const op = (_main>0 && i<_main) ? '0.5' : '1';
+      return div + (el?`<span style="background:${el.color}2a;color:${el.color};opacity:${op}">${el.emoji} ${el.name}</span>`:'');}).join('');
+    if (isGap) {
+      card.innerHTML = `<div class="card-title" style="color:var(--danger)">⚠ Unnamed step</div>
+        <div class="card-seq">${seqHtml}</div>
+        <div class="add-hint">Name this step to keep it, or remove it to pull its children one step closer to the parent.</div>
+        <input class="f" id="gapName" placeholder="Name this step…">
+        <textarea class="f" id="gapDesc" placeholder="Description (optional)"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-accent btn-sm" id="btnNameGap">Name it</button>
+          <button class="btn btn-ghost btn-sm" id="btnRemoveGap">Remove step</button>
+        </div>`;
+    } else {
+      const origins = recipeOrigins(selRecipe);
+      const originsHtml = origins.map((o,i)=>{
+        const isPrimary = i===0;
+        return `<div class="origin-row">
+          <span class="origin-label">${isPrimary?'★':'↳'} ${escHtml(originLabel(o))}</span>
+          <span class="origin-cost" title="Cost = element count">${o.length}</span>
+          ${isPrimary?'<span class="origin-tag">primary</span>'
+                     :`<button class="origin-rm" data-alt="${i-1}" title="Remove this origin">✕</button>`}
+        </div>`;
+      }).join('');
+      card.innerHTML = `<div class="card-title">${selRecipe.name}${origins.length>1?` <span class="multi-badge" title="${origins.length} ways to make this">⟂${origins.length}</span>`:''}</div>
+        <label class="blabel">Origin${origins.length>1?'s':''} (by cost)</label>
+        <div class="origins">${originsHtml}</div>
+        <label class="blabel" style="margin-top:8px">Edit</label>
+        <input class="f" id="editName" value="${escAttr(selRecipe.name)}">
+        <textarea class="f" id="editDesc" placeholder="Description (optional)">${escHtml(selRecipe.description||'')}</textarea>
+        <div class="btn-row">
+          <button class="btn btn-accent btn-sm" id="btnSaveEdit">Save</button>
+          <button class="btn btn-danger btn-sm" id="btnDelRecipe">Delete</button>
+        </div>`;
+    }
+  }
+  panel.appendChild(card);
+
+  // ── Insert a step before this node (lengthen the branch) ──
+  if (!isRoot && selRecipe && !isModifier(selRecipe) && !isFamily(selRecipe)) {
+    const ins = document.createElement('div'); ins.className='card';
+    ins.innerHTML = `<div class="card-title" style="font-size:.82rem">⎀ Insert step before</div>
+      <div class="add-hint">Adds a node between this one and its parent, for this recipe and everything built on it.</div>
+      <div class="link-row">
+        <select class="f" id="insEl" style="margin-bottom:0">${elements.map(e=>`<option value="${e.id}">${e.emoji} ${e.name}</option>`).join('')}</select>
+        <select class="f" id="insType" style="margin-bottom:0;width:auto"><option value="basic">Basic</option><option value="chain">Chain</option><option value="modifier">Modifier</option></select>
+        <input class="f" id="insStages" type="number" min="2" max="12" value="4" style="margin-bottom:0;width:46px;display:none" title="stages">
+        <button class="btn btn-ghost btn-sm" id="btnInsertStep">Insert</button>
+      </div>`;
+    panel.appendChild(ins);
+    const it=ins.querySelector('#insType'), st=ins.querySelector('#insStages');
+    it.onchange=()=>{ st.style.display = it.value==='chain' ? '' : 'none'; };
+  }
+  if (!isRoot && !isGap && selRecipe && !hasModifiers(selRecipe)) {
+    const g = document.createElement('div');
+    g.className = 'card';
+    if (isGrowth(selRecipe)) {
+      const st = Math.min(selRecipe.growth.stages, growthStage[sel.seq.join('\x1f')] || 1);
+      const gel = elements.find(e=>e.id===selRecipe.growth.element);
+      const stageSeqNow = growthStageSeq(selRecipe, st);
+      const dotsHtml = stageSeqNow.map(id=>{const e=elements.find(x=>x.id===id);
+        return e?`<span style="background:${e.color}2a;color:${e.color}">${e.emoji}</span>`:'';}).join('');
+      const pipsHtml = Array.from({length:selRecipe.growth.stages},(_,i)=>i+1)
+        .map(k=>`<button class="gpip${k===st?' on':''}" data-stage="${k}">${k}</button>`).join('');
+      // Advance element is derived from the path that reaches this node — not configurable.
+      g.innerHTML = `
+        <div class="card-title" style="font-size:.82rem">🌱 Chain <span class="g-badge2">${selRecipe.growth.stages} stages · ${gel?gel.emoji:''}</span></div>
+        <div class="gpips" id="gpips" style="margin-top:4px">${pipsHtml}</div>
+        <div class="card-seq" style="margin-top:6px" id="gstageSeq">${dotsHtml}</div>
+        <div class="add-hint" style="margin:4px 0 0">Stage ${st} · cost ${stageSeqNow.length}</div>
+        <div class="grow-config" style="margin-top:8px;padding-top:8px">
+          <div class="link-row">
+            <span class="add-hint" style="margin:0">Stages</span>
+            <input class="f" id="gStages" type="number" min="2" max="12" value="${selRecipe.growth.stages}" style="width:52px;margin-bottom:0">
+            <button class="btn btn-accent btn-sm" id="gApply">Apply</button>
+            <button class="btn btn-ghost btn-sm" id="gRemove">Remove</button>
+          </div>
+        </div>
+        ${st>=2 ? `<div class="grow-promote" style="margin-top:8px;padding-top:8px">
+          <button class="btn btn-ghost btn-sm" id="gPromote">⑂ Promote stage ${st}</button>
+        </div>` : ``}`;
+    } else {
+      const lastEl = elements.find(e=>e.id===selRecipe.sequence[selRecipe.sequence.length-1]);
+      g.className = 'card grow-make';
+      g.innerHTML = `
+        <div class="card-title" style="font-size:.82rem">🌱 Convert “${escHtml(selRecipe.name)}” into a chain</div>
+        <div class="add-hint">Replaces this single recipe with a 1–N growth series that repeats <b>${lastEl?lastEl.emoji+' '+lastEl.name:'its last element'}</b>. The node stays put and gains stage pips; nothing else changes.</div>
+        <div class="link-row">
+          <span class="add-hint" style="margin:0">Stages</span>
+          <input class="f" id="gNewStages" type="number" min="2" max="12" value="4" style="width:56px;margin-bottom:0">
+          <button class="btn btn-accent btn-sm" id="gMake">Convert</button>
+        </div>`;
+    }
+    panel.appendChild(g);
+  }
+
+  // ── Modifier panel (for a selected recipe that has modifier axes) ──
+  if (!isRoot && !isGap && selRecipe && hasModifiers(selRecipe)) {
+    const key = sel.seq.join('\x1f');
+    const selv = isModifier(selRecipe) ? modSelFor(selRecipe, key) : selRecipe.modifiers.map(()=>0);
+    const m = document.createElement('div'); m.className='card';
+    let html = `<div class="card-title" style="font-size:.82rem">⊞ Modifier <span class="g-badge2">${selRecipe.modifiers.length} ax${selRecipe.modifiers.length===1?'is':'es'}</span></div>`;
+
+    // axis + option editor
+    selRecipe.modifiers.forEach((ax,ai)=>{
+      html += `<div class="mod-axis-edit" data-ax="${ai}">
+        <div class="mod-axis-head">
+          <input class="f mod-axname" data-ax="${ai}" value="${escAttr(ax.name)}" style="margin:0;flex:1">
+          <button class="btn btn-ghost btn-xs mod-axrm" data-ax="${ai}" title="Remove axis">✕</button>
+        </div>
+        <div class="mod-opts-edit">`;
+      ax.options.forEach((o,oi)=>{
+        const chosen = selv[ai]===oi;
+        const elDots = (o.elements||[]).map(id=>{const e=elements.find(x=>x.id===id);return e?`<span style="color:${e.color}">${e.emoji}</span>`:'';}).join('');
+        html += `<div class="mod-opt-row${chosen?' chosen':''}">
+          <button class="mod-opt-pick" data-ax="${ai}" data-opt="${oi}" title="Preview this option">${chosen?'●':'○'}</button>
+          <input class="f mod-optlabel" data-ax="${ai}" data-opt="${oi}" value="${escAttr(o.label)}" style="margin:0;flex:1" placeholder="Option label">
+          <span class="mod-opt-dots">${elDots}</span>
+          <button class="btn btn-ghost btn-xs mod-optels" data-ax="${ai}" data-opt="${oi}" title="Choose elements">elements</button>
+          <button class="btn btn-ghost btn-xs mod-optrm" data-ax="${ai}" data-opt="${oi}" title="Remove option">✕</button>
+        </div>
+        <div class="mod-elpick" id="elpick-${ai}-${oi}" style="display:none">${
+          elements.map(e=>`<label class="mod-elchk" style="--elc:${e.color};border-color:${e.color}66;color:${e.color}"><input type="checkbox" data-ax="${ai}" data-opt="${oi}" value="${e.id}" ${(o.elements||[]).includes(e.id)?'checked':''}> ${e.emoji} ${e.name}</label>`).join('')
+        }</div>`;
+      });
+      html += `<button class="btn btn-ghost btn-xs mod-addopt" data-ax="${ai}">+ option</button>
+        </div></div>`;
+    });
+    html += `<button class="btn btn-ghost btn-sm mod-addaxis" style="margin-top:6px">+ axis</button>`;
+
+    // current combination + promote
+    if (isModifier(selRecipe)){
+      const combo = modCombos(selRecipe).find(c=>c.opts.join(',')===selv.join(',')) || {labels:selRecipe.modifiers.map((ax,i)=>ax.options[selv[i]].label), seq:selRecipe.sequence};
+      const cname = comboName(selRecipe, combo.labels);
+      const cdots = combo.seq.map(id=>{const e=elements.find(x=>x.id===id);return e?`<span style="background:${e.color}2a;color:${e.color}">${e.emoji}</span>`:'';}).join('');
+      const occ = recipeBySeq(combo.seq);
+      const isBase = combo.seq.join('\x1f')===selRecipe.sequence.join('\x1f');
+      html += `<div class="mod-combo">
+        <label class="blabel">Current combination</label>
+        <div class="mod-combo-name"><b>${escHtml(cname)}</b></div>
+        <div class="card-seq" style="margin-top:5px">${cdots}</div>
+        <div class="add-hint" style="margin:5px 0 0">${combo.seq.length} elements${occ&&!isBase?` · already a node: “${escHtml(occ.name)}”`:''}</div>
+        ${isBase ? `<div class="add-hint" style="margin-top:6px">Pick a non-default option to promote a real combination.</div>`
+                 : `<button class="btn btn-accent btn-sm mod-promote" style="margin-top:8px">⑂ Promote “${escHtml(cname)}”</button>`}
+      </div>`;
+    } else {
+      html += `<div class="add-hint" style="margin-top:8px">Add at least one axis with one option (and its elements) to activate this modifier.</div>`;
+    }
+    m.innerHTML = html;
+    panel.appendChild(m);
+  }
+
+  // ── Add child section (not for gap—name it first) ──
+  if (!isGap) {
+    const addWrap = document.createElement('div');
+    addWrap.innerHTML = `<div class="add-divider"></div><div class="blabel">Add from here</div>`;
+
+    // ── creation tool palette (like a paint toolbar) ──
+    const tools = [
+      ['basic',    '◆',  'Basic',    'A single new recipe'],
+      ['chain',    '🌱', 'Chain',    'A 1–N growth series'],
+      ['connect',  '🔗', 'Connect',  'Link this path to an existing recipe'],
+      ['modifier', '⊞',  'Modifier', 'Options table (roof×door style)'],
+      ['family',   '🌿', 'Family',   'Group several plant chains under this node']
+    ];
+    const tb = document.createElement('div'); tb.className = 'toolbar';
+    tools.forEach(([id,icon,label,desc])=>{
+      const t = document.createElement('button');
+      t.className = 'tool' + (buildTool===id?' on':'');
+      t.innerHTML = `<span class="t-ic">${icon}</span><span class="t-lb">${label}</span>`;
+      t.title = desc;
+      t.onclick = ()=>{ buildTool=id; renderBuild(); };
+      tb.appendChild(t);
+    });
+    addWrap.appendChild(tb);
+
+    if (buildTool === 'family') {
+      const f = document.createElement('div');
+      f.innerHTML = `
+        <input class="f" id="famNewName" placeholder="Family name (e.g. Flowers)…" autocomplete="off">
+        <div class="add-hint">Creates a chain-family node under this one. Add variants (each a named plant growing by its own element) in the panel that appears.</div>
+        <button class="btn btn-accent btn-sm" id="btnAddFamily">Add chain family</button>`;
+      addWrap.appendChild(f);
+    } else {
+      // element pills (shared by basic / chain / connect / modifier)
+      const pills = document.createElement('div'); pills.className = 'el-pills';
+      const parentGrowth = selRecipe && isGrowth(selRecipe) ? selRecipe.growth.element : null;
+      elements.forEach(el=>{
+        const ep = effectiveParentSeq(selRecipe, sel.seq, el.id);
+        const owner = recipeOccupying([...ep, el.id]);
+        const exists = !!owner;
+        const p = document.createElement('div');
+        p.className = 'el-pill' + (stagedEl===el.id?' staged':'') + (exists?' dim':'');
+        p.style.cssText = `background:${el.color}28;color:${el.color};border-color:${el.color}44`;
+        p.textContent = `${el.emoji} ${el.name}`;
+        p.title = owner ? `"${owner.name}" already comes from here` : `Add ${el.name}`;
+        p.onclick = ()=>{ if(exists)return; stagedEl = stagedEl===el.id?null:el.id; renderBuild(); };
+        pills.appendChild(p);
+      });
+      addWrap.appendChild(pills);
+
+      const prev = document.createElement('div'); prev.className='preview';
+      if (stagedEl){ const el=elements.find(e=>e.id===stagedEl);
+        const base = sel.seq.map(id=>{const e2=elements.find(x=>x.id===id);return e2?e2.emoji:'';}).join(' ');
+        prev.innerHTML = `This path: <b>${base?base+' ':''}${el.emoji}</b>`; }
+      else prev.innerHTML = 'Pick an element to add as the next step.';
+      addWrap.appendChild(prev);
+
+      if (stagedEl){
+        const f = document.createElement('div');
+        if (buildTool === 'basic') {
+          f.innerHTML = `
+            <input class="f" id="childName" placeholder="New recipe name…" autocomplete="off">
+            <div id="childHint" class="add-hint"></div>
+            <textarea class="f" id="childDesc" placeholder="Description (optional)"></textarea>
+            <button class="btn btn-accent btn-sm" id="btnAddChild">Add basic node</button>`;
+        } else if (buildTool === 'chain') {
+          const el=elements.find(e=>e.id===stagedEl);
+          f.innerHTML = `
+            <input class="f" id="childName" placeholder="Chain name…" autocomplete="off">
+            <div class="add-hint">Grows by adding ${el?el.emoji+' '+el.name:''} each stage.</div>
+            <div class="link-row">
+              <input class="f" id="chainStages" type="number" min="2" max="12" value="4" style="width:64px;margin-bottom:0">
+              <button class="btn btn-accent btn-sm" id="btnAddChain">Add chain node</button>
+            </div>`;
+        } else if (buildTool === 'connect') {
+          f.innerHTML = `
+            <div class="combo">
+              <input class="f" id="linkSearch" placeholder="🔗 Type a recipe name…" autocomplete="off" style="margin-bottom:0">
+              <div id="linkResults" class="link-results"></div>
+            </div>
+            <div class="add-hint">Adds this path as another way to make the chosen recipe (a new origin).</div>`;
+        } else if (buildTool === 'modifier') {
+          f.innerHTML = `
+            <input class="f" id="childName" placeholder="Modifier node name…" autocomplete="off">
+            <div class="add-hint">Creates a node here, then you define its option axes (e.g. Roof, Door) in the panel above. Each combination can be promoted to its own recipe.</div>
+            <button class="btn btn-accent btn-sm" id="btnAddModifier">Add modifier node</button>`;
+        }
+        addWrap.appendChild(f);
+      }
+    }
+    panel.appendChild(addWrap);
+  }
+
+  // ── wire up ──
+  const $ = id => document.getElementById(id);
+  if ($('btnNameGap')) $('btnNameGap').onclick = ()=>{
+    const name=$('gapName').value.trim(); if(!name){$('gapName').focus();return;}
+    if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
+    pushHistory();
+    recipes.push({ name, sequence:[...sel.seq], description:$('gapDesc').value.trim() });
+    sel.recipe = recipeBySeq(sel.seq); commit();
+  };
+  if ($('btnRemoveGap')) $('btnRemoveGap').onclick = ()=>{
+    const err = removeStepAt([...sel.seq]);
+    if (err){ alert(err); return; }
+    palettes[pidx].recipes = recipes; sel = { seq:[], recipe:null }; commit();
+  };
+  if ($('btnInsertStep')) $('btnInsertStep').onclick = ()=>{
+    const el=$('insEl').value, type=$('insType').value;
+    const count = type==='chain' ? Math.max(2,Math.min(12,+$('insStages').value||4)) : 1;
+    const err = insertStepBefore([...sel.seq], el, count);
+    if (err){ alert(err); return; }
+    const newSeq=[...sel.seq.slice(0,-1), el];           // the inserted node's base
+    const elName=(elements.find(e=>e.id===el)||{}).name||'step';
+    if (type==='chain' && !recipeBySeq(newSeq)) recipes.push({name:elName+' chain', sequence:newSeq, description:'', altOrigins:[], growth:{element:el, stages:count}});
+    else if (type==='modifier' && !recipeBySeq(newSeq)) recipes.push({name:elName+' options', sequence:newSeq, description:'', altOrigins:[], id:'mod'+Date.now(), modifiers:[{name:'Option', options:[{label:'None', elements:[]}]}]});
+    palettes[pidx].recipes = recipes;
+    sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; commit();
+  };
+  if ($('btnSaveEdit')) $('btnSaveEdit').onclick = ()=>{
+    const name=$('editName').value.trim(); if(!name)return;
+    if (recipes.find(r=>r!==selRecipe && r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
+    pushHistory();
+    selRecipe.name = name; selRecipe.description = $('editDesc').value.trim(); commit();
+  };
+  if ($('btnDelRecipe')) $('btnDelRecipe').onclick = ()=>{
+    if(!confirm(`Delete "${selRecipe.name}"? Any steps built on it will become unnamed gaps.`))return;
+    pushHistory();
+    recipes = recipes.filter(r=>r!==selRecipe); palettes[pidx].recipes = recipes;
+    sel = { seq:[], recipe:null }; commit();
+  };
+  // ── basic-node creation (tool: basic) ──
+  if ($('btnAddChild')) {
+    const nameInput = $('childName'), hint = $('childHint'), addBtn = $('btnAddChild');
+    const refreshHint = ()=>{
+      const name = nameInput.value.trim();
+      const clash = name && recipes.find(r=>r.name.toLowerCase()===name.toLowerCase());
+      if (clash){
+        hint.innerHTML = `↔ <b>"${escHtml(clash.name)}"</b> already exists — use the <b>Connect</b> tool to add this path as another origin.`;
+        hint.className = 'add-hint warn'; addBtn.disabled = true;
+      } else {
+        hint.textContent = name ? 'Creates a brand-new recipe at this path.' : '';
+        hint.className = 'add-hint'; addBtn.disabled = false;
+      }
+    };
+    nameInput.oninput = refreshHint;
+    addBtn.onclick = ()=>{
+      const name = nameInput.value.trim(); if(!name){nameInput.focus();return;}
+      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
+      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
+      if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){ refreshHint(); return; }
+      pushHistory();
+      const nr = { name, sequence:newSeq, description:($('childDesc')?$('childDesc').value.trim():''), altOrigins:[] };
+      // Quick path: a name like "Fern 1-4" offers to become a chain.
+      const m = name.match(/\b(\d+)\s*-\s*(\d+)\b/);
+      if (m){
+        const lo=+m[1], hi=+m[2];
+        if (hi>lo && hi-lo+1>=2 && hi-lo+1<=12){
+          const ael = elements.find(e=>e.id===stagedEl);
+          if (confirm(`Make "${name}" a chain of ${hi-lo+1} stages growing by ${ael?ael.name:stagedEl}?`)){
+            nr.name = name.replace(/\s*\b\d+\s*-\s*\d+\b\s*/,' ').trim() || name;
+            nr.growth = { element:stagedEl, stages:hi-lo+1 };
+          }
+        }
+      }
+      recipes.push(nr);
+      palettes[pidx].recipes = recipes;
+      sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; stagedEl=null; commit();
+    };
+  }
+
+  // ── chain-node creation (tool: chain) ──
+  if ($('btnAddChain')) {
+    $('btnAddChain').onclick = ()=>{
+      const name = $('childName').value.trim(); if(!name){$('childName').focus();return;}
+      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
+      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
+      if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
+      const n=Math.max(2,Math.min(12,+$('chainStages').value||4));
+      // collision check on stages 2..n
+      for (let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq({sequence:newSeq,growth:{element:stagedEl,stages:n}},k));
+        if (occ){ alert(`Stage ${k} would collide with "${occ.name}". Lower the stage count.`); return; } }
+      pushHistory();
+      recipes.push({ name, sequence:newSeq, description:'', altOrigins:[], growth:{element:stagedEl, stages:n} });
+      palettes[pidx].recipes = recipes;
+      sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; stagedEl=null; commit();
+    };
+  }
+
+  // ── chain-family creation (tool: family) ──
+  if ($('btnAddFamily')) {
+    $('btnAddFamily').onclick = ()=>{
+      const name = $('famNewName').value.trim(); if(!name){$('famNewName').focus();return;}
+      // anchor the family at the selected node; variants fan out from here
+      const baseSeq = effectiveParentSeq(selRecipe, sel.seq, null);
+      // first variant: a free element off this base
+      const free = elements.find(e=>!recipeOccupying([...baseSeq, e.id])) || elements[0];
+      pushHistory();
+      const F = { name, sequence:[...baseSeq], description:'', altOrigins:[], id:'fam'+Date.now(),
+        family:[{name:'Variant 1', element:free.id, stages:4}] };
+      recipes.push(F); palettes[pidx].recipes = recipes;
+      famOpenVar=null; famStagedEl=null;
+      sel = { seq:[...baseSeq], recipe:F };   // select the family node (recipe carries family[])
+      commit();
+    };
+  }
+  if ($('btnAddModifier')) {
+    $('btnAddModifier').onclick = ()=>{
+      const name = $('childName').value.trim(); if(!name){$('childName').focus();return;}
+      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
+      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
+      if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
+      pushHistory();
+      // start with one axis holding a "None" option so the editor has something to grow from
+      recipes.push({ name, sequence:newSeq, description:'', altOrigins:[],
+        modifiers:[{name:'Option', options:[{label:'None', elements:[]}]}] });
+      palettes[pidx].recipes = recipes;
+      sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; stagedEl=null; commit();
+    };
+  }
+  if ($('linkSearch')) {
+    const search = $('linkSearch'), results = $('linkResults');
+    let hi = -1;
+    const linkTo = (target)=>{
+      if(!target) return;
+      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
+      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
+      pushHistory();
+      target.altOrigins = target.altOrigins || [];
+      target.altOrigins.push(newSeq);
+      sel = { seq:[...target.sequence], recipe:target }; stagedEl=null; commit();
+    };
+    const filtered = ()=> [...recipes].sort((a,b)=>a.name.localeCompare(b.name))
+        .filter(r=> r.name.toLowerCase().includes(search.value.trim().toLowerCase())).slice(0,40);
+    const renderResults = ()=>{
+      if (!search.value.trim()){ results.style.display='none'; results.innerHTML=''; return; }
+      const list = filtered(); results.innerHTML='';
+      if (!list.length){ results.innerHTML='<div class="link-empty">No matching recipe</div>'; results.style.display='block'; return; }
+      list.forEach((r,idx)=>{
+        const oc = recipeOrigins(r).length;
+        const row = document.createElement('div');
+        row.className='link-result'+(idx===hi?' hi':'');
+        row.innerHTML = `<span>${escHtml(r.name)}</span><span class="lr-meta">${oc} origin${oc>1?'s':''}</span>`;
+        row.onmousedown = (e)=>{ e.preventDefault(); linkTo(r); };
+        results.appendChild(row);
+      });
+      results.style.display='block';
+    };
+    search.oninput = ()=>{ hi=-1; renderResults(); };
+    search.onfocus = renderResults;
+    search.onblur  = ()=> setTimeout(()=>{ if(results) results.style.display='none'; }, 120);
+    search.onkeydown = (e)=>{
+      const list = filtered();
+      if (e.key==='ArrowDown'){ e.preventDefault(); hi=Math.min(hi+1, list.length-1); renderResults(); }
+      else if (e.key==='ArrowUp'){ e.preventDefault(); hi=Math.max(hi-1, 0); renderResults(); }
+      else if (e.key==='Enter'){ e.preventDefault(); if(hi>=0 && list[hi]) linkTo(list[hi]); else if(list.length===1) linkTo(list[0]); }
+      else if (e.key==='Escape'){ search.value=''; renderResults(); }
+    };
+  }
+  // remove an alternate origin from the edit card
+  document.querySelectorAll('.origin-rm').forEach(b=> b.onclick = ()=>{
+    const idx = +b.dataset.alt;
+    pushHistory();
+    selRecipe.altOrigins.splice(idx, 1); commit();
+  });
+
+  // ── growth handlers ──
+  const key = sel && sel.seq ? sel.seq.join('\x1f') : '';
+  document.querySelectorAll('.gpip').forEach(b=> b.onclick = ()=>{ growthStage[key] = +b.dataset.stage; renderBuild(); drawTree(); });
+  if ($('gMake')) $('gMake').onclick = ()=>{
+    const el=selRecipe.sequence[selRecipe.sequence.length-1];   // advance = element that reaches this node
+    const n=Math.max(2,Math.min(12,+$('gNewStages').value||4));
+    for (let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq({sequence:selRecipe.sequence,growth:{element:el,stages:n}},k));
+      if (occ && occ!==selRecipe){ alert(`Stage ${k} would collide with "${occ.name}". Lower the stage count.`); return; } }
+    pushHistory(); selRecipe.growth={element:el,stages:n}; commit();
+  };
+  if ($('gApply')) $('gApply').onclick = ()=>{
+    const el=selRecipe.growth.element, n=Math.max(2,Math.min(12,+$('gStages').value||2));
+    for (let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq({sequence:selRecipe.sequence,growth:{element:el,stages:n}},k));
+      if (occ && occ!==selRecipe){ alert(`Stage ${k} would collide with "${occ.name}". Lower the stage count.`); return; } }
+    pushHistory(); selRecipe.growth={element:el,stages:n}; growthStage[key]=Math.min(growthStage[key]||1,n); commit();
+  };
+  if ($('gRemove')) $('gRemove').onclick = ()=>{ pushHistory(); delete selRecipe.growth; commit(); };
+  if ($('gPromote')) $('gPromote').onclick = ()=>{
+    const k = Math.min(selRecipe.growth.stages, growthStage[key] || 1);   // promote the SELECTED stage
+    if (k < 2) return;
+    const el=selRecipe.growth.element, total=selRecipe.growth.stages;
+    const promotedSeq = growthStageSeq(selRecipe, k);
+    const existing = recipeBySeq(promotedSeq);
+    let nr = existing;
+    if (!existing){
+      // Auto-name (no browser dialog, which the claude.ai sandbox blocks). Dedupe if taken.
+      let base = `${selRecipe.name} ${k}`, name = base, n = 2;
+      while (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())) name = `${base} (${n++})`;
+      const rem = total - k + 1;                        // stages k..total become the new series
+      nr = { name, sequence:promotedSeq, description:'', altOrigins:[] };
+      if (rem >= 2) nr.growth = { element:el, stages:rem };
+    }
+    pushHistory();
+    if (!existing) recipes.push(nr);
+    if (k-1 >= 2) selRecipe.growth.stages = k-1; else delete selRecipe.growth;  // original keeps 1..k-1
+    palettes[pidx].recipes = recipes;
+    sel = { seq:[...promotedSeq], recipe:nr };           // select the promoted node (rename via the name field)
+    growthStage[promotedSeq.join('\x1f')] = 1;
+    commit();
+  };
+
+  // ── modifier editor handlers ──
+  if (selRecipe && hasModifiers(selRecipe)) {
+    const mkey = sel.seq.join('\x1f');
+    const reselect = ()=>{ renderBuild(); drawTree(); };          // live edit, not yet committed visually
+    // preview an option (no commit)
+    document.querySelectorAll('.mod-opt-pick').forEach(b=> b.onclick=()=>{
+      const ai=+b.dataset.ax, oi=+b.dataset.opt; const v=modSelFor(selRecipe,mkey).slice(); v[ai]=oi; modSel[mkey]=v; reselect();
+    });
+    // axis rename (commit on change)
+    document.querySelectorAll('.mod-axname').forEach(inp=> inp.onchange=()=>{
+      pushHistory(); selRecipe.modifiers[+inp.dataset.ax].name = inp.value.trim()||'Axis'; commit();
+    });
+    // option label rename
+    document.querySelectorAll('.mod-optlabel').forEach(inp=> inp.onchange=()=>{
+      pushHistory(); selRecipe.modifiers[+inp.dataset.ax].options[+inp.dataset.opt].label = inp.value.trim()||'Option'; commit();
+    });
+    // toggle element picker
+    document.querySelectorAll('.mod-optels').forEach(b=> b.onclick=()=>{
+      const box=document.getElementById(`elpick-${b.dataset.ax}-${b.dataset.opt}`);
+      if(box) box.style.display = box.style.display==='none'?'flex':'none';
+    });
+    // element checkbox -> set option.elements
+    document.querySelectorAll('.mod-elchk input').forEach(chk=> chk.onchange=()=>{
+      const ai=+chk.dataset.ax, oi=+chk.dataset.opt;
+      const opt=selRecipe.modifiers[ai].options[oi];
+      const set=new Set(opt.elements||[]);
+      if(chk.checked) set.add(chk.value); else set.delete(chk.value);
+      // collision guard: would any resulting combo clash with another recipe?
+      const trial=JSON.parse(JSON.stringify(selRecipe)); trial.modifiers[ai].options[oi].elements=[...set];
+      const clash=modCombos(trial).map(c=>c.seq).find(s=>{ const o=recipeOccupying(s); return o && o!==selRecipe; });
+      if(clash){ const o=recipeOccupying(clash); alert(`That would make a combination collide with "${o.name}".`); chk.checked=!chk.checked; return; }
+      pushHistory(); opt.elements=[...set]; commit();
+    });
+    // add option
+    document.querySelectorAll('.mod-addopt').forEach(b=> b.onclick=()=>{
+      pushHistory(); selRecipe.modifiers[+b.dataset.ax].options.push({label:'Option', elements:[]}); commit();
+    });
+    // remove option
+    document.querySelectorAll('.mod-optrm').forEach(b=> b.onclick=()=>{
+      const ax=selRecipe.modifiers[+b.dataset.ax]; if(ax.options.length<=1){alert('An axis needs at least one option. Remove the axis instead.');return;}
+      pushHistory(); ax.options.splice(+b.dataset.opt,1); delete modSel[mkey]; commit();
+    });
+    // remove axis
+    document.querySelectorAll('.mod-axrm').forEach(b=> b.onclick=()=>{
+      pushHistory(); selRecipe.modifiers.splice(+b.dataset.ax,1);
+      if(!selRecipe.modifiers.length) delete selRecipe.modifiers;
+      delete modSel[mkey]; commit();
+    });
+    // add axis
+    document.querySelectorAll('.mod-addaxis').forEach(b=> b.onclick=()=>{
+      pushHistory(); (selRecipe.modifiers=selRecipe.modifiers||[]).push({name:'Axis', options:[{label:'None',elements:[]}]});
+      delete modSel[mkey]; commit();
+    });
+    // promote current combination (behavior 1)
+    const pb=document.querySelector('.mod-promote');
+    if (pb) pb.onclick=()=>{
+      const selv=modSelFor(selRecipe,mkey);
+      const combo=modCombos(selRecipe).find(c=>c.opts.join(',')===selv.join(','));
+      if(!combo || !combo.seq.length) return;
+      if(combo.seq.join('\x1f')===selRecipe.sequence.join('\x1f')) return;  // base, nothing to promote
+      const existing=recipeBySeq(combo.seq);
+      let nr=existing;
+      if(!existing){
+        let base=comboName(selRecipe,combo.labels), name=base, n=2;
+        while(recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
+        nr={name, sequence:combo.seq, description:'', altOrigins:[]};
+      }
+      pushHistory();
+      if(!existing) recipes.push(nr);
+      palettes[pidx].recipes=recipes;
+      sel={seq:[...combo.seq], recipe:nr};
+      commit();
+    };
+  }
+}
+function commit(){ palettes[pidx].recipes = recipes; savePalettes(); rebuildAll(); }
+function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+function escHtml(s){ return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ================================================================
+//  RECIPE LIST
+// ================================================================
+function renderList() {
+  const el = document.getElementById('recipeList'); el.innerHTML='';
+  const shown = [...recipes].filter(recipeMatches)
+    .sort((a,b)=>a.sequence.length-b.sequence.length || a.name.localeCompare(b.name));
+  if (!shown.length){
+    el.innerHTML = `<div style="color:var(--muted);font-size:.8rem;padding:8px">${searchQuery?'No matches.':'No recipes yet.'}</div>`;
+    return;
+  }
+  shown.forEach(r=>{
+    const row = document.createElement('div');
+    row.className = 'recipe-row' + (sel && recipeBySeq(sel.seq)===r ? ' sel' : '');
+    row.onclick = ()=>{ sel={seq:[...r.sequence],recipe:r}; stagedEl=null; renderBuild(); renderList(); drawTree(); };
+    const seqHtml = r.sequence.map(id=>{const e=elements.find(x=>x.id===id);
+      return e?`<span style="background:${e.color}2a;color:${e.color}">${e.emoji} ${e.name}</span>`:'';}).join('');
+    const del = document.createElement('button'); del.className='rdel'; del.innerHTML='🗑'; del.title='Delete';
+    del.onclick = e=>{ e.stopPropagation(); if(!confirm(`Delete "${r.name}"?`))return;
+      pushHistory();
+      recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes;
+      if(sel&&recipeBySeq(sel.seq)===r) sel={seq:[],recipe:null}; commit(); };
+    row.innerHTML = `<div class="recipe-info"><div class="rname">${escHtml(r.name)}${isGrowth(r)?` <span class="g-badge2">🌱${r.growth.stages}</span>`:''}</div><div class="rseq">${seqHtml}</div>${r.description?`<div class="rdesc">${escHtml(r.description)}</div>`:''}</div>`;
+    row.appendChild(del); el.appendChild(row);
+  });
+}
+
+// ================================================================
+//  GAPS
+// ================================================================
+function renderValidation() {
+  const el = document.getElementById('validatePanel'); el.innerHTML='';
+  const gaps = getGaps(buildTrie());
+  if (!gaps.length){ el.innerHTML='<div style="color:var(--accent2);font-size:.8rem;padding:8px">✓ No gaps — every step is named</div>'; return; }
+  const h=document.createElement('div'); h.className='section-head';
+  h.textContent=`${gaps.length} unnamed step${gaps.length>1?'s':''} (allowed, but flagged)`; el.appendChild(h);
+  gaps.forEach(gap=>{
+    const item=document.createElement('div'); item.className='gap-item';
+    const lbl=gap.sequence.map(id=>{const e=elements.find(x=>x.id===id);return e?`${e.emoji} ${e.name}`:id;}).join(' + ');
+    item.innerHTML=`<div class="gap-msg">⚠ ${lbl}</div><div class="gap-sub">Click to select & name it in the Build tab.</div>`;
+    item.onclick=()=>{ sel={seq:[...gap.sequence],recipe:null}; stagedEl=null; renderBuild(); drawTree();
+      document.querySelector('[data-tab="build"]').click(); };
+    el.appendChild(item);
+  });
+}
+
+// ================================================================
+//  STATS
+// ================================================================
+// Expand a recipe into every concrete sequence it represents.
+// Basic = its sequence; chain = one sequence per stage (modifiers handled separately).
+function expandedSequences(r){
+  if (isGrowth(r)) { const out=[]; for(let k=1;k<=r.growth.stages;k++) out.push(growthStageSeq(r,k)); return out; }
+  return [r.sequence];
+}
+// Total recipe count where each chain stage counts as its own recipe.
+function expandedCount(){ return recipes.reduce((n,r)=> n + (isGrowth(r) ? r.growth.stages : 1), 0); }
+
+function renderStats() {
+  const el=document.getElementById('statsPanel'); el.innerHTML='';
+  // every concrete sequence across all recipes (chains expanded to one per stage)
+  const allSeqs = recipes.flatMap(expandedSequences);
+
+  const usage={}; elements.forEach(e=>usage[e.id]=0);
+  allSeqs.forEach(seq=>seq.forEach(id=>{if(id in usage)usage[id]++;}));
+  const maxU=Math.max(1,...Object.values(usage));
+  const h1=document.createElement('div'); h1.className='section-head'; h1.textContent='Element usage'; el.appendChild(h1);
+  elements.forEach(e=>{ const row=document.createElement('div'); row.className='bar-row';
+    row.innerHTML=`<div class="bar-label" title="${e.name}">${e.emoji} ${e.name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(usage[e.id]/maxU*100).toFixed(1)}%;background:${e.color}"></div></div>
+      <div class="bar-num">${usage[e.id]}</div>`; el.appendChild(row); });
+
+  const maxLen = allSeqs.reduce((m,s)=>Math.max(m,s.length),0);
+  const depths = new Array(maxLen).fill(0);
+  allSeqs.forEach(s=>{ if(s.length>=1) depths[s.length-1]++; });
+  const maxD=Math.max(1,...depths);
+  const h2=document.createElement('div'); h2.className='section-head'; h2.style.marginTop='14px'; h2.textContent='Depth breakdown'; el.appendChild(h2);
+  depths.forEach((count,i)=>{ const row=document.createElement('div'); row.className='bar-row';
+    const l=`${i+1} element${i?'s':''}`;
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/maxD*100).toFixed(1)}%;background:var(--accent)"></div></div><div class="bar-num">${count}</div>`; el.appendChild(row); });
+
+  // ── Node types (by node, not expanded) ──
+  const nChain = recipes.filter(isGrowth).length;
+  const nMulti = recipes.filter(r=>r.altOrigins && r.altOrigins.length).length;
+  const nFamily = recipes.filter(isFamily).length;
+  const nMod = recipes.filter(isModifier).length;
+  const nBasic = recipes.length - nChain - nFamily - nMod;
+  const h3=document.createElement('div'); h3.className='section-head'; h3.style.marginTop='14px'; h3.textContent='Node types'; el.appendChild(h3);
+  const types=[['◆ Basic',nBasic,'var(--accent)'],['🌱 Chain',nChain,'var(--accent2)'],['🌿 Family',nFamily,'var(--accent2)'],['⊞ Modifier',nMod,'var(--accent)'],['⟂ Multi-origin',nMulti,'var(--warn)']];
+  const maxT=Math.max(1,...types.map(t=>t[1]));
+  types.forEach(([l,c,col])=>{ const row=document.createElement('div'); row.className='bar-row';
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxT*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
+
+  // ── Connections (alternate origins) ──
+  let connDirect=0, connIndirect=0;
+  recipes.forEach(r=>(r.altOrigins||[]).forEach(o=>{ if(recipeBySeq(o.slice(0,-1))) connDirect++; else connIndirect++; }));
+  const connTotal=connDirect+connIndirect;
+  const h4=document.createElement('div'); h4.className='section-head'; h4.style.marginTop='14px'; h4.textContent='Connections'; el.appendChild(h4);
+  const conns=[['↔ Total',connTotal,'var(--accent)'],['→ Direct (off a named recipe)',connDirect,'var(--accent2)'],['⇢ Indirect (through a gap)',connIndirect,'var(--warn)']];
+  const maxC=Math.max(1,...conns.map(c=>c[1]));
+  conns.forEach(([l,c,col])=>{ const row=document.createElement('div'); row.className='bar-row';
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxC*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
+
+  const total = expandedCount();
+  const gaps=getGaps(buildTrie());
+  const t=document.createElement('div'); t.style.cssText='margin-top:12px;font-size:.75rem;color:var(--muted)';
+  t.innerHTML=`${total} recipes (${recipes.length} nodes, ${nChain} chains) · ${elements.length} elements · ${gaps.length?`<span style="color:var(--danger)">${gaps.length} gap${gaps.length>1?'s':''}</span>`:'<span style="color:var(--accent2)">no gaps</span>'}`;
+  el.appendChild(t);
+}
+
+// ================================================================
+//  SETTINGS TAB
+// ================================================================
+function renderSettings() {
+  const el=document.getElementById('settingsPanel'); el.innerHTML='';
+  function group(label, inner){ const g=document.createElement('div'); g.className='set-group';
+    g.innerHTML=`<label class="set-label">${label}</label>`; g.appendChild(inner); el.appendChild(g); }
+  function seg(options, current, onPick){ const s=document.createElement('div'); s.className='seg';
+    options.forEach(([val,txt])=>{ const b=document.createElement('button'); b.textContent=txt;
+      if(val===current)b.classList.add('on'); b.onclick=()=>{onPick(val); saveSettings(); applySettings(); renderSettings();}; s.appendChild(b); }); return s; }
+  function toggle(label, val, onChange){ const r=document.createElement('div'); r.className='toggle-row';
+    const sp=document.createElement('span'); sp.textContent=label;
+    const sw=document.createElement('label'); sw.className='switch';
+    sw.innerHTML=`<input type="checkbox" ${val?'checked':''}><span class="slider"></span>`;
+    sw.querySelector('input').onchange=e=>{ onChange(e.target.checked); saveSettings(); applySettings(); }; r.appendChild(sp); r.appendChild(sw); return r; }
+
+  group('Theme', seg([['dark','Dark'],['light','Light'],['midnight','Midnight']], settings.theme, v=>settings.theme=v));
+
+  const colRow=document.createElement('div'); colRow.className='color-row';
+  const ci=document.createElement('input'); ci.type='color'; ci.value=settings.accent;
+  ci.oninput=e=>{ settings.accent=e.target.value; applySettings(); }; ci.onchange=saveSettings;
+  const cl=document.createElement('span'); cl.style.cssText='font-size:.78rem;color:var(--muted)'; cl.textContent=settings.accent;
+  ci.addEventListener('input',()=>cl.textContent=ci.value);
+  colRow.appendChild(ci); colRow.appendChild(cl);
+  group('Accent color', colRow);
+
+  group('Edge style', seg([['curved','Curved'],['straight','Straight'],['stepped','Stepped']], settings.edgeStyle, v=>settings.edgeStyle=v));
+  group('Node spacing', seg([['compact','Compact'],['comfortable','Comfort'],['spacious','Spacious']], settings.spacing, v=>settings.spacing=v));
+  group('Node width', seg([[160,'S'],[190,'M'],[230,'L'],[280,'XL']], settings.nodeWidth||190, v=>settings.nodeWidth=v));
+  group('Grid style', seg([['dots','Dots'],['lines','Lines'],['none','None']], settings.gridStyle, v=>settings.gridStyle=v));
+  group('Grid size', seg([['small','Small'],['medium','Medium'],['large','Large'],['match','Match nodes']], settings.gridSize, v=>settings.gridSize=v));
+
+  group('Family coloring', seg([['off','Off'],['family','On']], settings.colorBy, v=>settings.colorBy=v));
+  if (settings.colorBy==='family'){
+    group('Color depth', seg([[1,'1'],[2,'2'],[3,'3']], settings.colorDepth, v=>settings.colorDepth=v));
+    if ((settings.colorDepth||1) >= 2)
+      group('Depth ≥2 color', seg([['lightness','Lightness'],['blend','Blend']], settings.colorMode, v=>settings.colorMode=v));
+    const note=document.createElement('div'); note.style.cssText='font-size:.72rem;color:var(--muted);margin:-4px 0 4px';
+    note.textContent = (settings.colorDepth||1)>=2
+      ? 'Tints nodes by their first '+settings.colorDepth+' elements. Lightness keeps the first element\u2019s hue and varies brightness per sub-family; Blend averages the colors.'
+      : 'Tints nodes by their first element, so each base line reads as one color band.';
+    el.appendChild(note);
+  }
+
+  const tg=document.createElement('div');
+  tg.appendChild(toggle('Show element badges on edges', settings.showBadges, v=>settings.showBadges=v));
+  tg.appendChild(toggle('Show element dots on nodes', settings.showDots, v=>settings.showDots=v));
+  group('Display', tg);
+
+  const reset=document.createElement('button'); reset.className='btn btn-ghost btn-sm'; reset.textContent='Reset appearance';
+  reset.onclick=()=>{ settings={...DEFAULT_SETTINGS}; saveSettings(); applySettings(); renderSettings(); };
+  el.appendChild(reset);
+
+  // ── Data / backup ──
+  const hr=document.createElement('div'); hr.style.cssText='border-top:1px solid var(--border);margin:18px 0 14px'; el.appendChild(hr);
+  const note=document.createElement('div'); note.style.cssText='font-size:.74rem;color:var(--muted);margin-bottom:10px;line-height:1.5';
+  note.innerHTML='💾 Palettes are saved to the <b style="color:var(--text)">shared server folder</b>, so the whole team sees the same data. If the server is unreachable the app keeps working offline and stores changes in this browser until it reconnects. Backup downloads a copy you can keep or restore.';
+  el.appendChild(note);
+
+  const dataBtns=document.createElement('div'); dataBtns.className='btn-row';
+  const expAll=document.createElement('button'); expAll.className='btn btn-ghost btn-sm'; expAll.textContent='Backup all palettes';
+  expAll.onclick=exportAllPalettes;
+  const impAll=document.createElement('button'); impAll.className='btn btn-ghost btn-sm'; impAll.textContent='Restore backup';
+  impAll.onclick=()=>document.getElementById('restoreInput').click();
+  dataBtns.appendChild(expAll); dataBtns.appendChild(impAll);
+  el.appendChild(dataBtns);
+
+  const resetData=document.createElement('button'); resetData.className='btn btn-danger btn-sm'; resetData.style.marginTop='8px';
+  resetData.textContent='Reset palettes to file defaults';
+  resetData.onclick=resetPalettesToFile;
+  el.appendChild(resetData);
+}
+
+// ================================================================
+//  TABS
+// ================================================================
+document.querySelectorAll('.stabs button').forEach(btn=>btn.addEventListener('click', ()=>{
+  document.querySelectorAll('.stabs button').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on'); document.getElementById('tab-'+btn.dataset.tab).classList.add('on');
+}));
+
+// ================================================================
+//  EXPORT / IMPORT
+// ================================================================
+document.getElementById('btnExport').addEventListener('click', ()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(recipes,null,2)],{type:'application/json'}));
+  a.download=`recipes-${palettes[pidx].name.replace(/\s+/g,'_')}.json`; a.click();
+});
+function doImport(replace){
+  const txt=document.getElementById('importTxt').value.trim(); const st=document.getElementById('importSt');
+  try{ const data=JSON.parse(txt); if(!Array.isArray(data))throw new Error('Expected a JSON array');
+    pushHistory();
+    if(replace)recipes=[]; let n=0;
+    data.forEach(it=>{ if(!it.name||!Array.isArray(it.sequence))return;
+      if(it.sequence.length<1)return;
+      if(!it.sequence.every(id=>elements.find(e=>e.id===id)))return;
+      const k=it.sequence.join('\x1f'); const i=recipes.findIndex(r=>r.sequence.join('\x1f')===k);
+      const entry={name:it.name,sequence:it.sequence,description:it.description||'',altOrigins:Array.isArray(it.altOrigins)?it.altOrigins:[]};
+      if(i>=0)recipes[i]=entry; else recipes.push(entry); n++; });
+    palettes[pidx].recipes=recipes; commit();
+    st.textContent=`✓ ${n} recipe${n!==1?'s':''} loaded.`; st.className='io-status ok';
+    document.getElementById('importTxt').value='';
+  }catch(err){ st.textContent='Error: '+err.message; st.className='io-status err'; }
+}
+document.getElementById('btnMerge').onclick=()=>doImport(false);
+document.getElementById('btnReplace').onclick=()=>doImport(true);
+
+// ── Full backup / restore (all palettes) ──
+function exportAllPalettes(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(palettes,null,2)],{type:'application/json'}));
+  const stamp=new Date().toISOString().slice(0,10);
+  a.download=`palette-editor-backup-${stamp}.json`; a.click();
+}
+document.getElementById('restoreInput').addEventListener('change', e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(!Array.isArray(data)||!data.length||!data[0].elements) throw new Error('Not a palette backup file');
+      if(!confirm(`Restore ${data.length} palette(s)? This replaces your current palettes.`))return;
+      palettes=normalise(data); pidx=0; savePalettes(); syncPalSelect(); loadPalette(0);
+    }catch(err){ alert('Could not restore: '+err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+});
+
+// ================================================================
+//  PALETTE MODAL (create + edit)
+// ================================================================
+const overlay=document.getElementById('modal-overlay');
+const PRESET=['#e85d04','#4cc9f0','#6a994e','#c8d8e4','#9d7fea','#f0b040','#f06b6b','#2fd4a0'];
+let modalMode='new';
+
+function openModal(mode){
+  modalMode=mode;
+  document.getElementById('modalTitle').textContent = mode==='new'?'New Palette':'Edit Palette';
+  document.getElementById('mElRows').innerHTML='';
+  if (mode==='new'){
+    document.getElementById('mPalName').value='';
+    document.getElementById('mPalDesc').value='';
+    [0,1,2].forEach(i=>addElRow('', '', PRESET[i%PRESET.length], '❓', false));
+  } else {
+    document.getElementById('mPalName').value = palettes[pidx].name;
+    document.getElementById('mPalDesc').value = palettes[pidx].description || '';
+    elements.forEach(e=>addElRow(e.id, e.name, e.color, e.emoji, true));
+  }
+  overlay.classList.add('on'); document.getElementById('mPalName').focus();
+}
+function addElRow(id='', name='', color='#888888', emoji='❓', existing=false){
+  const c=document.getElementById('mElRows'); const row=document.createElement('div'); row.className='el-row';
+  const usedCount = existing ? recipes.filter(r=>r.sequence.includes(id)).length : 0;
+  row.dataset.orig = existing ? id : '';
+  row.innerHTML=`
+    <span class="reorder"><button class="up" title="Move up">▲</button><button class="down" title="Move down">▼</button></span>
+    <input class="id" type="text" placeholder="id" value="${escAttr(id)}" ${existing?'disabled':''} title="${existing?'id is locked for existing elements':'lowercase, no spaces'}">
+    <input class="nm" type="text" placeholder="Display name" value="${escAttr(name)}">
+    <input class="col" type="color" value="${color}">
+    <input class="em" type="text" placeholder="🌿" value="${escAttr(emoji)}" maxlength="2">
+    ${usedCount?`<span class="inuse" title="Used in ${usedCount} recipe(s)">×${usedCount}</span>`:''}
+    <button class="rm-el" title="Remove">✕</button>`;
+  row.querySelector('.rm-el').onclick=()=>row.remove();
+  row.querySelector('.up').onclick=()=>{ if(row.previousElementSibling) c.insertBefore(row, row.previousElementSibling); };
+  row.querySelector('.down').onclick=()=>{ if(row.nextElementSibling) c.insertBefore(row.nextElementSibling, row); };
+  c.appendChild(row);
+}
+document.getElementById('btnAddEl').onclick=()=>addElRow();
+document.getElementById('btnModalCancel').onclick=()=>overlay.classList.remove('on');
+overlay.addEventListener('click', e=>{ if(e.target===overlay)overlay.classList.remove('on'); });
+document.getElementById('btnNew').onclick=()=>openModal('new');
+document.getElementById('btnEdit').onclick=()=>openModal('edit');
+
+document.getElementById('btnModalSave').onclick=()=>{
+  const palName=document.getElementById('mPalName').value.trim();
+  if(!palName){alert('Please name the palette.');return;}
+  const rows=document.querySelectorAll('#mElRows .el-row');
+  const elems=[]; let err=null;
+  rows.forEach(row=>{
+    const ins=row.querySelectorAll('input');
+    const id=(row.dataset.orig||ins[0].value.trim().toLowerCase().replace(/\s+/g,'_'));
+    const name=ins[1].value.trim(), color=ins[2].value, emoji=ins[3].value.trim()||'❓';
+    if(!id||!name){err='Every element needs an id and a name.';return;}
+    if(!/^[a-z][a-z0-9_]*$/.test(id)){err=`Invalid id "${id}".`;return;}
+    if(elems.find(e=>e.id===id)){err=`Duplicate id "${id}".`;return;}
+    elems.push({id,name,color,emoji});
+  });
+  if(err){alert(err);return;}
+  if(!elems.length){alert('Add at least one element.');return;}
+  const palDesc=document.getElementById('mPalDesc').value.trim();
+
+  if(modalMode==='new'){
+    pushHistory();
+    palettes.push({name:palName,description:palDesc,elements:elems,recipes:[]});
+    pidx=palettes.length-1; savePalettes(); syncPalSelect(); loadPalette(pidx);
+  } else {
+    // Detect removed elements that are in use
+    const keptIds=new Set(elems.map(e=>e.id));
+    const removed=elements.filter(e=>!keptIds.has(e.id));
+    const affected=recipes.filter(r=>r.sequence.some(id=>!keptIds.has(id)));
+    if(affected.length){
+      const names=removed.map(e=>e.name).join(', ');
+      if(!confirm(`Removing ${names} will delete ${affected.length} recipe(s) that use it. Continue?`))return;
+      pushHistory();
+      recipes=recipes.filter(r=>r.sequence.every(id=>keptIds.has(id)));
+    } else { pushHistory(); }
+    palettes[pidx].name=palName;
+    palettes[pidx].description=palDesc;
+    palettes[pidx].elements=elems;
+    palettes[pidx].recipes=recipes;
+    savePalettes(); syncPalSelect(); loadPalette(pidx);
+  }
+  overlay.classList.remove('on');
+};
+
+// ================================================================
+//  UNDO / REDO
+// ================================================================
+let undoStack = [], redoStack = [];
+function snapshot(){ return JSON.stringify({ palettes, pidx }); }
+function pushHistory(){ undoStack.push(snapshot()); if (undoStack.length > 100) undoStack.shift(); redoStack = []; updateUndoButtons(); }
+function restoreSnapshot(s){
+  const d = JSON.parse(s);
+  palettes = normalise(d.palettes);
+  pidx = Math.min(d.pidx || 0, palettes.length - 1);
+  elements = palettes[pidx].elements;
+  recipes  = palettes[pidx].recipes;
+  sel = { seq:[], recipe:null }; stagedEl = null;
+}
+function undo(){ if(!undoStack.length)return; redoStack.push(snapshot()); restoreSnapshot(undoStack.pop());
+  savePalettes({force:true}); syncPalSelect(); rebuildAll(); updateUndoButtons(); }
+function redo(){ if(!redoStack.length)return; undoStack.push(snapshot()); restoreSnapshot(redoStack.pop());
+  savePalettes({force:true}); syncPalSelect(); rebuildAll(); updateUndoButtons(); }
+function updateUndoButtons(){
+  document.getElementById('btnUndo').disabled = !undoStack.length;
+  document.getElementById('btnRedo').disabled = !redoStack.length;
+}
+document.getElementById('btnUndo').onclick = undo;
+document.getElementById('btnRedo').onclick = redo;
+
+document.addEventListener('keydown', e=>{
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){
+    if (typing) return;            // let inputs do their own undo
+    e.preventDefault(); e.shiftKey ? redo() : undo();
+  } else if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y'){
+    if (typing) return; e.preventDefault(); redo();
+  }
+});
+
+// ================================================================
+//  SEARCH
+// ================================================================
+document.getElementById('searchBox').addEventListener('input', e=>{
+  searchQuery = e.target.value.trim();
+  renderList(); drawTree();
+});
+
+// ================================================================
+//  REBUILD + BOOT
+// ================================================================
+function rebuildAll(){ renderBuild(); renderList(); renderValidation(); renderStats(); renderSettings(); drawTree(); }
+
+// ── Detect existing "1-4"-style recipes that could become growth series ──
+function growthCandidates(){
+  return recipes.filter(r=>{
+    if (isGrowth(r)) return false;
+    const m = r.name.match(/\b(\d+)\s*-\s*(\d+)\b/);
+    if (!m) return false;
+    const n = (+m[2]) - (+m[1]) + 1;
+    return n>=2 && n<=12 && r.sequence.length>=1;
+  }).map(r=>{
+    const m = r.name.match(/\b(\d+)\s*-\s*(\d+)\b/);
+    return { r, stages:(+m[2])-(+m[1])+1, element:r.sequence[r.sequence.length-1] };
+  });
+}
+function maybeOfferGrowthConvert(){
+  const cands = growthCandidates();
+  if (!cands.length) return;
+  const rows = document.getElementById('growthRows'); rows.innerHTML='';
+  cands.forEach((c,i)=>{
+    const row=document.createElement('div'); row.className='grow-row';
+    row.innerHTML = `<input type="checkbox" checked data-i="${i}">
+      <span class="gname">${escHtml(c.r.name)}</span>
+      <select data-el="${i}">${elements.map(e=>`<option value="${e.id}"${e.id===c.element?' selected':''}>${e.emoji} ${e.name}</option>`).join('')}</select>
+      <input type="number" min="2" max="12" value="${c.stages}" data-st="${i}">`;
+    rows.appendChild(row);
+  });
+  const ov=document.getElementById('growth-overlay'); ov.classList.add('on');
+  document.getElementById('btnGrowthCancel').onclick=()=>ov.classList.remove('on');
+  document.getElementById('btnGrowthConvert').onclick=()=>{
+    pushHistory();
+    let any=false;
+    cands.forEach((c,i)=>{
+      const cb=rows.querySelector(`input[type=checkbox][data-i="${i}"]`);
+      if (!cb.checked) return;
+      const el=rows.querySelector(`select[data-el="${i}"]`).value;
+      const st=Math.max(2,Math.min(12,+rows.querySelector(`input[data-st="${i}"]`).value||c.stages));
+      // skip if stage sequences collide with other recipes
+      let ok=true;
+      for (let k=2;k<=st;k++){ const occ=recipeOccupying(growthStageSeq({sequence:c.r.sequence,growth:{element:el,stages:st}},k)); if(occ&&occ!==c.r){ok=false;break;} }
+      if (!ok) return;
+      c.r.growth={element:el,stages:st};
+      c.r.name=c.r.name.replace(/\s*\b\d+\s*-\s*\d+\b\s*/,' ').trim()||c.r.name;
+      any=true;
+    });
+    ov.classList.remove('on');
+    if (any) commit(); else rebuildAll();
+  };
+}
+
+document.getElementById('btnFit').onclick = fitToView;
+document.getElementById('btnResetView').onclick = resetView;
+
+(async function boot(){
+  loadSettings();
+  applySettings();
+  setSync('saving');
+  await loadStoredPalettes();      // server first, localStorage fallback
+  syncPalSelect();
+  loadPalette(pidx);
+  updateUndoButtons();
+  setSync(serverOk ? 'saved' : 'offline');
+  maybeOfferGrowthConvert();
+})();
+</script>
+</body>
+</html>

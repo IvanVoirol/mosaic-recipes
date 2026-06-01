@@ -1,0 +1,13 @@
+{
+  "name": "palette-editor",
+  "version": "1.0.0",
+  "description": "Tech-tree palette editor with shared server-side storage",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}
