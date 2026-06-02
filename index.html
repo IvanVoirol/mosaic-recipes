@@ -141,6 +141,10 @@ header h1{font-size:.9rem;font-weight:800;color:var(--accent);letter-spacing:.06
 .multi-badge{font-size:.66rem;color:var(--accent);border:1px solid var(--accent);border-radius:99px;padding:0 6px;vertical-align:middle;}
 .g-badge2{font-size:.64rem;color:var(--accent2);border:1px solid var(--accent2);border-radius:99px;padding:0 7px;vertical-align:middle;font-weight:600;}
 .gpips{display:flex;gap:5px;}
+.fam-pips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.famv-pip{min-width:32px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font:inherit;font-size:.85rem;cursor:pointer;transition:.1s;}
+.famv-pip:hover{border-color:var(--accent);color:var(--text);}
+.famv-pip.on{background:var(--accent);color:#0c0c10;border-color:var(--accent);font-weight:700;}
 .toolbar{display:flex;gap:5px;margin:8px 0;}
 .tool{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px;border:1px solid var(--border);
   background:var(--bg);color:var(--muted);border-radius:var(--r);cursor:pointer;font:inherit;transition:.12s;}
@@ -493,7 +497,8 @@ let palettes = normalise(RAW.map(p => JSON.parse(JSON.stringify(p))));
 let pidx = 0, elements = [], recipes = [];
 let sel = null;        // selected node: { seq:[ids], recipe:obj|null }  (root => {seq:[],recipe:null})
 let stagedEl = null;   // element id staged to add as a child
-let buildTool = 'basic';   // creation tool: basic | chain | connect | modifier
+let buildTool = 'basic';   // creation tool: basic | chain | connect | modifier | family
+let insertMode = false;    // when on, the toolbar inserts a node BEFORE the selected one
 let famOpenVar = null, famStagedEl = null, famPreview = {};   // chain-family onward-build + stage preview
 
 // ── Persistence: shared server folder, with localStorage offline fallback ──
@@ -625,7 +630,7 @@ function hideConflict(){ const b=document.getElementById('conflictBanner'); b.cl
 const DEFAULT_SETTINGS = {
   theme:'dark', accent:'#9d7fea', edgeStyle:'curved',
   showBadges:true, showDots:true, spacing:'comfortable',
-  gridStyle:'dots', gridSize:'medium',
+  gridStyle:'dots', gridSize:'medium', gridOpacity:100, gridDotSize:1.2,
   colorBy:'off', colorDepth:1, colorMode:'lightness',   // family coloring
   nodeWidth:190
 };
@@ -1032,6 +1037,7 @@ let curPath = new Set();
 // Light converging edges for alternative origins (canonical+aliases model).
 function drawAltEdges(){
   const byKey = {}; layoutNodes.forEach(n => { byKey[n.key] = n; });
+  const sp = SPACING[settings.spacing] || SPACING.comfortable;
   recipes.forEach(r=>{
     if (!r.altOrigins || !r.altOrigins.length) return;
     const target = byKey[r.sequence.join('\x1f')];
@@ -1041,12 +1047,27 @@ function drawAltEdges(){
       const src = byKey[parentKey];
       if (!src) return;                                  // parent not on canvas → listed in card only
       const el = elements.find(e=>e.id === o[o.length-1]);
-      const sx = src.lx + (src.key===''?NW/2:NW), sy = src.ly + NH/2;
-      const ex = target.lx, ey = target.ly + NH/2, mx = (sx+ex)/2;
+      const col = el?el.color:'#888';
+      const sx = src.lx + (src.key===''?NW/2:NW), sy = src.ly + (src.key===''?NH:nodeHeight(src))/2;
+      const ex = target.lx, ey = target.ly + nodeHeight(target)/2, mx = (sx+ex)/2;
+      // "Long" indirect edges (spanning several columns) become short stubs + arrows so
+      // they don't overlap everything in between.
+      const longEdge = Math.abs(ex - sx) > sp.col*2.2 || Math.hypot(ex-sx, ey-sy) > sp.col*2.6;
       ctx.save();
+      if (longEdge){
+        // outgoing stub at the source's top-middle
+        const sX = src.lx + (src.key===''?NW/4:NW/2), sY = src.ly;
+        drawStub(sX, sY, col, 'out');
+        edgeBadges.push({ wx:sX, wy:sY-16, r:9, el, alt:`↗ Connects to “${r.name}” (${prettySeq(r.sequence)})` });
+        // incoming stub at the target's top-middle
+        const tX = target.lx + NW/2, tY = target.ly;
+        drawStub(tX, tY, col, 'in');
+        edgeBadges.push({ wx:tX, wy:tY-16, r:9, el, alt:`↘ Alternate origin: ${prettySeq(o)}` });
+        ctx.restore(); return;
+      }
       ctx.beginPath();
       ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);
-      ctx.strokeStyle = (el?el.color:'#888') + '66';
+      ctx.strokeStyle = col + '66';
       ctx.lineWidth = 1.5; ctx.setLineDash([2,4]);
       ctx.stroke(); ctx.setLineDash([]);
       if (settings.showBadges && el){
@@ -1061,6 +1082,17 @@ function drawAltEdges(){
       ctx.restore();
     });
   });
+}
+// A short dashed stub with an arrowhead at a node's top edge. dir 'out' points away
+// (an indirect connection leaves here); 'in' points into the node (arrives here).
+function drawStub(x, y, color, dir){
+  const len=16;
+  ctx.save(); ctx.strokeStyle=color+'cc'; ctx.fillStyle=color+'cc'; ctx.lineWidth=2; ctx.setLineDash([3,2]);
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-len); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath();
+  if (dir==='in'){ ctx.moveTo(x, y); ctx.lineTo(x-4, y-6); ctx.lineTo(x+4, y-6); }   // arrow into node (points down)
+  else { ctx.moveTo(x, y-len); ctx.lineTo(x-4, y-len+6); ctx.lineTo(x+4, y-len+6); }  // arrow away (points up)
+  ctx.closePath(); ctx.fill(); ctx.restore();
 }
 
 const GRID_BASE = { small: 28, medium: 44, large: 72 };
@@ -1085,6 +1117,9 @@ function drawGrid(cw, ch) {
   const ox = ((pan.x % gx) + gx) % gx;
   const oy = ((oy0 % gy) + gy) % gy;
 
+  const op = Math.max(0, Math.min(1, (settings.gridOpacity==null?100:settings.gridOpacity)/100));
+  if (op<=0) return;
+  ctx.save(); ctx.globalAlpha = op;
   if (settings.gridStyle === 'lines') {
     ctx.strokeStyle = TH.dot; ctx.lineWidth = 1; ctx.beginPath();
     for (let x = ox; x < cw; x += gx) { ctx.moveTo(x, 0); ctx.lineTo(x, ch); }
@@ -1092,10 +1127,12 @@ function drawGrid(cw, ch) {
     ctx.stroke();
   } else { // dots
     ctx.fillStyle = TH.dot;
-    const r = Math.max(0.8, Math.min(1.6, zoom));
+    const base = settings.gridDotSize || 1.2;
+    const r = Math.max(0.6, Math.min(base*1.6, base*zoom));
     for (let x = ox; x < cw; x += gx)
       for (let y = oy; y < ch; y += gy) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); }
   }
+  ctx.restore();
 }
 
 function drawEdge(parent, child) {
@@ -1267,7 +1304,7 @@ function drawNode(node) {
       });
       if (settings.showDots){
         const combo = modCombos(recipe).find(c=>c.opts.join(',')===selv.join(','));
-        if (combo){ drawDotsWindow(x, by+8, recipe.sequence.length, combo.seq.length); drawSeqDots(combo.seq, x, by+8, false); }
+        if (combo){ drawDotsWindow(x, by+8, recipe.sequence.length, combo.seq.length); drawSeqDots(combo.seq, x, by+8, false, boundaryIndices(recipe.sequence)); }
       }
     } else if (settings.showDots) {
       drawSeqDots(recipe.sequence, x, y+nodeHeight(node)-12, false);
@@ -1292,7 +1329,7 @@ function drawNode(node) {
       node._pips.push({ stage:k, x:px, y:py, w:pw, h:ph });
     }
     // dots for the SELECTED stage's full element sequence (like the prototype)
-    if (settings.showDots){ const ss=growthStageSeq(recipe, st); drawDotsWindow(x, y+NH-10, recipe.sequence.length, ss.length); drawSeqDots(ss, x, y+NH-10, false); }
+    if (settings.showDots){ const ss=growthStageSeq(recipe, st); drawDotsWindow(x, y+NH-10, recipe.sequence.length, ss.length); drawSeqDots(ss, x, y+NH-10, false, boundaryIndices(recipe.sequence)); }
   } else if (settings.showDots) {
     drawSeqDots(recipe.sequence, x, y+NH-14, false, boundaryIndices(recipe.sequence));
   }
@@ -1508,7 +1545,7 @@ function renderFamilyPanel(panel, F){
   F.family.forEach((v,vi)=>{
     const pv = Math.min(v.stages, famPreview[vi]||v.stages);
     const seqAt=familyVarSeq(F,vi,pv);
-    const pips=Array.from({length:v.stages},(_,i)=>i+1).map(k=>`<button class="gpip famv-pip${k===pv?' on':''}" data-vi="${vi}" data-k="${k}">${k}</button>`).join('');
+    const pips=Array.from({length:v.stages},(_,i)=>i+1).map(k=>`<button class="famv-pip${k===pv?' on':''}" data-vi="${vi}" data-k="${k}">${k}</button>`).join('');
     html+=`<div class="fam-edit" data-vi="${vi}">
       <div class="fam-edit-row">
         <input class="f famv-name" data-vi="${vi}" value="${escAttr(v.name)}" placeholder="Variant" style="margin:0;flex:1">
@@ -1516,14 +1553,14 @@ function renderFamilyPanel(panel, F){
         <input class="f famv-st" data-vi="${vi}" type="number" min="1" max="12" value="${v.stages}" style="margin:0;width:46px" title="stages">
         <button class="btn btn-ghost btn-xs famv-rm" data-vi="${vi}" title="Remove variant">✕</button>
       </div>
-      <div class="gpips" style="margin-top:5px">${pips}</div>
-      <div class="fam-edit-seq">${seqAt.map(id=>{const e=elements.find(x=>x.id===id);return e?`<span style="color:${e.color}">${e.emoji}</span>`:'';}).join('')} <span style="margin-left:auto"></span><button class="btn btn-ghost btn-xs famv-build" data-vi="${vi}">build onward →</button></div>`;
+      <div class="fam-pips">${pips}</div>
+      <div class="fam-edit-seq">${(()=>{const bs=boundaryIndices(seqAt);return seqAt.map((id,i)=>{const e=elements.find(x=>x.id===id);const d=bs.includes(i)?'<span class="seq-div main">|</span>':'';return d+(e?`<span style="color:${e.color}">${e.emoji}</span>`:'');}).join('');})()} <span style="margin-left:auto"></span><button class="btn btn-ghost btn-xs famv-build" data-vi="${vi}">build onward →</button></div>`;
     if (famOpenVar===vi){
       const from=familyVarSeq(F,vi,pv);
       html+=`<div class="fam-onward">
         <div class="add-hint" style="margin:0 0 4px">Adds a recipe after stage ${pv} of ${escHtml(v.name)}.</div>
         <div class="el-pills">${elements.map(e=>{ const owner=recipeOccupying(from.concat([e.id]));
-          return `<div class="el-pill famo-el${owner?' dim':''}" data-el="${e.id}" data-vi="${vi}" style="background:${e.color}28;color:${e.color};border-color:${e.color}44" title="${owner?`"${owner.name}" already here`:'Add '+e.name}">${e.emoji} ${e.name}</div>`; }).join('')}</div>
+          return `<div class="el-pill famo-el${owner?' dim':''}${famStagedEl===e.id?' staged':''}" data-el="${e.id}" data-vi="${vi}" style="background:${e.color}28;color:${e.color};border-color:${e.color}44" title="${owner?`"${owner.name}" already here`:'Add '+e.name}">${e.emoji} ${e.name}</div>`; }).join('')}</div>
         <input class="f famo-name" data-vi="${vi}" placeholder="New recipe name…" style="margin:6px 0 0">
         <button class="btn btn-accent btn-sm famo-add" data-vi="${vi}" data-k="${pv}" style="margin-top:6px">Add child after ${escHtml(v.name)} ${pv}</button>
       </div>`;
@@ -1630,21 +1667,6 @@ function renderBuild() {
   }
   panel.appendChild(card);
 
-  // ── Insert a step before this node (lengthen the branch) ──
-  if (!isRoot && selRecipe && !isModifier(selRecipe) && !isFamily(selRecipe)) {
-    const ins = document.createElement('div'); ins.className='card';
-    ins.innerHTML = `<div class="card-title" style="font-size:.82rem">⎀ Insert step before</div>
-      <div class="add-hint">Adds a node between this one and its parent, for this recipe and everything built on it.</div>
-      <div class="link-row">
-        <select class="f" id="insEl" style="margin-bottom:0">${elements.map(e=>`<option value="${e.id}">${e.emoji} ${e.name}</option>`).join('')}</select>
-        <select class="f" id="insType" style="margin-bottom:0;width:auto"><option value="basic">Basic</option><option value="chain">Chain</option><option value="modifier">Modifier</option></select>
-        <input class="f" id="insStages" type="number" min="2" max="12" value="4" style="margin-bottom:0;width:46px;display:none" title="stages">
-        <button class="btn btn-ghost btn-sm" id="btnInsertStep">Insert</button>
-      </div>`;
-    panel.appendChild(ins);
-    const it=ins.querySelector('#insType'), st=ins.querySelector('#insStages');
-    it.onchange=()=>{ st.style.display = it.value==='chain' ? '' : 'none'; };
-  }
   if (!isRoot && !isGap && selRecipe && !hasModifiers(selRecipe)) {
     const g = document.createElement('div');
     g.className = 'card';
@@ -1747,16 +1769,24 @@ function renderBuild() {
   // ── Add child section (not for gap—name it first) ──
   if (!isGap) {
     const addWrap = document.createElement('div');
-    addWrap.innerHTML = `<div class="add-divider"></div><div class="blabel">Add from here</div>`;
+    const canInsert = !isRoot && selRecipe && !isModifier(selRecipe) && !isFamily(selRecipe);
+    if (!canInsert) insertMode = false;
+    addWrap.innerHTML = `<div class="add-divider"></div>
+      <div class="blabel" style="display:flex;align-items:center;justify-content:space-between">
+        <span>${insertMode?'Insert before this node':'Add from here'}</span>
+        ${canInsert?`<button class="btn btn-ghost btn-xs" id="btnInsertToggle" style="${insertMode?'color:var(--accent);border-color:var(--accent)':''}">⎀ Insert before: ${insertMode?'on':'off'}</button>`:''}
+      </div>`;
 
     // ── creation tool palette (like a paint toolbar) ──
-    const tools = [
+    let tools = [
       ['basic',    '◆',  'Basic',    'A single new recipe'],
       ['chain',    '🌱', 'Chain',    'A 1–N growth series'],
       ['connect',  '🔗', 'Connect',  'Link this path to an existing recipe'],
       ['modifier', '⊞',  'Modifier', 'Options table (roof×door style)'],
       ['family',   '🌿', 'Family',   'Group several plant chains under this node']
     ];
+    if (insertMode){ tools = tools.filter(t=>t[0]==='basic'||t[0]==='chain'||t[0]==='modifier');
+      if (buildTool==='connect'||buildTool==='family') buildTool='basic'; }
     const tb = document.createElement('div'); tb.className = 'toolbar';
     tools.forEach(([id,icon,label,desc])=>{
       const t = document.createElement('button');
@@ -1768,7 +1798,23 @@ function renderBuild() {
     });
     addWrap.appendChild(tb);
 
-    if (buildTool === 'family') {
+    if (insertMode) {
+      // reuse element pills + type tools to insert a node before the selected one
+      const pills = document.createElement('div'); pills.className='el-pills';
+      elements.forEach(el=>{ const p=document.createElement('div');
+        p.className='el-pill'+(stagedEl===el.id?' staged':'');
+        p.style.cssText=`background:${el.color}28;color:${el.color};border-color:${el.color}44`;
+        p.textContent=`${el.emoji} ${el.name}`;
+        p.onclick=()=>{ stagedEl = stagedEl===el.id?null:el.id; renderBuild(); };
+        pills.appendChild(p); });
+      addWrap.appendChild(pills);
+      const f=document.createElement('div');
+      const stagesRow = buildTool==='chain' ? `<input class="f" id="insStages" type="number" min="2" max="12" value="4" style="width:64px;margin-bottom:0">` : '';
+      f.innerHTML = `<div class="add-hint">${stagedEl?`Inserts a ${buildTool} step before this node, for it and everything built on it.`:'Pick the element to insert.'}</div>
+        ${stagedEl?`<div class="link-row">${stagesRow}<button class="btn btn-accent btn-sm" id="btnDoInsert">⎀ Insert ${buildTool} before</button></div>`:''}`;
+      addWrap.appendChild(f);
+      panel.appendChild(addWrap);
+    } else if (buildTool === 'family') {
       const f = document.createElement('div');
       f.innerHTML = `
         <input class="f" id="famNewName" placeholder="Family name (e.g. Flowers)…" autocomplete="off">
@@ -1850,16 +1896,17 @@ function renderBuild() {
     if (err){ alert(err); return; }
     palettes[pidx].recipes = recipes; sel = { seq:[], recipe:null }; commit();
   };
-  if ($('btnInsertStep')) $('btnInsertStep').onclick = ()=>{
-    const el=$('insEl').value, type=$('insType').value;
-    const count = type==='chain' ? Math.max(2,Math.min(12,+$('insStages').value||4)) : 1;
-    const err = insertStepBefore([...sel.seq], el, count);
+  if ($('btnInsertToggle')) $('btnInsertToggle').onclick = ()=>{ insertMode=!insertMode; stagedEl=null; renderBuild(); };
+  if ($('btnDoInsert')) $('btnDoInsert').onclick = ()=>{
+    if(!stagedEl){ alert('Pick an element to insert.'); return; }
+    const type=buildTool; const count = type==='chain' ? Math.max(2,Math.min(12,+($('insStages')||{}).value||4)) : 1;
+    const err = insertStepBefore([...sel.seq], stagedEl, count);
     if (err){ alert(err); return; }
-    const newSeq=[...sel.seq.slice(0,-1), el];           // the inserted node's base
-    const elName=(elements.find(e=>e.id===el)||{}).name||'step';
-    if (type==='chain' && !recipeBySeq(newSeq)) recipes.push({name:elName+' chain', sequence:newSeq, description:'', altOrigins:[], growth:{element:el, stages:count}});
+    const newSeq=[...sel.seq.slice(0,-1), stagedEl];
+    const elName=(elements.find(e=>e.id===stagedEl)||{}).name||'step';
+    if (type==='chain' && !recipeBySeq(newSeq)) recipes.push({name:elName+' chain', sequence:newSeq, description:'', altOrigins:[], growth:{element:stagedEl, stages:count}});
     else if (type==='modifier' && !recipeBySeq(newSeq)) recipes.push({name:elName+' options', sequence:newSeq, description:'', altOrigins:[], id:'mod'+Date.now(), modifiers:[{name:'Option', options:[{label:'None', elements:[]}]}]});
-    palettes[pidx].recipes = recipes;
+    palettes[pidx].recipes = recipes; insertMode=false; stagedEl=null;
     sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; commit();
   };
   if ($('btnSaveEdit')) $('btnSaveEdit').onclick = ()=>{
@@ -2223,11 +2270,13 @@ function renderStats() {
     row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxT*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
 
   // ── Connections (alternate origins) ──
+  // Direct = a same-depth alternative (origin length matches the canonical recipe).
+  // Indirect = a shortcut or longer path (different length) — its edge spans depths.
   let connDirect=0, connIndirect=0;
-  recipes.forEach(r=>(r.altOrigins||[]).forEach(o=>{ if(recipeBySeq(o.slice(0,-1))) connDirect++; else connIndirect++; }));
+  recipes.forEach(r=>(r.altOrigins||[]).forEach(o=>{ if(o.length===r.sequence.length) connDirect++; else connIndirect++; }));
   const connTotal=connDirect+connIndirect;
   const h4=document.createElement('div'); h4.className='section-head'; h4.style.marginTop='14px'; h4.textContent='Connections'; el.appendChild(h4);
-  const conns=[['↔ Total',connTotal,'var(--accent)'],['→ Direct (off a named recipe)',connDirect,'var(--accent2)'],['⇢ Indirect (through a gap)',connIndirect,'var(--warn)']];
+  const conns=[['↔ Total',connTotal,'var(--accent)'],['→ Direct',connDirect,'var(--accent2)'],['⇢ Indirect',connIndirect,'var(--warn)']];
   const maxC=Math.max(1,...conns.map(c=>c[1]));
   conns.forEach(([l,c,col])=>{ const row=document.createElement('div'); row.className='bar-row';
     row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxC*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
@@ -2270,6 +2319,8 @@ function renderSettings() {
   group('Node width', seg([[160,'S'],[190,'M'],[230,'L'],[280,'XL']], settings.nodeWidth||190, v=>settings.nodeWidth=v));
   group('Grid style', seg([['dots','Dots'],['lines','Lines'],['none','None']], settings.gridStyle, v=>settings.gridStyle=v));
   group('Grid size', seg([['small','Small'],['medium','Medium'],['large','Large'],['match','Match nodes']], settings.gridSize, v=>settings.gridSize=v));
+  group('Grid opacity', seg([[25,'25%'],[50,'50%'],[100,'100%']], settings.gridOpacity==null?100:settings.gridOpacity, v=>settings.gridOpacity=v));
+  group('Grid dot size', seg([[1,'S'],[1.6,'M'],[2.4,'L']], settings.gridDotSize||1.2, v=>settings.gridDotSize=v));
 
   group('Family coloring', seg([['off','Off'],['family','On']], settings.colorBy, v=>settings.colorBy=v));
   if (settings.colorBy==='family'){
