@@ -304,6 +304,24 @@ canvas.dragging{cursor:grabbing;}
 .appver{font-size:.6rem;font-weight:600;color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:1px 7px;vertical-align:middle;margin-left:4px;}
 .set-val{float:right;color:var(--accent);font-weight:600;}
 .set-range{width:100%;accent-color:var(--accent);cursor:pointer;}
+/* contextual Edit inspector */
+.ez{padding:11px 12px;border-bottom:1px solid var(--border);} .ez:last-child{border-bottom:none;}
+.ezh{font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:7px;}
+.eidrow{display:flex;align-items:center;gap:8px;}
+.ebadge{font-size:.54rem;text-transform:uppercase;letter-spacing:.05em;border-radius:99px;padding:2px 8px;font-weight:700;white-space:nowrap;}
+.ename{flex:1;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:inherit;font-size:1rem;font-weight:600;padding:2px 0;}
+.ename:hover{border-bottom-color:var(--border);} .ename:focus{outline:none;border-bottom-color:var(--accent);}
+.eltok{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 5px;border-radius:99px;font-size:.58rem;font-weight:700;cursor:pointer;border:1.5px solid transparent;user-select:none;transition:transform .07s;white-space:nowrap;}
+.eltok span{font-size:.54rem;} .eltok:hover{transform:scale(1.1);} .eltok.sel{outline:2px solid var(--accent);outline-offset:1px;} .eltok.dim{opacity:.32;cursor:not-allowed;}
+.eltoks{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.erow{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.estep{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.estep button{width:24px;height:26px;border:none;background:transparent;color:var(--muted);font-size:1rem;cursor:pointer;} .estep button:hover{background:var(--accent);color:#0c0c10;} .estep b{min-width:24px;text-align:center;font-size:.82rem;}
+.ehint{font-size:.7rem;color:var(--muted);margin-top:5px;line-height:1.4;} .ehint.err{color:var(--danger);} .ehint.ok{color:var(--accent2);}
+.evar{background:#ffffff08;border-radius:8px;padding:7px 8px;margin-bottom:7px;}
+.eax{border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;}
+.eopt{background:#ffffff08;border-radius:7px;padding:6px 7px;margin-bottom:5px;}
+.eorigin{display:flex;align-items:center;gap:7px;font-size:.76rem;padding:3px 0;}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -389,6 +407,7 @@ canvas.dragging{cursor:grabbing;}
     <aside id="sidebar">
       <div class="stabs">
         <button class="on" data-tab="build">Build</button>
+        <button data-tab="edit">Edit</button>
         <button data-tab="list">Recipes</button>
         <button data-tab="stats">Stats</button>
         <button data-tab="settings">Settings</button>
@@ -398,6 +417,11 @@ canvas.dragging{cursor:grabbing;}
       <!-- BUILD -->
       <div class="tpanel on" id="tab-build">
         <div class="tscroll" id="buildPanel"></div>
+      </div>
+
+      <!-- EDIT (contextual inspector) -->
+      <div class="tpanel" id="tab-edit">
+        <div class="tscroll" id="editPanel"></div>
       </div>
 
       <!-- RECIPES -->
@@ -485,7 +509,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.3';
+const APP_VERSION = 'v2.4';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1703,6 +1727,7 @@ function renderFamilyPanel(panel, F){
 }
 
 function renderBuild() {
+  try { renderEditor(); } catch(e) {}
   const panel = document.getElementById('buildPanel');
   panel.innerHTML = '';
   if (!sel) sel = { seq:[], recipe:null };
@@ -2266,6 +2291,198 @@ function renderBuild() {
     };
   }
 }
+// ── Contextual "Edit" inspector (parallel to the Build tab) ──
+const EL_INI = {};                       // short label per element: unique-enough initials
+function elInitials(){ const seen={}; elements.forEach(e=>{ let s=e.name.slice(0,1).toUpperCase(); if(seen[s]) s=e.name.slice(0,2); seen[e.name.slice(0,1).toUpperCase()]=1; EL_INI[e.id]=s; }); }
+function eTok(el, o){ o=o||{}; if(!el) return `<span class="eltok ${o.sel?'sel':''}" data-el="none" ${o.data||''} style="background:var(--bg);color:var(--muted);border-color:var(--border)" title="None">∅</span>`;
+  return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}">${el.emoji}<span>${EL_INI[el.id]||''}</span></span>`; }
+function nameExists(name, except){ return recipes.some(r=>r!==except && r.name.toLowerCase()===name.trim().toLowerCase()); }
+
+// Which last-step elements are free at this path (no sibling recipe already there).
+function reachTaken(seq){ const i=seq.length-1, parent=seq.slice(0,i).join('\x1f'), taken=new Set();
+  recipes.forEach(r=>recipeOrigins(r).forEach(o=>{ if(o.length===seq.length && o.slice(0,i).join('\x1f')===parent) taken.add(o[i]); }));
+  return taken; }
+// Change the element used to reach a node, moving it and all descendants.
+function changeReach(seq, newEl){ const i=seq.length-1, oldEl=seq[i];
+  if(newEl===oldEl) return null;
+  const cand=seq.slice(); cand[i]=newEl;
+  const occ=recipeOccupying(cand); const selR=recipeBySeq(seq);
+  if(occ && occ!==selR) return `That path is taken by “${occ.name}”.`;
+  const pref=seq.slice(0,i+1).join('\x1f');
+  const affected=recipes.filter(r=>r.sequence.length>i && r.sequence.slice(0,i+1).join('\x1f')===pref);
+  pushHistory();
+  affected.forEach(r=>{ r.sequence[i]=newEl;
+    (r.altOrigins||[]).forEach(o=>{ if(o.length>i && o.slice(0,i+1).join('\x1f')===pref) o[i]=newEl; }); });
+  return null;
+}
+
+let editArmedDelete=false;
+function renderEditor(){
+  const el=document.getElementById('editPanel'); if(!el) return; el.innerHTML='';
+  if(!Object.keys(EL_INI).length || EL_INI.__n!==elements.length){ elInitials(); EL_INI.__n=elements.length; }
+  const S=sel||{seq:[],recipe:null};
+  const r=S.recipe; const seq=S.seq||[];
+  const isRoot = seq.length===0;
+  const isGap = !r && !isRoot;
+  let h='';
+
+  if(isRoot){
+    h=`<div class="ez"><div class="eidrow"><span class="ebadge" style="background:var(--accent)22;color:var(--accent)">▶ START</span>
+        <b style="font-size:1rem">${escHtml(palettes[pidx].name)}</b></div>
+        <div class="ehint">${elements.length} elements · ${recipes.length} recipes. Select a node, or use the Build tab / canvas ＋ to add one.</div></div>`;
+    el.innerHTML=h; return;
+  }
+
+  // Identity
+  const badge = isGap?['⚠ UNNAMED','var(--danger)'] : isGrowth(r)?['🌱 CHAIN','var(--accent2)'] : isModifier(r)?['⊞ MODIFIER','var(--accent)'] : isFamily(r)?['🌿 FAMILY','var(--accent2)'] : (r.altOrigins&&r.altOrigins.length)?['⟂ MULTI-ORIGIN','var(--warn)'] : ['◆ BASIC','var(--accent)'];
+  const dotsHtml = `<div class="dots" style="margin-top:9px;display:flex;gap:3px">${seq.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</div>`;
+  h+=`<div class="ez"><div class="eidrow"><span class="ebadge" style="background:${badge[1]}22;color:${badge[1]}">${badge[0]}</span>
+      <input class="ename" id="eName" value="${r?escAttr(r.name):''}" ${isGap?'placeholder="Name this step…"':''}></div>${dotsHtml}
+      <div class="ehint" id="eNameHint"></div></div>`;
+
+  if(isGap){
+    h+=`<div class="ez"><div class="erow"><button class="btn btn-danger btn-xs" id="eGapRm">Remove step</button></div>
+        <div class="ehint">Type a name in the title to keep this step, or remove it to pull its children closer.</div></div>`;
+    el.innerHTML=h; wireEditor(S); return;
+  }
+
+  // Reached via (non-root recipe)
+  if(seq.length>=1){
+    const taken=reachTaken(seq), last=seq[seq.length-1];
+    h+=`<div class="ez"><div class="ezh">Reached via</div><div class="eltoks" id="eReach">${elements.map(e=>eTok(e,{sel:e.id===last,dim:taken.has(e.id)&&e.id!==last,data:`data-reach="${e.id}"`})).join('')}</div>
+        <div class="ehint">Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.</div></div>`;
+  }
+
+  // Type-specific
+  if(isGrowth(r)){
+    const ge=elements.find(e=>e.id===r.growth.element);
+    h+=`<div class="ez"><div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by <b style="color:var(--text)">${ge?ge.emoji+' '+ge.name:'?'}</b></span>
+        <span style="margin-left:auto;font-size:.74rem;color:var(--muted)">Stages</span><span class="estep"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div></div>`;
+  } else if(isFamily(r)){
+    const full=r.family.length>=elements.length;
+    h+=`<div class="ez"><div class="ezh">Variants</div><div id="eVars"></div>
+        <button class="btn btn-ghost btn-xs" id="eAddVar" ${full?'disabled style="opacity:.4;cursor:default"':''}>+ variant</button>
+        <div class="ehint">${full?'All '+elements.length+' elements used — no more variants.':'Each variant grows by a distinct element.'}</div></div>`;
+  } else if(isModifier(r)){
+    h+=`<div class="ez"><div class="ezh">Option axes</div><div id="eAxes"></div>
+        <button class="btn btn-ghost btn-xs" id="eAddAxis" style="margin-top:6px">+ axis</button></div>
+       <div class="ez"><div class="ezh">Promote a combination</div><div id="eCombo"></div></div>`;
+  }
+
+  // Origins
+  const origins=recipeOrigins(r);
+  if(origins.length>1){
+    h+=`<div class="ez"><div class="ezh">Origins · ${origins.length} ways</div>`;
+    origins.forEach((o,i)=>{ const src=recipeBySeq(o.slice(0,-1)); const from=i===0?'canonical':('from <b style="color:var(--text)">'+(src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1))))+'</b>');
+      h+=`<div class="eorigin"><span class="dots" style="display:flex;gap:3px">${o.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:11px;height:11px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</span>
+        <span class="ehint" style="margin:0">${from}</span>${i>0?`<button class="btn btn-ghost btn-xs" data-orm="${i-1}" style="margin-left:auto">✕</button>`:'<span style="margin-left:auto;font-size:.66rem;color:var(--muted)">primary</span>'}</div>`; });
+    h+=`<div class="ehint">Add another origin with the Connect tool (Build tab) or the canvas ＋.</div></div>`;
+  }
+
+  // Structure
+  h+=`<div class="ez"><div class="ezh">Structure</div><div class="erow">
+      <button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>
+      <div class="ehint">Insert-before &amp; adding children live in the Build tab / canvas ＋.</div></div>`;
+
+  el.innerHTML=h; wireEditor(S);
+}
+
+function wireEditor(S){
+  const r=S.recipe, seq=S.seq||[];
+  const nm=document.getElementById('eName');
+  if(nm){ let orig=nm.value;
+    nm.onfocus=()=>orig=nm.value;
+    nm.oninput=()=>{ const v=nm.value.trim(); const clash=nameExists(v,r); const hint=document.getElementById('eNameHint');
+      nm.style.borderBottomColor=clash?'var(--danger)':''; if(hint){hint.textContent=clash?'“'+v+'” already exists.':''; hint.className='ehint err';} };
+    nm.onkeydown=e=>{ if(e.key==='Enter'){ commitName(); nm.blur(); } if(e.key==='Escape'){ nm.value=orig; nm.blur(); } };
+    nm.onblur=commitName;
+    function commitName(){ const v=nm.value.trim(); if(!v){ nm.value=orig; return; } if(nameExists(v,r)){ nm.value=orig; return; }
+      if(!r && seq.length){ // gap → create a recipe here
+        if(recipeOccupying(seq)) return;
+        pushHistory(); const nr={name:v,sequence:[...seq],description:'',altOrigins:[]}; recipes.push(nr); palettes[pidx].recipes=recipes; sel={seq:[...seq],recipe:nr}; commit(); return; }
+      if(r && v!==r.name){ pushHistory(); r.name=v; commit(); } }
+  }
+  const grm=document.getElementById('eGapRm');
+  if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ alert(err); return; } sel={seq:[],recipe:null}; commit(); };
+
+  document.querySelectorAll('#eReach .eltok').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
+    const err=changeReach(seq, p.dataset.reach); if(err){ alert(err); return; }
+    const ns=seq.slice(); ns[ns.length-1]=p.dataset.reach; sel={seq:ns, recipe:recipeBySeq(ns)}; commit(); });
+
+  // chain stages
+  const cst=document.getElementById('eCst');
+  if(cst){ const setStg=n=>{ n=Math.max(2,Math.min(12,n));
+      for(let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq(r,k)); if(occ&&occ!==r){ alert(`Stage ${k} collides with “${occ.name}”.`); return; } }
+      pushHistory(); r.growth.stages=n; commit(); };
+    document.getElementById('eCdec').onclick=()=>setStg(r.growth.stages-1);
+    document.getElementById('eCinc').onclick=()=>setStg(r.growth.stages+1); }
+
+  // family variants
+  const vars=document.getElementById('eVars');
+  if(vars){
+    vars.innerHTML=r.family.map((v,vi)=>{ const ve=elements.find(e=>e.id===v.element);
+      return `<div class="evar"><div class="erow" style="margin-bottom:6px"><span style="width:12px;height:12px;border-radius:50%;background:${ve?ve.color:'#555'}"></span>
+        <input class="ename" style="flex:1;font-size:.82rem;border-bottom-color:var(--border)" value="${escAttr(v.name)}" data-vn="${vi}">
+        <span class="estep"><button data-vdec="${vi}">−</button><b>${v.stages}</b><button data-vinc="${vi}">+</button></span>
+        <button class="btn btn-ghost btn-xs" data-vrm="${vi}">✕</button></div>
+        <div class="eltoks">${elements.map(e=>eTok(e,{sel:v.element===e.id,data:`data-vel="${vi}"`})).join('')}</div></div>`; }).join('');
+    vars.querySelectorAll('[data-vn]').forEach(i=>i.onchange=()=>{ pushHistory(); r.family[+i.dataset.vn].name=i.value.trim()||'Variant'; commit(); });
+    const famSet=(vi,patch)=>{ const trial={sequence:r.sequence, family:r.family.map((x,j)=>j===vi?{...x,...patch}:x)};
+      const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r); if(clash){ alert(`Collides with “${clash.name}”.`); return false; } return true; };
+    vars.querySelectorAll('[data-vinc]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.vinc; if(famSet(i,{stages:r.family[i].stages+1})){ pushHistory(); r.family[i].stages++; commit(); } });
+    vars.querySelectorAll('[data-vdec]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.vdec; if(r.family[i].stages<=1)return; pushHistory(); r.family[i].stages--; commit(); });
+    vars.querySelectorAll('[data-vrm]').forEach(b=>b.onclick=()=>{ if(r.family.length<=1){ alert('A family needs at least one variant.'); return; } pushHistory(); r.family.splice(+b.dataset.vrm,1); commit(); });
+    vars.querySelectorAll('[data-vel]').forEach(p=>p.onclick=()=>{ const i=+p.dataset.vel, eid=p.dataset.el; if(r.family[i].element===eid)return;
+      if(r.family.some((x,j)=>j!==i&&x.element===eid)){ alert('Another variant already grows by that element.'); return; }
+      if(famSet(i,{element:eid})){ pushHistory(); r.family[i].element=eid; commit(); } });
+    const av=document.getElementById('eAddVar'); if(av&&!av.disabled) av.onclick=()=>{ const used=r.family.map(v=>v.element); const free=elements.find(e=>!used.includes(e.id)); if(!free){alert('No elements left');return;} pushHistory(); r.family.push({name:'Variant',element:free.id,stages:4}); commit(); };
+  }
+
+  // modifier axes (foldable, multi-element options)
+  const axes=document.getElementById('eAxes');
+  if(axes){ if(!r._fold) r._fold=r.modifiers.map(()=>false);
+    axes.innerHTML=r.modifiers.map((ax,ai)=>{ const folded=r._fold[ai];
+      return `<div class="eax"><div class="erow" style="margin-bottom:${folded?'0':'6px'}"><button class="btn btn-ghost btn-xs" data-fold="${ai}" style="padding:2px 6px">${folded?'▸':'▾'}</button>
+        <input class="f" style="flex:1;margin:0;font-weight:600;padding:4px 7px" value="${escAttr(ax.name)}" data-axn="${ai}">
+        ${folded?`<span class="ehint" style="margin:0">${ax.options.length} opt${ax.options.length>1?'s':''}</span>`:''}
+        <button class="btn btn-ghost btn-xs" data-rmax="${ai}">✕</button></div>
+        ${folded?'':ax.options.map((o,oi)=>`<div class="eopt"><div class="erow"><input class="f" style="flex:1;margin:0;padding:4px 7px;font-size:.78rem" value="${escAttr(o.label)}" data-opl="${ai}-${oi}" placeholder="Option">
+          <button class="btn btn-ghost btn-xs" data-rmop="${ai}-${oi}">✕</button></div>
+          <div class="eltoks" style="margin-top:5px">${elements.map(e=>eTok(e,{sel:(o.elements||[]).includes(e.id),data:`data-ope="${ai}-${oi}"`})).join('')}</div>
+          <div class="ehint" style="margin-top:3px">Tap elements this option adds (order: as tapped).</div></div>`).join('')+`<button class="btn btn-ghost btn-xs" data-addop="${ai}">+ option</button>`}
+      </div>`; }).join('');
+    axes.querySelectorAll('[data-fold]').forEach(b=>b.onclick=()=>{ r._fold[+b.dataset.fold]=!r._fold[+b.dataset.fold]; wireEditor(S); });
+    axes.querySelectorAll('[data-axn]').forEach(i=>i.onchange=()=>{ const a=+i.dataset.axn, v=i.value.trim();
+      if(!v){ alert('Axis name cannot be empty'); i.value=r.modifiers[a].name; return; }
+      if(r.modifiers.some((x,j)=>j!==a&&x.name.toLowerCase()===v.toLowerCase())){ alert('Another axis has that name'); i.value=r.modifiers[a].name; return; }
+      pushHistory(); r.modifiers[a].name=v; commit(); });
+    axes.querySelectorAll('[data-opl]').forEach(i=>i.onchange=()=>{ const[a,o]=i.dataset.opl.split('-').map(Number); pushHistory(); r.modifiers[a].options[o].label=i.value.trim()||'Option'; commit(); });
+    axes.querySelectorAll('[data-ope]').forEach(p=>p.onclick=()=>{ const[a,o]=p.dataset.ope.split('-').map(Number); const opt=r.modifiers[a].options[o]; const set=opt.elements||[]; const eid=p.dataset.el;
+      const idx=set.indexOf(eid); pushHistory(); if(idx>=0) set.splice(idx,1); else set.push(eid); opt.elements=set; commit(); });
+    axes.querySelectorAll('[data-rmop]').forEach(b=>b.onclick=()=>{ const[a,o]=b.dataset.rmop.split('-').map(Number); if(r.modifiers[a].options.length<=1){alert('An axis needs ≥1 option');return;} pushHistory(); r.modifiers[a].options.splice(o,1); commit(); });
+    axes.querySelectorAll('[data-rmax]').forEach(b=>b.onclick=()=>{ if(r.modifiers.length<=1){alert('A modifier needs ≥1 axis');return;} const a=+b.dataset.rmax; pushHistory(); r.modifiers.splice(a,1); r._fold.splice(a,1); commit(); });
+    axes.querySelectorAll('[data-addop]').forEach(b=>b.onclick=()=>{ pushHistory(); r.modifiers[+b.dataset.addop].options.push({label:'New option',elements:[]}); commit(); });
+    const aa=document.getElementById('eAddAxis'); if(aa) aa.onclick=()=>{ pushHistory(); r.modifiers.push({name:'New axis',options:[{label:'None',elements:[]},{label:'Option',elements:[]}]}); r._fold.push(false); commit(); };
+    // promote combination
+    const combo=document.getElementById('eCombo'); const mkey=seq.join('\x1f'); const selv=modSelFor(r,mkey);
+    combo.innerHTML=r.modifiers.map((ax,ai)=>`<div class="erow" style="margin-bottom:4px"><span class="ehint" style="margin:0;min-width:50px">${escHtml(ax.name)}</span><span class="seg" style="flex:1">${ax.options.map((o,oi)=>`<button class="${selv[ai]===oi?'on':''}" data-msel="${ai}-${oi}">${escHtml(o.label)}</button>`).join('')}</span></div>`).join('')
+      +`<button class="btn btn-ghost btn-xs" id="ePromote" style="margin-top:6px">⑂ Promote this combination</button>`;
+    combo.querySelectorAll('[data-msel]').forEach(b=>b.onclick=()=>{ const[a,o]=b.dataset.msel.split('-').map(Number); const v=modSelFor(r,mkey).slice(); v[a]=o; modSel[mkey]=v; wireEditor(S); });
+    const pb=document.getElementById('ePromote'); if(pb) pb.onclick=()=>{ const v=modSelFor(r,mkey); const c=modCombos(r).find(x=>x.opts.join(',')===v.join(',')); if(!c||!c.seq.length||c.seq.join('\x1f')===r.sequence.join('\x1f')){ alert('Pick a non-empty combination.'); return; }
+      if(recipeBySeq(c.seq)){ alert('That combination is already its own recipe.'); return; }
+      let base=comboName(r,c.labels), name=base, n=2; while(recipes.find(x=>x.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
+      pushHistory(); const nr={name,sequence:[...c.seq],description:'',altOrigins:[]}; recipes.push(nr); palettes[pidx].recipes=recipes; sel={seq:[...c.seq],recipe:nr}; commit(); };
+  }
+
+  // origins remove
+  document.querySelectorAll('[data-orm]').forEach(b=>b.onclick=()=>{ pushHistory(); r.altOrigins.splice(+b.dataset.orm,1); commit(); });
+
+  // delete (inline two-step confirm)
+  const del=document.getElementById('eDel');
+  if(del){ del.onclick=()=>{ if(!editArmedDelete){ editArmedDelete=true; del.textContent='Confirm delete'; setTimeout(()=>{ editArmedDelete=false; if(document.getElementById('eDel'))document.getElementById('eDel').textContent='Delete'; },2500); }
+      else { editArmedDelete=false; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes; sel={seq:[],recipe:null}; commit(); } }; }
+}
+
 function commit(){ palettes[pidx].recipes = recipes; savePalettes(); rebuildAll(); }
 function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
 function escHtml(s){ return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

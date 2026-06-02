@@ -1,0 +1,4 @@
+node_modules/
+palettes/
+*.log
+.DS_Store
