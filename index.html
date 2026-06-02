@@ -112,9 +112,10 @@ header h1{font-size:.9rem;font-weight:800;color:var(--accent);letter-spacing:.06
 .stabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;align-items:stretch;}
 .stabs button{flex:1;min-width:0;padding:7px 2px;background:none;border:none;color:var(--muted);
   cursor:pointer;font:inherit;font-size:.62rem;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;
-  border-bottom:2px solid transparent;transition:color .12s;}
+  border-bottom:2px solid transparent;border-right:1px solid var(--border);transition:color .12s;}
+.stabs button:last-child{border-right:none;}
 .stabs button.on{color:var(--accent);border-bottom-color:var(--accent);}
-.stabs button:hover:not(.on){color:var(--text);}
+.stabs button:hover:not(.on){color:var(--text);background:var(--surface);}
 .stabs .stab-hide{flex:0 0 auto;min-width:26px;font-size:.9rem;color:var(--muted);border-left:1px solid var(--border);}
 
 .tpanel{display:none;flex-direction:column;flex:1;overflow:hidden;}
@@ -174,6 +175,11 @@ header h1{font-size:.9rem;font-weight:800;color:var(--accent);letter-spacing:.06
 .fam-edit-row{display:flex;gap:5px;align-items:center;}
 .fam-edit-seq{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:.8rem;color:var(--muted);}
 .fam-onward{margin-top:7px;padding-top:7px;border-top:1px dashed var(--border);}
+.stepper{display:inline-flex;align-items:center;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden;background:var(--bg);}
+.stepper button{width:22px;height:26px;border:none;background:transparent;color:var(--muted);font-size:1rem;cursor:pointer;line-height:1;}
+.stepper button:hover{background:var(--accent);color:#0c0c10;}
+.stepper b{min-width:20px;text-align:center;font-size:.8rem;color:var(--text);}
+.fam-edit .famv-el{font-weight:600;}
 .famo-el.staged{outline:2px solid var(--accent);}
 .mod-combo-name{font-size:.82rem;margin-top:3px;}
 .gpips button,.gpip{width:26px;height:24px;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--muted);font:inherit;font-size:.74rem;cursor:pointer;}
@@ -255,7 +261,7 @@ textarea.f{resize:vertical;min-height:48px;font-size:.82rem;}
 
 .section-head{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 6px;}
 .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
-.bar-label{width:64px;font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-label{width:104px;font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bar-track{flex:1;height:7px;border-radius:4px;background:var(--border);overflow:hidden;}
 .bar-fill{height:100%;border-radius:4px;transition:width .3s;}
 .bar-num{font-size:.7rem;color:var(--muted);width:20px;text-align:right;}
@@ -292,8 +298,24 @@ textarea.f{resize:vertical;min-height:48px;font-size:.82rem;}
 .io-status.err{color:var(--danger);}
 
 #cvs-wrap{flex:1;position:relative;overflow:hidden;background:var(--bg);}
-canvas{display:block;width:100%;height:100%;cursor:grab;}
+canvas{display:block;width:100%;height:100%;cursor:default;}
 canvas.dragging{cursor:grabbing;}
+.appver{font-size:.6rem;font-weight:600;color:var(--muted);border:1px solid var(--border);border-radius:99px;padding:1px 7px;vertical-align:middle;margin-left:4px;}
+.set-val{float:right;color:var(--accent);font-weight:600;}
+.set-range{width:100%;accent-color:var(--accent);cursor:pointer;}
+.gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+.gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
+.gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
+.gate-sub{font-size:.8rem;color:var(--muted);margin-bottom:16px;line-height:1.45;}
+.gate-box input[type=password]{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font:inherit;margin-bottom:10px;}
+.gate-box input[type=password]:focus{outline:none;border-color:var(--accent);}
+.gate-remember{display:flex;align-items:center;gap:6px;justify-content:center;font-size:.74rem;color:var(--muted);margin-bottom:14px;cursor:pointer;}
+.gate-remember input{accent-color:var(--accent);}
+.gate-box .btn{width:100%;}
+.gate-err{color:var(--danger);font-size:.76rem;min-height:1.2em;margin-top:8px;}
+.set-section{text-align:center;font-size:.92rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text);margin:30px 0 12px;padding-bottom:7px;border-bottom:1px solid var(--border);}
+.set-section:first-child{margin-top:6px;}
 #cvs-hint{position:absolute;bottom:10px;right:12px;color:var(--muted);font-size:.68rem;pointer-events:none;}
 #cvs-controls{position:absolute;top:10px;right:12px;display:flex;gap:6px;}
 #cvs-controls .btn-icon{background:var(--surface);}
@@ -334,9 +356,20 @@ canvas.dragging{cursor:grabbing;}
 </head>
 <body>
 
+<div id="gate" class="gate" style="display:none">
+  <div class="gate-box">
+    <div class="gate-title">🌿 Palette Editor</div>
+    <div class="gate-sub">This device isn't recognized. Enter the password to continue.</div>
+    <input type="password" id="gatePw" placeholder="Password" autocomplete="current-password">
+    <label class="gate-remember"><input type="checkbox" id="gateRemember" checked> Remember this device</label>
+    <button class="btn btn-accent" id="gateBtn">Unlock</button>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+
 <div id="app">
   <header>
-    <h1>🌿 Palette Editor</h1>
+    <h1>🌿 Palette Editor <span class="appver" id="appVer"></span></h1>
     <div class="palette-bar">
       <label>Palette:</label>
       <select id="palSel"></select>
@@ -355,7 +388,6 @@ canvas.dragging{cursor:grabbing;}
       <div class="stabs">
         <button class="on" data-tab="build">Build</button>
         <button data-tab="list">Recipes</button>
-        <button data-tab="validate">Gaps</button>
         <button data-tab="stats">Stats</button>
         <button data-tab="settings">Settings</button>
         <button class="stab-hide" id="sidebarHide" title="Hide panel">«</button>
@@ -382,11 +414,10 @@ canvas.dragging{cursor:grabbing;}
         </div>
       </div>
 
-      <!-- GAPS -->
-      <div class="tpanel" id="tab-validate"><div class="tscroll" id="validatePanel"></div></div>
+      <!-- GAPS (now lives under Stats) -->
 
       <!-- STATS -->
-      <div class="tpanel" id="tab-stats"><div class="tscroll" id="statsPanel"></div></div>
+      <div class="tpanel" id="tab-stats"><div class="tscroll"><div id="validatePanel"></div><div id="statsPanel"></div></div></div>
 
       <!-- SETTINGS -->
       <div class="tpanel" id="tab-settings"><div class="tscroll" id="settingsPanel"></div></div>
@@ -452,6 +483,29 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
+const APP_VERSION = 'v2.0';
+
+// ── Device password gate (casual deterrence only; the check is client-side) ──
+(function(){
+  const KEY='paletteDeviceOk';
+  const PW = atob('bnVhZ2U=');                 // lightly obfuscated; not real security
+  const gate=document.getElementById('gate');
+  let ok=false; try{ ok = localStorage.getItem(KEY)==='1'; }catch(e){}
+  if (ok) return;                               // recognized device → no prompt
+  gate.style.display='flex';
+  const pw=document.getElementById('gatePw'), btn=document.getElementById('gateBtn'),
+        err=document.getElementById('gateErr'), rem=document.getElementById('gateRemember');
+  setTimeout(()=>pw.focus(), 50);
+  function tryUnlock(){
+    if (pw.value === PW){
+      if (rem.checked){ try{ localStorage.setItem(KEY,'1'); }catch(e){} }
+      gate.style.display='none';
+    } else { err.textContent='Incorrect password.'; pw.select(); }
+  }
+  btn.onclick=tryUnlock;
+  pw.addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+})();
+
 
 // ================================================================
 //  DATA
@@ -499,7 +553,7 @@ let sel = null;        // selected node: { seq:[ids], recipe:obj|null }  (root =
 let stagedEl = null;   // element id staged to add as a child
 let buildTool = 'basic';   // creation tool: basic | chain | connect | modifier | family
 let insertMode = false;    // when on, the toolbar inserts a node BEFORE the selected one
-let famOpenVar = null, famStagedEl = null, famPreview = {};   // chain-family onward-build + stage preview
+let famOpenVar = null, famStagedEl = null, famPreview = {}, famActive = {};   // family onward + active variant/stage on canvas
 
 // ── Persistence: shared server folder, with localStorage offline fallback ──
 const DATA_KEY = 'paletteEditorData';
@@ -630,7 +684,7 @@ function hideConflict(){ const b=document.getElementById('conflictBanner'); b.cl
 const DEFAULT_SETTINGS = {
   theme:'dark', accent:'#9d7fea', edgeStyle:'curved',
   showBadges:true, showDots:true, spacing:'comfortable',
-  gridStyle:'dots', gridSize:'medium', gridOpacity:100, gridDotSize:1.2,
+  gridStyle:'dots', gridSize:'medium', gridOpacity:40, gridDotSize:2.6,
   colorBy:'off', colorDepth:1, colorMode:'lightness',   // family coloring
   nodeWidth:190
 };
@@ -984,9 +1038,11 @@ function recipeMatches(r){
 function drawDotsWindow(x, yBottom, fromIdx, n){
   if(n<=fromIdx) return;
   const avail = NW - 16; const step = Math.min(22, avail / Math.max(1,n));
-  const x0 = x + 8 + fromIdx*step - 3;
-  const w = (n-fromIdx)*step + 6;
-  ctx.save(); ctx.beginPath(); roundRect(ctx, x0, yBottom-9, w, 18, 5);
+  const r = Math.max(3, Math.min(7, step/2 - 1));
+  const pad = 4;
+  const x0 = x + 8 + fromIdx*step - pad;
+  const w  = (n-1-fromIdx)*step + 2*r + 2*pad;     // span exactly the own-added dots
+  ctx.save(); ctx.beginPath(); roundRect(ctx, x0, yBottom-11, w, 22, 9);
   ctx.fillStyle = '#00000066'; ctx.fill(); ctx.restore();
 }
 function drawSeqDots(seq, x, yBottom, emoji, boundary){
@@ -1038,38 +1094,28 @@ let curPath = new Set();
 function drawAltEdges(){
   const byKey = {}; layoutNodes.forEach(n => { byKey[n.key] = n; });
   const sp = SPACING[settings.spacing] || SPACING.comfortable;
+  const stubs = new Map();   // node → {in:[], out:[]}
+  const addStub = (node, dir, o)=>{ if(!stubs.has(node)) stubs.set(node,{in:[],out:[]}); stubs.get(node)[dir].push(o); };
   recipes.forEach(r=>{
     if (!r.altOrigins || !r.altOrigins.length) return;
     const target = byKey[r.sequence.join('\x1f')];
     if (!target) return;
     r.altOrigins.forEach(o=>{
-      const parentKey = o.slice(0,-1).join('\x1f');     // '' = root
-      const src = byKey[parentKey];
-      if (!src) return;                                  // parent not on canvas → listed in card only
+      const src = byKey[o.slice(0,-1).join('\x1f')];
+      if (!src) return;
       const el = elements.find(e=>e.id === o[o.length-1]);
       const col = el?el.color:'#888';
       const sx = src.lx + (src.key===''?NW/2:NW), sy = src.ly + (src.key===''?NH:nodeHeight(src))/2;
       const ex = target.lx, ey = target.ly + nodeHeight(target)/2, mx = (sx+ex)/2;
-      // "Long" indirect edges (spanning several columns) become short stubs + arrows so
-      // they don't overlap everything in between.
       const longEdge = Math.abs(ex - sx) > sp.col*2.2 || Math.hypot(ex-sx, ey-sy) > sp.col*2.6;
-      ctx.save();
       if (longEdge){
-        // outgoing stub at the source's top-middle
-        const sX = src.lx + (src.key===''?NW/4:NW/2), sY = src.ly;
-        drawStub(sX, sY, col, 'out');
-        edgeBadges.push({ wx:sX, wy:sY-16, r:9, el, alt:`↗ Connects to “${r.name}” (${prettySeq(r.sequence)})` });
-        // incoming stub at the target's top-middle
-        const tX = target.lx + NW/2, tY = target.ly;
-        drawStub(tX, tY, col, 'in');
-        edgeBadges.push({ wx:tX, wy:tY-16, r:9, el, alt:`↘ Alternate origin: ${prettySeq(o)}` });
-        ctx.restore(); return;
+        addStub(src,    'out', {col, el, label:`↗ Connects to “${r.name}” (${prettySeq(r.sequence)})`});
+        addStub(target, 'in',  {col, el, label:`↘ Alternate origin: ${prettySeq(o)}`});
+        return;
       }
-      ctx.beginPath();
-      ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);
-      ctx.strokeStyle = col + '66';
-      ctx.lineWidth = 1.5; ctx.setLineDash([2,4]);
-      ctx.stroke(); ctx.setLineDash([]);
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);
+      ctx.strokeStyle = col + '66'; ctx.lineWidth = 1.5; ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
       if (settings.showBadges && el){
         const bx=mx, by=(sy+ey)/2;
         ctx.beginPath(); ctx.arc(bx,by,8,0,Math.PI*2);
@@ -1082,17 +1128,30 @@ function drawAltEdges(){
       ctx.restore();
     });
   });
+  // draw collected stubs, spread across the node edge: incoming along the top, outgoing along the bottom
+  stubs.forEach((sides,node)=>{
+    const H = node.key===''?NH:nodeHeight(node);
+    ['in','out'].forEach(dir=>{ const list=sides[dir]; if(!list.length) return;
+      list.forEach((o,i)=>{ const sx = node.lx + NW*(i+1)/(list.length+1);
+        const sy = dir==='in' ? node.ly : node.ly+H;
+        drawStub(sx, sy, o.col, dir);
+        edgeBadges.push({ wx:sx, wy: dir==='in'? sy-16 : sy+16, r:9, el:o.el, alt:o.label }); });
+    });
+  });
 }
-// A short dashed stub with an arrowhead at a node's top edge. dir 'out' points away
-// (an indirect connection leaves here); 'in' points into the node (arrives here).
+// Short arrowed stub at a node edge. dir 'in' sits on the top edge (arrow points down,
+// into the node); 'out' sits on the bottom edge (arrow points down, away).
 function drawStub(x, y, color, dir){
-  const len=16;
-  ctx.save(); ctx.strokeStyle=color+'cc'; ctx.fillStyle=color+'cc'; ctx.lineWidth=2; ctx.setLineDash([3,2]);
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y-len); ctx.stroke(); ctx.setLineDash([]);
-  ctx.beginPath();
-  if (dir==='in'){ ctx.moveTo(x, y); ctx.lineTo(x-4, y-6); ctx.lineTo(x+4, y-6); }   // arrow into node (points down)
-  else { ctx.moveTo(x, y-len); ctx.lineTo(x-4, y-len+6); ctx.lineTo(x+4, y-len+6); }  // arrow away (points up)
-  ctx.closePath(); ctx.fill(); ctx.restore();
+  const len=17, ah=6;
+  ctx.save(); ctx.strokeStyle=color+'dd'; ctx.fillStyle=color+'dd'; ctx.lineWidth=2; ctx.lineCap='round';
+  if (dir==='in'){   // top edge: arrow points down into the node
+    ctx.beginPath(); ctx.moveTo(x, y-len); ctx.lineTo(x, y-ah); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x-4, y-ah); ctx.lineTo(x+4, y-ah); ctx.closePath(); ctx.fill();
+  } else {           // bottom edge: arrow points down, away from the node
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y+len-ah); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y+len); ctx.lineTo(x-4, y+len-ah); ctx.lineTo(x+4, y+len-ah); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
 }
 
 const GRID_BASE = { small: 28, medium: 44, large: 72 };
@@ -1117,18 +1176,19 @@ function drawGrid(cw, ch) {
   const ox = ((pan.x % gx) + gx) % gx;
   const oy = ((oy0 % gy) + gy) % gy;
 
-  const op = Math.max(0, Math.min(1, (settings.gridOpacity==null?100:settings.gridOpacity)/100));
+  const op = Math.max(0, Math.min(1, (settings.gridOpacity==null?40:settings.gridOpacity)/100));
   if (op<=0) return;
   ctx.save(); ctx.globalAlpha = op;
+  const gcol = '#ffffff';                    // 100% = white, lower = faded toward bg
   if (settings.gridStyle === 'lines') {
-    ctx.strokeStyle = TH.dot; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.strokeStyle = gcol; ctx.lineWidth = 1; ctx.beginPath();
     for (let x = ox; x < cw; x += gx) { ctx.moveTo(x, 0); ctx.lineTo(x, ch); }
     for (let y = oy; y < ch; y += gy) { ctx.moveTo(0, y); ctx.lineTo(cw, y); }
     ctx.stroke();
   } else { // dots
-    ctx.fillStyle = TH.dot;
-    const base = settings.gridDotSize || 1.2;
-    const r = Math.max(0.6, Math.min(base*1.6, base*zoom));
+    ctx.fillStyle = gcol;
+    const base = settings.gridDotSize || 2.6;
+    const r = Math.max(0.8, Math.min(base*1.4, base*zoom));
     for (let x = ox; x < cw; x += gx)
       for (let y = oy; y < ch; y += gy) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); }
   }
@@ -1139,7 +1199,11 @@ function drawEdge(parent, child) {
   const el = elements.find(e => e.id === child.edgeEl);
   const color = el ? el.color : '#606080';
   const isGap = child.recipe === null;
-  const sx = parent.lx + (parent.key === '' ? NW/2 : NW), sy = parent.ly + (parent.key===''?NH:nodeHeight(parent))/2;
+  let sx = parent.lx + (parent.key === '' ? NW/2 : NW), sy = parent.ly + (parent.key===''?NH:nodeHeight(parent))/2;
+  if (parent.isFamilyNode && parent.famOut){
+    const fo = parent.famOut.find(f=>f.child===child);
+    if (fo){ const ry = (parent._famrowY && parent._famrowY[fo.vi]); sy = (ry!=null?ry:parent.ly + 26 + fo.vi*18 + 7); }
+  }
   const ex = child.lx, ey = child.ly + nodeHeight(child)/2, mx = (sx+ex)/2;
 
   ctx.save();
@@ -1188,9 +1252,9 @@ function nodeHeight(node){
   if (r && isModifier(r)){
     const rows = modOptionRows(r).reduce((s,rr)=>s+rr.length,0);
     const labels = r.modifiers.length;                 // one axis-name line each
-    return 30 + labels*14 + rows*18 + (settings.showDots?16:6);
+    return 30 + labels*14 + rows*18 + (settings.showDots?24:6);
   }
-  if (r && isFamily(r)){ return 28 + r.family.length*18 + 6; }
+  if (r && isFamily(r)){ return 26 + r.family.length*18 + (settings.showDots?20:6); }
   return NH;
 }
 
@@ -1245,31 +1309,37 @@ function drawNode(node) {
   ctx.fillText(txt, x+(fam?11:8), y+9);
   if (recipe.description) { ctx.fillStyle = settings.accent+'cc'; ctx.font='9px sans-serif'; ctx.fillText('•', x+NW-12, y+9); }
 
-  node._pips = null; node._modopts = null; node._famrows = null;
+  node._pips = null; node._modopts = null; node._famrows = null; node._fampips = null;
   const key2 = node.sequence.join('\x1f');
   if (isFamily(recipe)) {
     ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
     ctx.fillStyle = settings.accent2||'#2fd4a0'; ctx.fillText('FAMILY', x+NW-10, y+10);
-    node._famrows = [];
-    let ry = y+28;
+    node._famrows = []; node._fampips = []; node._famrowY = {};
+    const act = famActive[node.key] || { vi:0, k:recipe.family[0].stages };
+    let ry = y+26;
     recipe.family.forEach((v,vi)=>{
       const el = elements.find(e=>e.id===v.element);
-      // advance element dot
       if(el){ ctx.beginPath(); ctx.arc(x+(fam?15:12), ry+7, 5, 0, Math.PI*2); ctx.fillStyle=el.color; ctx.fill(); }
-      // variant name
       ctx.fillStyle = TH.text; ctx.font='10px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
       let vn=v.name; while(ctx.measureText(vn).width>NW-95 && vn.length>1) vn=vn.slice(0,-1);
       ctx.fillText(vn, x+(fam?24:21), ry+7);
-      // stage pips
-      const pn=Math.min(v.stages,6); let px=x+NW-10-pn*12;
-      for(let k=1;k<=pn;k++){ ctx.beginPath(); roundRect(ctx, px, ry+1, 10, 12, 3);
-        ctx.fillStyle = k===v.stages?(settings.accent):(TH.bg||'#0c0c10'); ctx.fill();
-        ctx.strokeStyle = TH.nodeBorder; ctx.lineWidth=1; ctx.stroke();
-        ctx.fillStyle = k===v.stages?'#0c0c10':TH.muted; ctx.font='8px sans-serif'; ctx.textAlign='center';
-        ctx.fillText(k, px+5, ry+7.5); px+=12; }
+      const pn=Math.min(v.stages,6); let px=x+NW-10-pn*13;
+      for(let k=1;k<=pn;k++){ const on=(act.vi===vi && act.k===k);
+        ctx.beginPath(); roundRect(ctx, px, ry+1, 11, 13, 3);
+        ctx.fillStyle = on?settings.accent:(TH.bg||'#0c0c10'); ctx.fill();
+        ctx.strokeStyle = on?settings.accent:TH.nodeBorder; ctx.lineWidth=1; ctx.stroke();
+        ctx.fillStyle = on?'#0c0c10':TH.muted; ctx.font='8px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(k, px+5.5, ry+8);
+        node._fampips.push({ vi, k, x:px, y:ry+1, w:11, h:13 });
+        px+=13; }
       node._famrows.push({ vi, x:x, y:ry, w:NW, h:16 });
+      node._famrowY[vi] = ry+7;          // world y of this variant's row (edge origin)
       ry += 18;
     });
+    // one shared recipe row showing the active variant + stage
+    if (settings.showDots){ const seqAt=familyVarSeq(recipe, act.vi, act.k);
+      drawDotsWindow(x, y+H-12, recipe.sequence.length, seqAt.length);
+      drawSeqDots(seqAt, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
   } else if (hasModifiers(recipe)) {
     ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
     ctx.fillStyle = settings.accent; ctx.fillText('MOD', x+NW-10, y+10);
@@ -1304,10 +1374,10 @@ function drawNode(node) {
       });
       if (settings.showDots){
         const combo = modCombos(recipe).find(c=>c.opts.join(',')===selv.join(','));
-        if (combo){ drawDotsWindow(x, by+8, recipe.sequence.length, combo.seq.length); drawSeqDots(combo.seq, x, by+8, false, boundaryIndices(recipe.sequence)); }
+        if (combo){ drawDotsWindow(x, y+H-12, recipe.sequence.length, combo.seq.length); drawSeqDots(combo.seq, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
       }
     } else if (settings.showDots) {
-      drawSeqDots(recipe.sequence, x, y+nodeHeight(node)-12, false);
+      drawSeqDots(recipe.sequence, x, y+H-12, false);
     }
   } else if (isGrowth(recipe)) {
     // CHAIN tag
@@ -1329,9 +1399,9 @@ function drawNode(node) {
       node._pips.push({ stage:k, x:px, y:py, w:pw, h:ph });
     }
     // dots for the SELECTED stage's full element sequence (like the prototype)
-    if (settings.showDots){ const ss=growthStageSeq(recipe, st); drawDotsWindow(x, y+NH-10, recipe.sequence.length, ss.length); drawSeqDots(ss, x, y+NH-10, false, boundaryIndices(recipe.sequence)); }
+    if (settings.showDots){ const ss=growthStageSeq(recipe, st); drawDotsWindow(x, y+H-12, recipe.sequence.length, ss.length); drawSeqDots(ss, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
   } else if (settings.showDots) {
-    drawSeqDots(recipe.sequence, x, y+NH-14, false, boundaryIndices(recipe.sequence));
+    drawSeqDots(recipe.sequence, x, y+H-12, false, boundaryIndices(recipe.sequence));
   }
   ctx.restore();
 }
@@ -1357,13 +1427,13 @@ cvs.addEventListener('mousemove', e=>{
   if (dragging){ pan.x=pStart.x+(e.clientX-dStart.x); pan.y=pStart.y+(e.clientY-dStart.y); drawTree(); return; }
   const rect=wrap.getBoundingClientRect(); const lx=e.clientX-rect.left, ly=e.clientY-rect.top;
   const node = nodeAt(lx,ly);
-  // Chain pips: show the default arrow cursor (not grab) to signal they're stage toggles.
-  let overPip = false;
-  if (node && node._pips){
-    const {x:wx,y:wy} = s2w(lx,ly);
-    overPip = node._pips.some(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
-  }
-  cvs.style.cursor = overPip ? 'default' : '';
+  const {x:wx,y:wy} = s2w(lx,ly);
+  const inRects = arr => arr && arr.some(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
+  // pointer over anything clickable (nodes, pips, option buttons, badges); grab over empty canvas
+  const overClickable = (node && node.key!=='')
+    || inRects(node&&node._pips) || inRects(node&&node._modopts) || inRects(node&&node._fampips)
+    || !!badgeAt(lx,ly);
+  cvs.style.cursor = overClickable ? 'pointer' : 'grab';
   if (node && node.key!==''){
     const isGap = node.recipe===null;
     const r = node.recipe;
@@ -1413,6 +1483,11 @@ cvs.addEventListener('mouseup', e=>{
       const mo = node._modopts.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
       if (mo){ const v=modSelFor(node.recipe, node.key).slice(); v[mo.ax]=mo.opt; modSel[node.key]=v; }
     }
+    // Clicking a family variant's stage pip previews that variant's recipe at that stage.
+    if (node._fampips){
+      const fp = node._fampips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
+      if (fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; }
+    }
     sel = { seq:[...node.sequence], recipe:node.recipe }; stagedEl=null; renderBuild(); renderList(); drawTree();
   }
 });
@@ -1460,6 +1535,7 @@ cvs.addEventListener('touchend', e=>{
     if (node){ const {x:wx,y:wy}=s2w(t.clientX-rect.left,t.clientY-rect.top);
         if(node._pips){ const pip=node._pips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(pip) growthStage[node.key]=pip.stage; }
         if(node._modopts){ const mo=node._modopts.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(mo){const v=modSelFor(node.recipe,node.key).slice();v[mo.ax]=mo.opt;modSel[node.key]=v;} }
+        if(node._fampips){ const fp=node._fampips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; } }
       sel={seq:[...node.sequence],recipe:node.recipe}; stagedEl=null; renderBuild(); renderList(); drawTree(); } }
   if (e.touches.length===0) tStart=null;
 }, {passive:false});
@@ -1543,26 +1619,22 @@ function renderFamilyPanel(panel, F){
     <div class="add-hint">Shared base: ${prettySeq(F.sequence)||'—'}. Each variant grows by its element.</div>
     <div id="famVars" style="margin-top:8px">`;
   F.family.forEach((v,vi)=>{
-    const pv = Math.min(v.stages, famPreview[vi]||v.stages);
-    const seqAt=familyVarSeq(F,vi,pv);
-    const pips=Array.from({length:v.stages},(_,i)=>i+1).map(k=>`<button class="famv-pip${k===pv?' on':''}" data-vi="${vi}" data-k="${k}">${k}</button>`).join('');
     html+=`<div class="fam-edit" data-vi="${vi}">
       <div class="fam-edit-row">
         <input class="f famv-name" data-vi="${vi}" value="${escAttr(v.name)}" placeholder="Variant" style="margin:0;flex:1">
-        <select class="f famv-el" data-vi="${vi}" style="margin:0;width:auto">${elements.map(e=>`<option value="${e.id}"${e.id===v.element?' selected':''}>${e.emoji} ${e.name}</option>`).join('')}</select>
-        <input class="f famv-st" data-vi="${vi}" type="number" min="1" max="12" value="${v.stages}" style="margin:0;width:46px" title="stages">
+        <span class="stepper" title="stages"><button class="famv-dec" data-vi="${vi}">−</button><b>${v.stages}</b><button class="famv-inc" data-vi="${vi}">+</button></span>
+        <button class="btn btn-ghost btn-xs famv-build" data-vi="${vi}" title="Build a recipe after this variant's last stage">→</button>
         <button class="btn btn-ghost btn-xs famv-rm" data-vi="${vi}" title="Remove variant">✕</button>
       </div>
-      <div class="fam-pips">${pips}</div>
-      <div class="fam-edit-seq">${(()=>{const bs=boundaryIndices(seqAt);return seqAt.map((id,i)=>{const e=elements.find(x=>x.id===id);const d=bs.includes(i)?'<span class="seq-div main">|</span>':'';return d+(e?`<span style="color:${e.color}">${e.emoji}</span>`:'');}).join('');})()} <span style="margin-left:auto"></span><button class="btn btn-ghost btn-xs famv-build" data-vi="${vi}">build onward →</button></div>`;
+      <div class="el-pills famv-elrow" style="margin:6px 0 0">${elements.map(e=>`<div class="el-pill famv-elpick${e.id===v.element?' staged':''}" data-vi="${vi}" data-el="${e.id}" style="background:${e.color}28;color:${e.color};border-color:${e.color}44">${e.emoji} ${e.name}</div>`).join('')}</div>`;
     if (famOpenVar===vi){
-      const from=familyVarSeq(F,vi,pv);
+      const from=familyVarLast(F,vi);
       html+=`<div class="fam-onward">
-        <div class="add-hint" style="margin:0 0 4px">Adds a recipe after stage ${pv} of ${escHtml(v.name)}.</div>
+        <div class="add-hint" style="margin:0 0 4px">Adds a recipe after the last stage of ${escHtml(v.name)}.</div>
         <div class="el-pills">${elements.map(e=>{ const owner=recipeOccupying(from.concat([e.id]));
           return `<div class="el-pill famo-el${owner?' dim':''}${famStagedEl===e.id?' staged':''}" data-el="${e.id}" data-vi="${vi}" style="background:${e.color}28;color:${e.color};border-color:${e.color}44" title="${owner?`"${owner.name}" already here`:'Add '+e.name}">${e.emoji} ${e.name}</div>`; }).join('')}</div>
         <input class="f famo-name" data-vi="${vi}" placeholder="New recipe name…" style="margin:6px 0 0">
-        <button class="btn btn-accent btn-sm famo-add" data-vi="${vi}" data-k="${pv}" style="margin-top:6px">Add child after ${escHtml(v.name)} ${pv}</button>
+        <button class="btn btn-accent btn-sm famo-add" data-vi="${vi}" style="margin-top:6px">Add child after ${escHtml(v.name)}</button>
       </div>`;
     }
     html+=`</div>`;
@@ -1574,29 +1646,30 @@ function renderFamilyPanel(panel, F){
 
   $('famName').onchange=()=>{ pushHistory(); F.name=$('famName').value.trim()||'Family'; commit(); };
   document.querySelectorAll('.famv-name').forEach(i=>i.onchange=()=>{ pushHistory(); F.family[+i.dataset.vi].name=i.value.trim()||'Variant'; commit(); });
-  document.querySelectorAll('.famv-el').forEach(s=>s.onchange=()=>{ const vi=+s.dataset.vi;
-    if (F.family.some((x,j)=>j!==vi && x.element===s.value)){ alert('Another variant already grows by that element.'); renderBuild(); return; }
-    // block if any new stage seq collides
-    const trial={sequence:F.sequence, family:F.family.map((x,j)=>j===vi?{...x,element:s.value}:x)};
+  document.querySelectorAll('.famv-elpick').forEach(p=>p.onclick=()=>{ const vi=+p.dataset.vi, val=p.dataset.el;
+    if (F.family[vi].element===val) return;
+    if (F.family.some((x,j)=>j!==vi && x.element===val)){ alert('Another variant already grows by that element.'); return; }
+    const trial={sequence:F.sequence, family:F.family.map((x,j)=>j===vi?{...x,element:val}:x)};
     const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==F);
-    if(clash){ alert(`That element collides with "${clash.name}".`); renderBuild(); return; }
-    pushHistory(); F.family[vi].element=s.value; commit(); });
-  document.querySelectorAll('.famv-st').forEach(i=>i.onchange=()=>{ const vi=+i.dataset.vi, n=Math.max(1,Math.min(12,+i.value||1));
+    if(clash){ alert(`That element collides with "${clash.name}".`); return; }
+    pushHistory(); F.family[vi].element=val; commit(); });
+  function setStages(vi, n){ n=Math.max(1,Math.min(12,n));
     const trial={sequence:F.sequence, family:F.family.map((x,j)=>j===vi?{...x,stages:n}:x)};
     const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==F);
-    if(clash){ alert(`Stage count collides with "${clash.name}".`); renderBuild(); return; }
-    pushHistory(); F.family[vi].stages=n; commit(); });
+    if(clash){ alert(`Stage count collides with "${clash.name}".`); return; }
+    pushHistory(); F.family[vi].stages=n; commit(); }
+  document.querySelectorAll('.famv-dec').forEach(b=>b.onclick=()=>setStages(+b.dataset.vi, F.family[+b.dataset.vi].stages-1));
+  document.querySelectorAll('.famv-inc').forEach(b=>b.onclick=()=>setStages(+b.dataset.vi, F.family[+b.dataset.vi].stages+1));
   document.querySelectorAll('.famv-rm').forEach(b=>b.onclick=()=>{ if(F.family.length<=1){alert('A family needs at least one variant. Delete the family instead.');return;}
     pushHistory(); F.family.splice(+b.dataset.vi,1); commit(); });
-  document.querySelectorAll('.famv-pip').forEach(b=>b.onclick=()=>{ famPreview[+b.dataset.vi]=+b.dataset.k; renderBuild(); });
   document.querySelectorAll('.famv-build').forEach(b=>b.onclick=()=>{ const vi=+b.dataset.vi; famOpenVar = (famOpenVar===vi?null:vi); renderBuild(); });
   document.querySelectorAll('.famo-el').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
     famStagedEl=p.dataset.el; document.querySelectorAll('.famo-el').forEach(x=>x.classList.remove('staged')); p.classList.add('staged'); });
-  document.querySelectorAll('.famo-add').forEach(b=>b.onclick=()=>{ const vi=+b.dataset.vi, k=+b.dataset.k;
+  document.querySelectorAll('.famo-add').forEach(b=>b.onclick=()=>{ const vi=+b.dataset.vi;
     if(!famStagedEl){ alert('Pick an element first.'); return; }
     const nameI=document.querySelector(`.famo-name[data-vi="${vi}"]`); const name=(nameI.value||'').trim();
     if(!name){ nameI.focus(); return; }
-    const newSeq=familyVarSeq(F,vi,k).concat([famStagedEl]);
+    const newSeq=familyVarLast(F,vi).concat([famStagedEl]);
     if(recipeByAnyOrigin(newSeq)){ alert('That path already produces a recipe.'); return; }
     if(recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){ alert('Name already exists.'); return; }
     pushHistory(); recipes.push({name, sequence:newSeq, description:'', altOrigins:[]});
@@ -2209,7 +2282,10 @@ function renderList() {
 function renderValidation() {
   const el = document.getElementById('validatePanel'); el.innerHTML='';
   const gaps = getGaps(buildTrie());
-  if (!gaps.length){ el.innerHTML='<div style="color:var(--accent2);font-size:.8rem;padding:8px">✓ No gaps — every step is named</div>'; return; }
+  el.style.marginBottom = '8px';
+  const head=document.createElement('div'); head.className='set-section'; head.style.marginTop='6px';
+  head.textContent='Gaps'; head.title='Unnamed intermediate steps. They are allowed, but flagged so you can name or remove them.'; el.appendChild(head);
+  if (!gaps.length){ const ok=document.createElement('div'); ok.style.cssText='color:var(--accent2);font-size:.8rem;padding:4px 2px'; ok.textContent='✓ No gaps — every step is named'; el.appendChild(ok); return; }
   const h=document.createElement('div'); h.className='section-head';
   h.textContent=`${gaps.length} unnamed step${gaps.length>1?'s':''} (allowed, but flagged)`; el.appendChild(h);
   gaps.forEach(gap=>{
@@ -2242,8 +2318,10 @@ function renderStats() {
   const usage={}; elements.forEach(e=>usage[e.id]=0);
   allSeqs.forEach(seq=>seq.forEach(id=>{if(id in usage)usage[id]++;}));
   const maxU=Math.max(1,...Object.values(usage));
-  const h1=document.createElement('div'); h1.className='section-head'; h1.textContent='Element usage'; el.appendChild(h1);
+  const h1=document.createElement('div'); h1.className='section-head'; h1.textContent='Element usage';
+  h1.title='How many times each element appears across all recipes (chains counted per stage).'; el.appendChild(h1);
   elements.forEach(e=>{ const row=document.createElement('div'); row.className='bar-row';
+    row.title=`${e.name}: appears in ${usage[e.id]} recipe step${usage[e.id]===1?'':'s'} across the palette.`;
     row.innerHTML=`<div class="bar-label" title="${e.name}">${e.emoji} ${e.name}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${(usage[e.id]/maxU*100).toFixed(1)}%;background:${e.color}"></div></div>
       <div class="bar-num">${usage[e.id]}</div>`; el.appendChild(row); });
@@ -2252,9 +2330,11 @@ function renderStats() {
   const depths = new Array(maxLen).fill(0);
   allSeqs.forEach(s=>{ if(s.length>=1) depths[s.length-1]++; });
   const maxD=Math.max(1,...depths);
-  const h2=document.createElement('div'); h2.className='section-head'; h2.style.marginTop='14px'; h2.textContent='Depth breakdown'; el.appendChild(h2);
+  const h2=document.createElement('div'); h2.className='section-head'; h2.style.marginTop='14px'; h2.textContent='Depth breakdown';
+  h2.title='How many recipes have each sequence length (number of elements in the recipe).'; el.appendChild(h2);
   depths.forEach((count,i)=>{ const row=document.createElement('div'); row.className='bar-row';
     const l=`${i+1} element${i?'s':''}`;
+    row.title=`${count} recipe${count===1?'':'s'} made of exactly ${i+1} element${i?'s':''}.`;
     row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/maxD*100).toFixed(1)}%;background:var(--accent)"></div></div><div class="bar-num">${count}</div>`; el.appendChild(row); });
 
   // ── Node types (by node, not expanded) ──
@@ -2263,22 +2343,47 @@ function renderStats() {
   const nFamily = recipes.filter(isFamily).length;
   const nMod = recipes.filter(isModifier).length;
   const nBasic = recipes.length - nChain - nFamily - nMod;
-  const h3=document.createElement('div'); h3.className='section-head'; h3.style.marginTop='14px'; h3.textContent='Node types'; el.appendChild(h3);
-  const types=[['◆ Basic',nBasic,'var(--accent)'],['🌱 Chain',nChain,'var(--accent2)'],['🌿 Family',nFamily,'var(--accent2)'],['⊞ Modifier',nMod,'var(--accent)'],['⟂ Multi-origin',nMulti,'var(--warn)']];
+  const h3=document.createElement('div'); h3.className='section-head'; h3.style.marginTop='14px'; h3.textContent='Node types';
+  h3.title='Breakdown of recipes by node kind.'; el.appendChild(h3);
+  const types=[
+    ['◆ Basic',nBasic,'var(--accent)','A plain recipe: a single fixed sequence of elements.'],
+    ['🌱 Chain',nChain,'var(--accent2)','A growth series: one node holding several stages that repeat an element.'],
+    ['🌿 Family',nFamily,'var(--accent2)','A chain family: several plant chains grouped under one parent node.'],
+    ['⊞ Modifier',nMod,'var(--accent)','A node with option axes (e.g. roof, door); each combination can become a recipe.'],
+    ['⟂ Multi-origin',nMulti,'var(--warn)','Recipes that can be made more than one way (have alternate origins).']];
   const maxT=Math.max(1,...types.map(t=>t[1]));
-  types.forEach(([l,c,col])=>{ const row=document.createElement('div'); row.className='bar-row';
+  types.forEach(([l,c,col,tip])=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
     row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxT*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
 
-  // ── Connections (alternate origins) ──
-  // Direct = a same-depth alternative (origin length matches the canonical recipe).
-  // Indirect = a shortcut or longer path (different length) — its edge spans depths.
+  // ── Tree links: the implicit parent→child link every node has (built from sequences) ──
+  const _root = buildTrie();
+  const _nodes = trieFlatten(_root);
+  const treeLinks = _nodes.length - 1;                 // every node but the root has one parent link
+  const branchNodes = _nodes.filter(n=>Object.keys(n.children).length>1).length;
+  const h3b=document.createElement('div'); h3b.className='section-head'; h3b.style.marginTop='14px'; h3b.textContent='Tree links';
+  h3b.title='The tree itself: every node (except the root) links to one parent. These are implicit in each recipe’s sequence, not separate data.'; el.appendChild(h3b);
+  const links=[
+    ['Parent links',treeLinks,'var(--accent)','Total parent→child links in the tree — one per node, so roughly the node count.'],
+    ['Branch points',branchNodes,'var(--accent2)','Nodes that split into more than one child.']];
+  const maxL=Math.max(1,...links.map(c=>c[1]));
+  links.forEach(([l,c,col,tip])=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxL*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
+
+  // ── Alternate origins: the extra "Connect" links making a recipe reachable a 2nd way ──
+  // Direct = same-depth alternative (origin length matches the canonical). Indirect = different length.
   let connDirect=0, connIndirect=0;
   recipes.forEach(r=>(r.altOrigins||[]).forEach(o=>{ if(o.length===r.sequence.length) connDirect++; else connIndirect++; }));
   const connTotal=connDirect+connIndirect;
-  const h4=document.createElement('div'); h4.className='section-head'; h4.style.marginTop='14px'; h4.textContent='Connections'; el.appendChild(h4);
-  const conns=[['↔ Total',connTotal,'var(--accent)'],['→ Direct',connDirect,'var(--accent2)'],['⇢ Indirect',connIndirect,'var(--warn)']];
+  const multiNodes=recipes.filter(r=>(r.altOrigins||[]).length).length;
+  const h4=document.createElement('div'); h4.className='section-head'; h4.style.marginTop='14px'; h4.textContent='Alternate origins';
+  h4.title='Extra links added with the Connect tool, letting a recipe be made a second way. Most recipes have none.'; el.appendChild(h4);
+  const conns=[
+    ['Total',connTotal,'var(--accent)','All alternate origins across the palette.'],
+    ['Direct',connDirect,'var(--accent2)','Alternate origin the same length as the recipe — a same-depth swap.'],
+    ['Indirect',connIndirect,'var(--warn)','Alternate origin of a different length — a shortcut or longer path that spans depths.'],
+    ['Multi-origin nodes',multiNodes,'var(--muted)','How many distinct recipes have at least one alternate origin.']];
   const maxC=Math.max(1,...conns.map(c=>c[1]));
-  conns.forEach(([l,c,col])=>{ const row=document.createElement('div'); row.className='bar-row';
+  conns.forEach(([l,c,col,tip])=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
     row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxC*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
 
   const total = expandedCount();
@@ -2304,8 +2409,15 @@ function renderSettings() {
     sw.innerHTML=`<input type="checkbox" ${val?'checked':''}><span class="slider"></span>`;
     sw.querySelector('input').onchange=e=>{ onChange(e.target.checked); saveSettings(); applySettings(); }; r.appendChild(sp); r.appendChild(sw); return r; }
 
-  group('Theme', seg([['dark','Dark'],['light','Light'],['midnight','Midnight']], settings.theme, v=>settings.theme=v));
+  function slider(label, min, max, step, val, onInput){ const g=document.createElement('div'); g.className='set-group';
+    g.innerHTML=`<label class="set-label">${label} <span class="set-val">${val}%</span></label>`;
+    const i=document.createElement('input'); i.type='range'; i.min=min; i.max=max; i.step=step; i.value=val; i.className='set-range';
+    i.oninput=()=>{ g.querySelector('.set-val').textContent=i.value+'%'; onInput(+i.value); applySettings(); };
+    i.onchange=saveSettings; g.appendChild(i); el.appendChild(g); }
+  function section(title){ const h=document.createElement('div'); h.className='set-section'; h.textContent=title; el.appendChild(h); }
 
+  section('Theme & color');
+  group('Theme', seg([['dark','Dark'],['light','Light'],['midnight','Midnight']], settings.theme, v=>settings.theme=v));
   const colRow=document.createElement('div'); colRow.className='color-row';
   const ci=document.createElement('input'); ci.type='color'; ci.value=settings.accent;
   ci.oninput=e=>{ settings.accent=e.target.value; applySettings(); }; ci.onchange=saveSettings;
@@ -2314,14 +2426,18 @@ function renderSettings() {
   colRow.appendChild(ci); colRow.appendChild(cl);
   group('Accent color', colRow);
 
+  section('Layout');
   group('Edge style', seg([['curved','Curved'],['straight','Straight'],['stepped','Stepped']], settings.edgeStyle, v=>settings.edgeStyle=v));
   group('Node spacing', seg([['compact','Compact'],['comfortable','Comfort'],['spacious','Spacious']], settings.spacing, v=>settings.spacing=v));
   group('Node width', seg([[160,'S'],[190,'M'],[230,'L'],[280,'XL']], settings.nodeWidth||190, v=>settings.nodeWidth=v));
+
+  section('Grid');
   group('Grid style', seg([['dots','Dots'],['lines','Lines'],['none','None']], settings.gridStyle, v=>settings.gridStyle=v));
   group('Grid size', seg([['small','Small'],['medium','Medium'],['large','Large'],['match','Match nodes']], settings.gridSize, v=>settings.gridSize=v));
-  group('Grid opacity', seg([[25,'25%'],[50,'50%'],[100,'100%']], settings.gridOpacity==null?100:settings.gridOpacity, v=>settings.gridOpacity=v));
-  group('Grid dot size', seg([[1,'S'],[1.6,'M'],[2.4,'L']], settings.gridDotSize||1.2, v=>settings.gridDotSize=v));
+  slider('Grid opacity', 0, 100, 5, settings.gridOpacity==null?40:settings.gridOpacity, v=>settings.gridOpacity=v);
+  group('Grid dot size', seg([[1.8,'S'],[2.8,'M'],[4,'L']], settings.gridDotSize||2.6, v=>settings.gridDotSize=v));
 
+  section('Coloring');
   group('Family coloring', seg([['off','Off'],['family','On']], settings.colorBy, v=>settings.colorBy=v));
   if (settings.colorBy==='family'){
     group('Color depth', seg([[1,'1'],[2,'2'],[3,'3']], settings.colorDepth, v=>settings.colorDepth=v));
@@ -2334,10 +2450,11 @@ function renderSettings() {
     el.appendChild(note);
   }
 
+  section('Display');
   const tg=document.createElement('div');
   tg.appendChild(toggle('Show element badges on edges', settings.showBadges, v=>settings.showBadges=v));
   tg.appendChild(toggle('Show element dots on nodes', settings.showDots, v=>settings.showDots=v));
-  group('Display', tg);
+  group('', tg);
 
   const reset=document.createElement('button'); reset.className='btn btn-ghost btn-sm'; reset.textContent='Reset appearance';
   reset.onclick=()=>{ settings={...DEFAULT_SETTINGS}; saveSettings(); applySettings(); renderSettings(); };
@@ -2367,6 +2484,7 @@ function renderSettings() {
 //  TABS
 // ================================================================
 document.querySelectorAll('.stabs button').forEach(btn=>btn.addEventListener('click', ()=>{
+  if(!btn.dataset.tab) return;   // e.g. the hide button has its own handler
   document.querySelectorAll('.stabs button').forEach(b=>b.classList.remove('on'));
   document.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('on'));
   btn.classList.add('on'); document.getElementById('tab-'+btn.dataset.tab).classList.add('on');
@@ -2609,6 +2727,7 @@ document.getElementById('btnResetView').onclick = resetView;
 
 (async function boot(){
   loadSettings();
+  const av=document.getElementById('appVer'); if(av) av.textContent=APP_VERSION;
   applySettings();
   setSync('saving');
   await loadStoredPalettes();      // server first, localStorage fallback
