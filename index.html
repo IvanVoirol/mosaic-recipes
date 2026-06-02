@@ -271,7 +271,8 @@ textarea.f{resize:vertical;min-height:48px;font-size:.82rem;}
 .gap-msg{font-size:.78rem;color:var(--danger);}
 .gap-sub{font-size:.7rem;color:var(--muted);margin-top:2px;}
 
-.set-group{margin-bottom:16px;}
+.set-group{margin-bottom:14px;padding:9px 10px;background:#ffffff0a;border-radius:8px;}
+.set-group:last-child{margin-bottom:0;}
 .set-group label.set-label{display:block;font-size:.74rem;color:var(--text);margin-bottom:6px;font-weight:600;}
 .seg{display:flex;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
 .seg button{flex:1;padding:5px 4px;background:var(--bg);border:none;color:var(--muted);cursor:pointer;
@@ -314,8 +315,8 @@ canvas.dragging{cursor:grabbing;}
 .gate-box .btn{width:100%;}
 .gate-err{color:var(--danger);font-size:.76rem;min-height:1.2em;margin-top:8px;}
 .set-section{text-align:center;font-size:.92rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
-  color:var(--text);margin:0 0 12px;padding-bottom:7px;border-bottom:1px solid var(--border);}
-.set-box{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;background:var(--surface);}
+  color:var(--text);margin:0 0 14px;}
+.set-box{margin-bottom:34px;}
 .set-box:first-child{margin-top:2px;}
 #cvs-hint{position:absolute;bottom:10px;right:12px;color:var(--muted);font-size:.68rem;pointer-events:none;}
 #cvs-controls{position:absolute;top:10px;right:12px;display:flex;gap:6px;}
@@ -484,7 +485,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.1';
+const APP_VERSION = 'v2.3';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1106,31 +1107,14 @@ function drawAltEdges(){
       const el = elements.find(e=>e.id === o[o.length-1]);
       const col = el?el.color:'#888';
       const sx = src.lx + (src.key===''?NW/2:NW), sy = src.ly + (src.key===''?NH:nodeHeight(src))/2;
-      const ex = target.lx, ey = target.ly + nodeHeight(target)/2, mx = (sx+ex)/2;
+      const ex = target.lx, ey = target.ly + nodeHeight(target)/2;
       const elTag = el ? `${el.emoji} ${el.name}` : '?';
       const srcRec = recipeBySeq(o.slice(0,-1));
       const srcName = srcRec ? srcRec.name : (o.length<=1 ? 'Start' : prettySeq(o.slice(0,-1)));
       const edge = {sx,sy,ex,ey,col};
-      // Indirect = origin a different length than the recipe → draw as stubs (readable).
-      const indirect = o.length !== r.sequence.length;
-      if (indirect){
-        addStub(src,    'out', {col, el, edge, title:`→ ${r.name}`,  label:`Connects to “${r.name}” via ${elTag}`});
-        addStub(target, 'in',  {col, el, edge, title:`← ${srcName}`, label:`From “${srcName}” via ${elTag}`});
-        return;
-      }
-      ctx.save();
-      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);
-      ctx.strokeStyle = col + '66'; ctx.lineWidth = 1.5; ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
-      if (settings.showBadges && el){
-        const bx=mx, by=(sy+ey)/2;
-        ctx.beginPath(); ctx.arc(bx,by,8,0,Math.PI*2);
-        ctx.fillStyle = el.color+'22'; ctx.fill();
-        ctx.strokeStyle = el.color+'66'; ctx.lineWidth=1; ctx.setLineDash([2,2]); ctx.stroke(); ctx.setLineDash([]);
-        ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillStyle=TH.text; ctx.fillText(el.emoji,bx,by);
-        edgeBadges.push({ wx:bx, wy:by, r:8, el, alt:`Alt origin of ${r.name}: ${prettySeq(o)}` });
-      }
-      ctx.restore();
+      // Every connection is shown only as small arrows; the full link is revealed on hover.
+      addStub(src,    'out', {col, el, edge, title:`to ${r.name}`,    label:`Connects to “${r.name}” via ${elTag}`});
+      addStub(target, 'in',  {col, el, edge, title:`from ${srcName}`, label:`From “${srcName}” via ${elTag}`});
     });
   });
   // draw collected stubs, spread across the node edge: incoming along the top, outgoing along the bottom
