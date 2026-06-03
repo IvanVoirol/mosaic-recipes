@@ -322,6 +322,37 @@ canvas.dragging{cursor:grabbing;}
 .eax{border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;}
 .eopt{background:#ffffff08;border-radius:7px;padding:6px 7px;margin-bottom:5px;}
 .eorigin{display:flex;align-items:center;gap:7px;font-size:.76rem;padding:3px 0;}
+/* canvas + overlay */
+#cvs-overlay{position:absolute;inset:0;pointer-events:none;z-index:5;}
+#cvs-overlay>*{pointer-events:auto;position:absolute;}
+.cplus{width:22px;height:22px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;box-shadow:0 2px 8px #0008;display:none;align-items:center;justify-content:center;}
+.cplus::before,.cplus::after{content:'';position:absolute;background:#0c0c10;border-radius:1px;}
+.cplus::before{width:10px;height:2px;left:6px;top:10px;} .cplus::after{width:2px;height:10px;left:10px;top:6px;}
+.cplus:hover{background:#b79bff;}
+.cnedit{width:21px;height:21px;border-radius:6px;background:var(--panel);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:.74rem;display:none;align-items:center;justify-content:center;}
+.cnedit:hover{color:var(--accent);border-color:var(--accent);background:#9d7fea1a;}
+.cwiz{width:236px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px;box-shadow:0 16px 50px #000a;z-index:30;}
+.cwh{font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;}
+.cws{color:var(--accent);}
+.cwtypes{display:flex;flex-wrap:wrap;gap:5px;}
+.cwt{position:relative;flex:1 1 30%;min-width:60px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font:inherit;font-size:.7rem;padding:6px 3px;text-align:center;}
+.cwt span{display:block;} .cwt.on{background:var(--accent);color:#0c0c10;border-color:var(--accent);font-weight:700;}
+.cwt .cwtip{position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);width:150px;background:#000e;border:1px solid var(--border);border-radius:7px;padding:6px 8px;font-size:.66rem;color:var(--text);opacity:0;pointer-events:none;transition:.12s;z-index:40;}
+.cwt:hover .cwtip{opacity:1;}
+.cwlist{max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-top:4px;}
+.cwlist div{padding:5px 9px;font-size:.76rem;cursor:pointer;} .cwlist div:hover{background:#9d7fea22;}
+#nodeEditWin{position:absolute;z-index:25;width:340px;max-width:92vw;max-height:78%;display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--accent);border-radius:13px;box-shadow:0 18px 56px #000b;overflow:hidden;}
+#nodeEditWin .tscroll{flex:1;overflow-y:auto;padding:0;}
+#nodeEditHead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:move;background:var(--panel);user-select:none;}
+#nodeEditTitle{flex:1;font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
+#nodeEditClose:hover{color:var(--text);background:#ffffff14;}
+#el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(4px);max-width:160px;}
+#el-legend .leg-title{font-size:.56rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:5px;}
+#el-legend .leg-item{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text);padding:2px 4px;border-radius:6px;cursor:pointer;white-space:nowrap;}
+#el-legend .leg-item:hover{background:#9d7fea22;}
+#el-legend .leg-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -406,26 +437,14 @@ canvas.dragging{cursor:grabbing;}
   <div id="main">
     <aside id="sidebar">
       <div class="stabs">
-        <button class="on" data-tab="build">Build</button>
-        <button data-tab="edit">Edit</button>
-        <button data-tab="list">Recipes</button>
+        <button class="on" data-tab="list">Recipes</button>
         <button data-tab="stats">Stats</button>
         <button data-tab="settings">Settings</button>
         <button class="stab-hide" id="sidebarHide" title="Hide panel">«</button>
       </div>
 
-      <!-- BUILD -->
-      <div class="tpanel on" id="tab-build">
-        <div class="tscroll" id="buildPanel"></div>
-      </div>
-
-      <!-- EDIT (contextual inspector) -->
-      <div class="tpanel" id="tab-edit">
-        <div class="tscroll" id="editPanel"></div>
-      </div>
-
       <!-- RECIPES -->
-      <div class="tpanel" id="tab-list">
+      <div class="tpanel on" id="tab-list">
         <div style="padding:8px 10px 0">
           <input class="f" id="searchBox" placeholder="🔍 Search recipes…" style="margin-bottom:6px">
         </div>
@@ -461,7 +480,14 @@ canvas.dragging{cursor:grabbing;}
         <button class="btn-icon" id="btnFit" title="Fit tree to view">⤢</button>
         <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
       </div>
-      <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select</div>
+      <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select · ✎ to edit</div>
+      <div id="el-legend"></div>
+
+      <!-- floating node editor window (opened by a node's ✎) -->
+      <div id="nodeEditWin" style="display:none">
+        <div id="nodeEditHead"><span id="nodeEditTitle">Edit</span><button id="nodeEditClose" title="Close">✕</button></div>
+        <div class="tscroll" id="editPanel"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -509,7 +535,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.4';
+const APP_VERSION = 'v2.8';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1111,8 +1137,19 @@ function drawTree() {
   ctx.scale(zoom, zoom);
   layoutNodes.forEach(n => Object.values(n.children).forEach(c => drawEdge(n, c)));
   drawAltEdges();
-  layoutNodes.forEach(drawNode);
+  layoutNodes.forEach(n => { if(highlightEl) ctx.globalAlpha = nodeHasEl(n, highlightEl) ? 1 : 0.12; drawNode(n); });
+  ctx.globalAlpha = 1;
   ctx.restore();
+  try { computeSpots(); if(IS_TOUCH) showTouchOverlay(); buildLegend(); } catch(e) {}
+}
+let highlightEl = null;
+function nodeHasEl(n, el){ try{ if(n.recipe){ return expandedSequences(n.recipe).some(s=>s.includes(el)); } return (n.sequence||[]).includes(el); }catch(e){ return false; } }
+let _legendSig='';
+function buildLegend(){ const box=document.getElementById('el-legend'); if(!box) return;
+  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name).join('|');
+  if(sig===_legendSig && box.children.length) return; _legendSig=sig;
+  box.innerHTML='<div class="leg-title">Elements</div>'+elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${e.emoji} ${escHtml(e.name)}</div>`).join('');
+  box.querySelectorAll('.leg-item').forEach(it=>{ it.onmouseenter=()=>{ highlightEl=it.dataset.el; drawTree(); }; it.onmouseleave=()=>{ if(highlightEl){ highlightEl=null; drawTree(); } }; });
 }
 let curPath = new Set();
 
@@ -1595,11 +1632,13 @@ window.addEventListener('resize', drawTree);
   window.addEventListener('mousemove', e=>{ if(!rzDrag)return;
     const w=Math.max(180, Math.min(560, e.clientX)); sb.style.width=w+'px'; drawTree(); });
   window.addEventListener('mouseup', ()=>{ if(rzDrag){ rzDrag=false; try{localStorage.setItem('paletteSidebarW', parseInt(sb.style.width)||268);}catch(e){} } });
-  function hide(){ sb.classList.add('hidden'); rz.classList.add('hidden'); show.classList.add('on'); drawTree(); }
-  function unhide(){ sb.classList.remove('hidden'); rz.classList.remove('hidden'); show.classList.remove('on'); drawTree(); }
+  function hide(){ sb.classList.add('hidden'); rz.classList.add('hidden'); show.classList.add('on'); try{localStorage.setItem('paletteSidebarHidden','1');}catch(e){} drawTree(); }
+  function unhide(){ sb.classList.remove('hidden'); rz.classList.remove('hidden'); show.classList.remove('on'); try{localStorage.setItem('paletteSidebarHidden','0');}catch(e){} drawTree(); }
   rz.addEventListener('dblclick', hide);
   show.addEventListener('click', unhide);
   const hideBtn=document.getElementById('sidebarHide'); if(hideBtn) hideBtn.addEventListener('click', hide);
+  let hid=null; try{ hid=localStorage.getItem('paletteSidebarHidden'); }catch(e){}
+  if(hid===null||hid==='1'){ sb.classList.add('hidden'); rz.classList.add('hidden'); show.classList.add('on'); }
 })();
 
 // ── node search / quick navigate ──
@@ -1652,6 +1691,153 @@ function fitToView() {
   drawTree();
 }
 function resetView(){ zoom=1; pan={x:40,y:0}; drawTree(); }
+
+// ================================================================
+//  CANVAS ＋ ADD-WIZARD + ✎ EDIT  (overlay over the canvas)
+// ================================================================
+function w2s(wx,wy){ const ch=wrap.clientHeight; return { x:wx*zoom+pan.x, y:wy*zoom+pan.y+ch/2 }; }
+let plusSpots=[];
+function computeSpots(){ plusSpots=[]; const H=n=>nodeHeight(n);
+  layoutNodes.forEach(n=>{ const kids=Object.values(n.children||{});
+    kids.forEach(c=>{ plusSpots.push({kind:'between', parentSeq:n.sequence.slice(), childSeq:c.sequence.slice(),
+      wx:(n.lx+NW + c.lx)/2, wy:((n.ly+H(n)/2)+(c.ly+H(c)/2))/2}); });
+    if(kids.length===0) plusSpots.push({kind:'after', parentSeq:n.sequence.slice(), wx:n.lx+NW+22, wy:n.ly+H(n)/2});
+  });
+}
+const cvsOverlay=document.createElement('div'); cvsOverlay.id='cvs-overlay'; wrap.appendChild(cvsOverlay);
+const plusPool=[];
+function getPlus(i){ while(plusPool.length<=i){ const b=document.createElement('button'); b.className='cplus'; b.style.display='none';
+    b.onclick=ev=>{ ev.stopPropagation(); openWizard(b, b._spot); }; cvsOverlay.appendChild(b); plusPool.push(b);} return plusPool[i]; }
+for(let i=0;i<8;i++) getPlus(i);
+const editBtn=document.createElement('button'); editBtn.className='cnedit'; editBtn.textContent='✎'; editBtn.style.display='none';
+editBtn.onclick=ev=>{ ev.stopPropagation(); const n=editBtn._node; if(!n)return;
+  openNodeEditor(n, parseFloat(editBtn.style.left)+24, parseFloat(editBtn.style.top)); };
+cvsOverlay.appendChild(editBtn);
+
+// ── floating node-edit window ──
+const editWin=document.getElementById('nodeEditWin');
+function nodeEditorOpen(){ return editWin && editWin.style.display!=='none'; }
+let editWinPos=null;
+function openNodeEditor(node, sx, sy){ sel={seq:[...node.sequence], recipe:node.recipe};
+  editWin.style.display='flex';
+  const w=340, ww=wrap.clientWidth, wh=wrap.clientHeight;
+  let left, top;
+  if(editWinPos){ left=editWinPos.x; top=editWinPos.y; }            // reuse where the user last placed it
+  else { left=ww-w-14; top=14; }                                    // default: top-right, clear of the tree
+  editWin.style.left=Math.max(8, Math.min(left, ww-w-8))+'px';
+  editWin.style.top=Math.max(8, Math.min(top, wh-120))+'px';
+  renderBuild(); renderList(); drawTree();
+  renderEditor();
+}
+function closeNodeEditor(){ if(editWin) editWin.style.display='none'; }
+document.getElementById('nodeEditClose').onclick=closeNodeEditor;
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && nodeEditorOpen() && !wizOpen()) closeNodeEditor(); });
+(function(){ const head=document.getElementById('nodeEditHead'); let dr=false, ox=0, oy=0;
+  head.addEventListener('mousedown', e=>{ if(e.target.id==='nodeEditClose')return; dr=true; const r=editWin.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
+    ox=e.clientX-r.left; oy=e.clientY-r.top; e.preventDefault(); });
+  window.addEventListener('mousemove', e=>{ if(!dr)return; const wr=wrap.getBoundingClientRect();
+    editWin.style.left=Math.max(0, Math.min(e.clientX-wr.left-ox, wrap.clientWidth-60))+'px';
+    editWin.style.top=Math.max(0, Math.min(e.clientY-wr.top-oy, wrap.clientHeight-40))+'px'; });
+  window.addEventListener('mouseup', ()=>{ if(dr){ dr=false; editWinPos={x:parseFloat(editWin.style.left)||14, y:parseFloat(editWin.style.top)||14}; } });
+})();
+function hideOverlay(){ plusPool.forEach(b=>b.style.display='none'); editBtn.style.display='none'; }
+const IS_TOUCH = (typeof matchMedia==='function' && matchMedia('(pointer:coarse)').matches);
+wrap.addEventListener('mousemove', e=>{
+  if(IS_TOUCH) return;                       // touch shows controls persistently (see showTouchOverlay)
+  if(dragging || wizOpen()){ hideOverlay(); return; }
+  const r=wrap.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  const near=[]; plusSpots.forEach(sp=>{ const s=w2s(sp.wx,sp.wy); const d=Math.hypot(s.x-mx,s.y-my); if(d<55) near.push({sp,s,d}); });
+  near.sort((a,b)=>a.d-b.d); const show=near.slice(0,8);
+  plusPool.forEach((b,i)=>{ if(i<show.length){ const {sp,s}=show[i]; b.style.left=(s.x-11)+'px'; b.style.top=(s.y-11)+'px'; b.style.display='flex'; b._spot=sp; } else b.style.display='none'; });
+  const node=nodeAt(mx,my);
+  if(node && node.sequence && node.sequence.length){ const s=w2s(node.lx+NW, node.ly+nodeHeight(node)); editBtn.style.left=(s.x-23)+'px'; editBtn.style.top=(s.y-23)+'px'; editBtn.style.display='flex'; editBtn._node=node; }
+  else editBtn.style.display='none';
+});
+if(!IS_TOUCH) wrap.addEventListener('mouseleave', hideOverlay);
+// Touch: keep the create/edit controls for the selected node always visible.
+function showTouchOverlay(){ hideOverlay(); if(!sel) return; const selK=(sel.seq||[]).join('\x1f');
+  const adj=plusSpots.filter(sp=> sp.parentSeq.join('\x1f')===selK);
+  adj.forEach((sp,i)=>{ const b=getPlus(i); const s=w2s(sp.wx,sp.wy); b.style.left=(s.x-11)+'px'; b.style.top=(s.y-11)+'px'; b.style.display='flex'; b._spot=sp; });
+  const node=layoutNodes.find(n=>n.sequence.join('\x1f')===selK && n.sequence.length);
+  if(node){ const s=w2s(node.lx+NW, node.ly+nodeHeight(node)); editBtn.style.left=(s.x-23)+'px'; editBtn.style.top=(s.y-23)+'px'; editBtn.style.display='flex'; editBtn._node=node; }
+}
+
+// ── wizard popover ──
+let _wiz=null; function wizOpen(){ return !!_wiz; }
+function closeWizard(){ if(_wiz){ _wiz.remove(); _wiz=null; } }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeWizard(); });
+document.addEventListener('mousedown', e=>{ if(_wiz && !_wiz.contains(e.target) && !e.target.classList.contains('cplus')) closeWizard(); });
+const WTYPES=[['basic','◆','Basic','A single fixed recipe.'],['chain','🌱','Chain','A growth series; stages set after.'],['modifier','⊞','Modifier','Option axes; configure after.'],['family','🌿','Family','Plant variants under this node.'],['connect','🔗','Connect','Link this path to an EXISTING recipe.']];
+function openWizard(anchor, spot){ closeWizard();
+  const st={el:null,type:'basic',name:'',link:null,step:1};
+  const pop=document.createElement('div'); pop.className='cwiz'; _wiz=pop; cvsOverlay.appendChild(pop);
+  const ar=anchor.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
+  pop.style.left=Math.min(ar.left-wr.left+26, wrap.clientWidth-250)+'px';
+  pop.style.top=Math.min(ar.top-wr.top, wrap.clientHeight-280)+'px';
+  pop.onmousedown=e=>e.stopPropagation();
+  const where = spot.kind==='between' ? 'Insert between' : 'Add after';
+  function draw(){
+    let h=`<div class="cwh"><span>${where}</span><span class="cws">step ${st.step}/3</span></div>`;
+    h+=`<div class="eltoks" style="gap:5px">${elements.map(e=>eTok(e,{sel:st.el===e.id,data:`data-wel="${e.id}"`})).join('')}</div>`;
+    if(st.step>=2){ h+=`<div class="cwh" style="margin-top:9px">Type</div><div class="cwtypes">${WTYPES.map(t=>(spot.kind==='between'&&t[0]==='family')?'':`<button class="cwt ${st.type===t[0]?'on':''}" data-wt="${t[0]}">${t[1]}<span>${t[2]}</span><span class="cwtip">${t[3]}</span></button>`).join('')}</div>`; }
+    if(st.step>=3){
+      if(st.type==='connect'){ h+=`<div class="cwh" style="margin-top:9px">Link to existing recipe</div><input class="f" id="wq" placeholder="Search…" style="margin:0"><div class="cwlist" id="wlist"></div>`; }
+      else { h+=`<div class="cwh" style="margin-top:9px">Name</div><input class="f" id="wn" placeholder="${st.type} name…" value="${escAttr(st.name)}" style="margin:0"><div class="ehint" id="wnh"></div>`; }
+    }
+    h+=`<div class="erow" style="margin-top:9px"><button class="btn btn-accent btn-sm" id="wok">${st.step<3?'Next':(st.type==='connect'?'Link':'Add '+st.type)}</button><button class="btn btn-ghost btn-sm" id="wcancel">Cancel</button></div>`;
+    pop.innerHTML=h;
+    pop.querySelectorAll('[data-wel]').forEach(p=>p.onclick=()=>{st.el=p.dataset.wel; st.step=Math.max(st.step,2); draw();});
+    pop.querySelectorAll('[data-wt]').forEach(b=>b.onclick=()=>{st.type=b.dataset.wt; st.step=3; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0);});
+    const wn=pop.querySelector('#wn'); if(wn) wn.oninput=()=>{ st.name=wn.value; const clash=recipes.find(r=>r.name.toLowerCase()===wn.value.trim().toLowerCase()); const hh=pop.querySelector('#wnh'); if(hh){hh.textContent=clash?'Name already exists.':''; hh.className='ehint err';} };
+    const wq=pop.querySelector('#wq'); if(wq){ fillWList(''); wq.oninput=()=>fillWList(wq.value); }
+    pop.querySelector('#wcancel').onclick=closeWizard;
+    pop.querySelector('#wok').onclick=()=>{ if(st.step<3){ if(st.step===1&&!st.el){return;} st.step++; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0); return; }
+      const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link); if(err){ alert(err); return; } closeWizard(); };
+  }
+  function fillWList(q){ const list=pop.querySelector('#wlist'); if(!list)return; const items=recipes.filter(r=>r.name.toLowerCase().includes((q||'').toLowerCase())).slice(0,40);
+    list.innerHTML=items.map(r=>`<div data-wr="${escAttr(r.name)}">${escHtml(r.name)}</div>`).join('')||'<div class="ehint" style="padding:4px 8px">no match</div>';
+    list.querySelectorAll('[data-wr]').forEach(d=>d.onclick=()=>{ st.link=recipes.find(r=>r.name===d.dataset.wr); list.querySelectorAll('div').forEach(x=>x.style.background=''); d.style.background='var(--accent)33'; }); }
+  draw();
+}
+function wizCreate(spot, elId, type, name, link){
+  const parentSeq=spot.parentSeq;
+  if(type==='connect'){ if(!link) return 'Pick a recipe to link.';
+    const origin=parentSeq.concat([elId]);
+    if(recipeByAnyOrigin(origin)) return 'That path already produces a recipe.';
+    if(link.sequence.join('\x1f')===origin.join('\x1f') || (link.altOrigins||[]).some(o=>o.join('\x1f')===origin.join('\x1f'))) return 'Already an origin of that recipe.';
+    pushHistory(); link.altOrigins=link.altOrigins||[]; link.altOrigins.push(origin); palettes[pidx].recipes=recipes; sel={seq:[...link.sequence],recipe:link}; commit(); return null; }
+  if(name && recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())) return 'Name already exists.';
+  if(!name) return 'Enter a name.';
+  if(spot.kind==='after'){
+    const newSeq=parentSeq.concat([elId]);
+    if(type!=='family' && recipeByAnyOrigin(newSeq)) return 'This exact path already produces a recipe.';
+    if(type==='chain'){ for(let k=2;k<=4;k++){ const occ=recipeOccupying(growthStageSeq({sequence:newSeq,growth:{element:elId,stages:4}},k)); if(occ) return `Stage ${k} collides with “${occ.name}”.`; } }
+    pushHistory();
+    if(type==='basic'){
+      const nr={name,sequence:newSeq,description:'',altOrigins:[]};
+      const m=name.match(/\b(\d+)\s*-\s*(\d+)\b/);
+      if(m){ const lo=+m[1], hi=+m[2]; if(hi>lo && hi-lo+1>=2 && hi-lo+1<=12){
+        let ok=true; for(let k=2;k<=hi-lo+1;k++){ if(recipeOccupying(growthStageSeq({sequence:newSeq,growth:{element:elId,stages:hi-lo+1}},k))){ok=false;break;} }
+        if(ok){ nr.name=name.replace(/\s*\b\d+\s*-\s*\d+\b\s*/,' ').trim()||name; nr.growth={element:elId,stages:hi-lo+1}; } } }
+      recipes.push(nr);
+    }
+    else if(type==='chain') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],growth:{element:elId,stages:4}});
+    else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Option',options:[{label:'None',elements:[]}]}]});
+    else if(type==='family'){ const F={name,sequence:parentSeq.slice(),description:'',altOrigins:[],id:'fam'+Date.now(),family:[{name:'Variant 1',element:elId,stages:4}]}; recipes.push(F); palettes[pidx].recipes=recipes; sel={seq:[...parentSeq],recipe:F}; commit(); return null; }
+    palettes[pidx].recipes=recipes; sel={seq:newSeq,recipe:recipeBySeq(newSeq)}; commit(); return null;
+  } else { // between → insert on the child edge
+    const newSeq=parentSeq.concat([elId]);
+    const count = type==='chain'?4:1;
+    const err=insertStepBefore(spot.childSeq.slice(), elId, count); if(err) return err;   // pushes history
+    if(!recipeBySeq(newSeq)){
+      if(type==='chain') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],growth:{element:elId,stages:count}});
+      else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Option',options:[{label:'None',elements:[]}]}]});
+      else recipes.push({name,sequence:newSeq,description:'',altOrigins:[]});
+    }
+    palettes[pidx].recipes=recipes; sel={seq:newSeq,recipe:recipeBySeq(newSeq)}; commit(); return null;
+  }
+}
+
 
 // ================================================================
 //  BUILD TAB (context-aware)
@@ -1729,6 +1915,7 @@ function renderFamilyPanel(panel, F){
 function renderBuild() {
   try { renderEditor(); } catch(e) {}
   const panel = document.getElementById('buildPanel');
+  if (!panel) return;                       // Build tab retired — editor window drives everything
   panel.innerHTML = '';
   if (!sel) sel = { seq:[], recipe:null };
 
@@ -2321,6 +2508,8 @@ function renderEditor(){
   const el=document.getElementById('editPanel'); if(!el) return; el.innerHTML='';
   if(!Object.keys(EL_INI).length || EL_INI.__n!==elements.length){ elInitials(); EL_INI.__n=elements.length; }
   const S=sel||{seq:[],recipe:null};
+  const titleEl=document.getElementById('nodeEditTitle');
+  if(titleEl){ const rr=S.recipe; titleEl.textContent = rr? rr.name : ((S.seq&&S.seq.length)? 'Unnamed step' : 'Palette'); }
   const r=S.recipe; const seq=S.seq||[];
   const isRoot = seq.length===0;
   const isGap = !r && !isRoot;
@@ -2353,11 +2542,17 @@ function renderEditor(){
         <div class="ehint">Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.</div></div>`;
   }
 
+  // Description
+  h+=`<div class="ez"><div class="ezh">Note</div><input class="f" id="eDesc" placeholder="Optional description…" value="${escAttr(r.description||'')}" style="margin:0"></div>`;
+
   // Type-specific
   if(isGrowth(r)){
     const ge=elements.find(e=>e.id===r.growth.element);
+    const key=seq.join('\x1f'); const stg=Math.min(r.growth.stages, growthStage[key]||r.growth.stages);
     h+=`<div class="ez"><div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by <b style="color:var(--text)">${ge?ge.emoji+' '+ge.name:'?'}</b></span>
-        <span style="margin-left:auto;font-size:.74rem;color:var(--muted)">Stages</span><span class="estep"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div></div>`;
+        <span style="margin-left:auto;font-size:.74rem;color:var(--muted)">Stages</span><span class="estep"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
+        <div class="eltoks" id="eStagePips" style="margin-top:8px">${Array.from({length:Math.min(r.growth.stages,12)},(_,i)=>i+1).map(k=>`<span class="eltok ${k===stg?'sel':''}" data-stage="${k}" style="background:var(--bg);border-color:var(--border);color:${k===stg?'var(--accent)':'var(--muted)'}">${k}</span>`).join('')}</div>
+        <div class="erow" style="margin-top:8px"><button class="btn btn-ghost btn-xs" id="ePromoteStage">⑂ Promote stage ${stg}</button><button class="btn btn-ghost btn-xs" id="eToBasic">Convert to basic</button></div></div>`;
   } else if(isFamily(r)){
     const full=r.family.length>=elements.length;
     h+=`<div class="ez"><div class="ezh">Variants</div><div id="eVars"></div>
@@ -2380,9 +2575,11 @@ function renderEditor(){
   }
 
   // Structure
+  const plainBasic = !isGrowth(r) && !isModifier(r) && !isFamily(r);
   h+=`<div class="ez"><div class="ezh">Structure</div><div class="erow">
+      ${plainBasic?'<button class="btn btn-ghost btn-xs" id="eToChain">Convert to chain</button>':''}
       <button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>
-      <div class="ehint">Insert-before &amp; adding children live in the Build tab / canvas ＋.</div></div>`;
+      <div class="ehint">Insert-before &amp; adding children live on the canvas ＋.</div></div>`;
 
   el.innerHTML=h; wireEditor(S);
 }
@@ -2403,7 +2600,7 @@ function wireEditor(S){
       if(r && v!==r.name){ pushHistory(); r.name=v; commit(); } }
   }
   const grm=document.getElementById('eGapRm');
-  if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ alert(err); return; } sel={seq:[],recipe:null}; commit(); };
+  if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ alert(err); return; } sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); };
 
   document.querySelectorAll('#eReach .eltok').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
     const err=changeReach(seq, p.dataset.reach); if(err){ alert(err); return; }
@@ -2416,6 +2613,22 @@ function wireEditor(S){
       pushHistory(); r.growth.stages=n; commit(); };
     document.getElementById('eCdec').onclick=()=>setStg(r.growth.stages-1);
     document.getElementById('eCinc').onclick=()=>setStg(r.growth.stages+1); }
+  const key=seq.join('\x1f');
+  document.querySelectorAll('#eStagePips .eltok').forEach(p=>p.onclick=()=>{ growthStage[key]=+p.dataset.stage; renderEditor(); });
+  const eToBasic=document.getElementById('eToBasic'); if(eToBasic) eToBasic.onclick=()=>{ pushHistory(); delete r.growth; commit(); };
+  const ePromote=document.getElementById('ePromoteStage');
+  if(ePromote) ePromote.onclick=()=>{ const k=Math.min(r.growth.stages, growthStage[key]||1); if(k<2){ alert('Pick stage 2 or higher to promote.'); return; }
+    const el=r.growth.element, total=r.growth.stages, pseq=growthStageSeq(r,k), existing=recipeBySeq(pseq);
+    let nr=existing; if(!existing){ let base=`${r.name} ${k}`, name=base, n=2; while(recipes.find(x=>x.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
+      const rem=total-k+1; nr={name,sequence:pseq,description:'',altOrigins:[]}; if(rem>=2) nr.growth={element:el,stages:rem}; }
+    pushHistory(); if(!existing) recipes.push(nr); if(k-1>=2) r.growth.stages=k-1; else delete r.growth;
+    palettes[pidx].recipes=recipes; sel={seq:[...pseq],recipe:nr}; growthStage[pseq.join('\x1f')]=1; commit(); };
+  const eToChain=document.getElementById('eToChain');
+  if(eToChain) eToChain.onclick=()=>{ const el=seq[seq.length-1]; let n=0;
+    for(let cand=4;cand>=2;cand--){ let ok=true; for(let k=2;k<=cand;k++){ const occ=recipeOccupying(growthStageSeq({sequence:r.sequence,growth:{element:el,stages:cand}},k)); if(occ&&occ!==r){ok=false;break;} } if(ok){n=cand;break;} }
+    if(!n){ alert('Can’t convert: the next step already exists as another recipe.'); return; }
+    pushHistory(); r.growth={element:el,stages:n}; commit(); };
+  const eDesc=document.getElementById('eDesc'); if(eDesc) eDesc.onchange=()=>{ pushHistory(); r.description=eDesc.value.trim(); commit(); };
 
   // family variants
   const vars=document.getElementById('eVars');
@@ -2480,7 +2693,7 @@ function wireEditor(S){
   // delete (inline two-step confirm)
   const del=document.getElementById('eDel');
   if(del){ del.onclick=()=>{ if(!editArmedDelete){ editArmedDelete=true; del.textContent='Confirm delete'; setTimeout(()=>{ editArmedDelete=false; if(document.getElementById('eDel'))document.getElementById('eDel').textContent='Delete'; },2500); }
-      else { editArmedDelete=false; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes; sel={seq:[],recipe:null}; commit(); } }; }
+      else { editArmedDelete=false; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes; sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); } }; }
 }
 
 function commit(){ palettes[pidx].recipes = recipes; savePalettes(); rebuildAll(); }
@@ -2529,9 +2742,8 @@ function renderValidation() {
   gaps.forEach(gap=>{
     const item=document.createElement('div'); item.className='gap-item';
     const lbl=gap.sequence.map(id=>{const e=elements.find(x=>x.id===id);return e?`${e.emoji} ${e.name}`:id;}).join(' + ');
-    item.innerHTML=`<div class="gap-msg">⚠ ${lbl}</div><div class="gap-sub">Click to select & name it in the Build tab.</div>`;
-    item.onclick=()=>{ sel={seq:[...gap.sequence],recipe:null}; stagedEl=null; renderBuild(); drawTree();
-      document.querySelector('[data-tab="build"]').click(); };
+    item.innerHTML=`<div class="gap-msg">⚠ ${lbl}</div><div class="gap-sub">Click to name it or remove the step.</div>`;
+    item.onclick=()=>{ const node={sequence:[...gap.sequence], recipe:null}; if(typeof openNodeEditor==='function'){ openNodeEditor(node); } else { sel={seq:[...gap.sequence],recipe:null}; renderBuild(); drawTree(); } };
     el.appendChild(item);
   });
   styleTips(el);
