@@ -329,6 +329,10 @@ canvas.dragging{cursor:grabbing;}
 .cplus::before,.cplus::after{content:'';position:absolute;background:#0c0c10;border-radius:1px;}
 .cplus::before{width:10px;height:2px;left:6px;top:10px;} .cplus::after{width:2px;height:10px;left:10px;top:6px;}
 .cplus:hover{background:#b79bff;}
+.cstub{position:absolute;height:2px;display:flex;align-items:center;pointer-events:none;z-index:4;}
+.cstub i{display:block;height:0;flex:1;}
+.cstub .cstub-solid{border-top:1.5px solid var(--muted);opacity:.75;}
+.cstub .cstub-dot{border-top:1.5px dashed var(--muted);opacity:.55;}
 .cnedit{width:21px;height:21px;border-radius:6px;background:var(--panel);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:.74rem;display:none;align-items:center;justify-content:center;}
 .cnedit:hover{color:var(--accent);border-color:var(--accent);background:#9d7fea1a;}
 .cwiz{width:236px;background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:12px;box-shadow:0 16px 50px #000a;z-index:30;}
@@ -353,6 +357,9 @@ canvas.dragging{cursor:grabbing;}
 #el-legend .leg-item{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text);padding:2px 4px;border-radius:6px;cursor:pointer;white-space:nowrap;}
 #el-legend .leg-item:hover{background:#9d7fea22;}
 #el-legend .leg-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
+#empty-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;
+  background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--muted);font-size:.86rem;backdrop-filter:blur(4px);}
+#empty-hint b{color:var(--text);}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -380,6 +387,17 @@ canvas.dragging{cursor:grabbing;}
 #tip .tgap{color:var(--danger);font-size:.72rem;margin-top:3px;}
 
 #modal-overlay{display:none;position:fixed;inset:0;background:#00000088;z-index:500;align-items:center;justify-content:center;}
+#confirm-overlay{display:none;position:fixed;inset:0;background:#00000088;z-index:600;align-items:center;justify-content:center;}
+#confirm-overlay.on{display:flex;}
+#confirm-overlay h2{color:var(--text);}
+#confirm-overlay.danger h2{color:var(--danger);}
+#confirm-overlay.danger #confirmOk{background:var(--danger);border-color:var(--danger);color:#fff;}
+#toast-wrap{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:700;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;}
+.toast{pointer-events:auto;min-width:180px;max-width:380px;padding:10px 14px;border-radius:10px;font-size:.82rem;line-height:1.4;
+  background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 10px 32px #000a;
+  border-left:3px solid var(--accent);opacity:0;transform:translateY(8px);transition:opacity .16s,transform .16s;}
+.toast.show{opacity:1;transform:none;}
+.toast.err{border-left-color:var(--danger);} .toast.ok{border-left-color:var(--accent2);} .toast.warn{border-left-color:var(--warn);}
 #modal-overlay.on{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;
   width:480px;max-height:84vh;overflow-y:auto;box-shadow:0 12px 48px #00000099;}
@@ -482,6 +500,7 @@ canvas.dragging{cursor:grabbing;}
       </div>
       <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select · ✎ to edit</div>
       <div id="el-legend"></div>
+      <div id="empty-hint" style="display:none">Hover <b>▶ Start</b> and click the <b>＋</b> to add your first recipe.</div>
 
       <!-- floating node editor window (opened by a node's ✎) -->
       <div id="nodeEditWin" style="display:none">
@@ -500,6 +519,17 @@ canvas.dragging{cursor:grabbing;}
 </div>
 
 <input type="file" id="restoreInput" accept="application/json" style="display:none">
+<div id="toast-wrap"></div>
+<div id="confirm-overlay">
+  <div class="modal" style="width:380px">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmMsg" style="font-size:.82rem;color:var(--text);line-height:1.5;margin-bottom:16px"></p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost"  id="confirmCancel">Cancel</button>
+      <button class="btn btn-accent" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
 <div id="modal-overlay">
   <div class="modal">
     <h2 id="modalTitle">New Palette</h2>
@@ -535,7 +565,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.8';
+const APP_VERSION = 'v2.16';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -602,10 +632,7 @@ let palettes = normalise(RAW.map(p => JSON.parse(JSON.stringify(p))));
 
 let pidx = 0, elements = [], recipes = [];
 let sel = null;        // selected node: { seq:[ids], recipe:obj|null }  (root => {seq:[],recipe:null})
-let stagedEl = null;   // element id staged to add as a child
-let buildTool = 'basic';   // creation tool: basic | chain | connect | modifier | family
-let insertMode = false;    // when on, the toolbar inserts a node BEFORE the selected one
-let famOpenVar = null, famStagedEl = null, famPreview = {}, famActive = {};   // family onward + active variant/stage on canvas
+let famActive = {};   // active variant/stage per family node on the canvas (transient UI state)
 
 // ── Persistence: shared server folder, with localStorage offline fallback ──
 const DATA_KEY = 'paletteEditorData';
@@ -690,13 +717,14 @@ async function loadStoredPalettes() {
   }
 }
 
-async function resetPalettesToFile() {
-  if (!confirm('Restore the palettes built into this app, overwriting the shared copies with the same name? This cannot be undone.')) return;
-  palettes = normalise(RAW.map(p => JSON.parse(JSON.stringify(p))));
-  ensureIds();
-  if (serverOk) { for (const p of palettes) { try { const res = await apiSave({ ...p, _version: undefined }); if (res.ok) p._version = res.palette._version; } catch (e) {} } }
-  cacheLocal();
-  pidx = 0; syncPalSelect(); loadPalette(0);
+function resetPalettesToFile() {
+  uiConfirm('Restore the palettes built into this app, overwriting the shared copies with the same name? This cannot be undone.', async ()=>{
+    palettes = normalise(RAW.map(p => JSON.parse(JSON.stringify(p))));
+    ensureIds();
+    if (serverOk) { for (const p of palettes) { try { const res = await apiSave({ ...p, _version: undefined }); if (res.ok) p._version = res.palette._version; } catch (e) {} } }
+    cacheLocal();
+    pidx = 0; syncPalSelect(); loadPalette(0);
+  }, {title:'Restore built-in palettes?', okLabel:'Restore', danger:true});
 }
 
 // Reload one palette from the server (used by the conflict banner).
@@ -797,7 +825,7 @@ function loadPalette(idx) {
   elements = palettes[idx].elements;
   recipes  = palettes[idx].recipes;
   sel = { seq: [], recipe: null };  // start at root
-  stagedEl = null;
+ 
   rebuildAll();
 }
 
@@ -1137,19 +1165,21 @@ function drawTree() {
   ctx.scale(zoom, zoom);
   layoutNodes.forEach(n => Object.values(n.children).forEach(c => drawEdge(n, c)));
   drawAltEdges();
-  layoutNodes.forEach(n => { if(highlightEl) ctx.globalAlpha = nodeHasEl(n, highlightEl) ? 1 : 0.12; drawNode(n); });
+  layoutNodes.forEach(n => { if(highlightFn) ctx.globalAlpha = highlightFn(n) ? 1 : 0.12; drawNode(n); });
   ctx.globalAlpha = 1;
+  try { computeSpots(); } catch(e) {}
   ctx.restore();
-  try { computeSpots(); if(IS_TOUCH) showTouchOverlay(); buildLegend(); } catch(e) {}
+  try { if(IS_TOUCH) showTouchOverlay(); else refreshDesktopOverlay(); buildLegend();
+    const eh=document.getElementById('empty-hint'); if(eh) eh.style.display = recipes.length ? 'none' : 'block'; } catch(e) {}
 }
-let highlightEl = null;
+let highlightFn = null;
 function nodeHasEl(n, el){ try{ if(n.recipe){ return expandedSequences(n.recipe).some(s=>s.includes(el)); } return (n.sequence||[]).includes(el); }catch(e){ return false; } }
 let _legendSig='';
 function buildLegend(){ const box=document.getElementById('el-legend'); if(!box) return;
   const sig=elements.map(e=>e.id+e.emoji+e.color+e.name).join('|');
   if(sig===_legendSig && box.children.length) return; _legendSig=sig;
   box.innerHTML='<div class="leg-title">Elements</div>'+elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${e.emoji} ${escHtml(e.name)}</div>`).join('');
-  box.querySelectorAll('.leg-item').forEach(it=>{ it.onmouseenter=()=>{ highlightEl=it.dataset.el; drawTree(); }; it.onmouseleave=()=>{ if(highlightEl){ highlightEl=null; drawTree(); } }; });
+  box.querySelectorAll('.leg-item').forEach(it=>{ it.onmouseenter=()=>{ const id=it.dataset.el; highlightFn=(n)=>nodeHasEl(n,id); drawTree(); }; it.onmouseleave=()=>{ if(highlightFn){ highlightFn=null; drawTree(); } }; });
 }
 let curPath = new Set();
 
@@ -1185,26 +1215,32 @@ function drawAltEdges(){
       list.forEach((o,i)=>{ const sx = node.lx + NW*(i+1)/(list.length+1);
         const sy = dir==='in' ? node.ly : node.ly+H;
         drawStub(sx, sy, o.col, dir);
+        if(dir==='out'){ o.edge.osx=sx; o.edge.osy=sy+ST_LEN; } else { o.edge.isx=sx; o.edge.isy=sy-ST_LEN; }
         edgeBadges.push({ wx:sx, wy: dir==='in'? sy-16 : sy+16, r:10, el:o.el, alt:o.label, name:o.title, edge:o.edge }); });
     });
   });
-  // when hovering a stub, reveal the real arrow to/from the other end
+  // when hovering a stub, reveal the real arrow to/from the other end — flowing through the small arrows
   if (hoverEdge){
-    const {sx,sy,ex,ey,col}=hoverEdge, mx=(sx+ex)/2;
-    ctx.save(); ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);
+    const e=hoverEdge, col=e.col;
+    let sx,sy,ex,ey,vtan=false;
+    if (e.osx!=null && e.isx!=null){ sx=e.osx; sy=e.osy; ex=e.isx; ey=e.isy; vtan=true; }
+    else { sx=e.sx; sy=e.sy; ex=e.ex; ey=e.ey; }
+    const K = Math.max(34, Math.min(150, Math.abs(ex-sx)*0.45 + Math.abs(ey-sy)*0.25));
+    ctx.save(); ctx.beginPath(); ctx.moveTo(sx,sy);
+    if (vtan){ ctx.bezierCurveTo(sx, sy+K, ex, ey-K, ex, ey); }   // leave source arrow downward, enter target arrow from above
+    else { const mx=(sx+ex)/2; ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey); }
     ctx.strokeStyle=col+'cc'; ctx.lineWidth=2; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
-    // arrowhead at the target end
-    const ang=Math.atan2(ey-sy, ex-mx);
-    ctx.translate(ex,ey); ctx.rotate(ang);
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-8,-4); ctx.lineTo(-8,4); ctx.closePath(); ctx.fillStyle=col+'cc'; ctx.fill();
+    if (!vtan){ const ang=Math.atan2(ey-sy, ex-(sx+ex)/2); ctx.translate(ex,ey); ctx.rotate(ang);
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-8,-4); ctx.lineTo(-8,4); ctx.closePath(); ctx.fillStyle=col+'cc'; ctx.fill(); }
     ctx.restore();
   }
 }
+const ST_LEN = 17;
 let hoverEdge = null;
 // Short arrowed stub at a node edge. dir 'in' sits on the top edge (arrow points down,
 // into the node); 'out' sits on the bottom edge (arrow points down, away).
 function drawStub(x, y, color, dir){
-  const len=17, ah=6;
+  const len=ST_LEN, ah=6;
   ctx.save(); ctx.strokeStyle=color+'dd'; ctx.fillStyle=color+'dd'; ctx.lineWidth=2; ctx.lineCap='round';
   if (dir==='in'){   // top edge: arrow points down into the node
     ctx.beginPath(); ctx.moveTo(x, y-len); ctx.lineTo(x, y-ah); ctx.stroke();
@@ -1461,7 +1497,10 @@ function drawNode(node) {
       node._pips.push({ stage:k, x:px, y:py, w:pw, h:ph });
     }
     // dots for the SELECTED stage's full element sequence (like the prototype)
-    if (settings.showDots){ const ss=growthStageSeq(recipe, st); drawDotsWindow(x, y+H-12, recipe.sequence.length, ss.length); drawSeqDots(ss, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
+    if (settings.showDots){ const ss=growthStageSeq(recipe, st);
+      let wfrom=recipe.sequence.length; const ge=recipe.growth.element;   // include stage-1's growth element (the trailing run in the base)
+      while(wfrom>0 && recipe.sequence[wfrom-1]===ge) wfrom--;
+      drawDotsWindow(x, y+H-12, wfrom, ss.length); drawSeqDots(ss, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
   } else if (settings.showDots) {
     drawSeqDots(recipe.sequence, x, y+H-12, false, boundaryIndices(recipe.sequence));
   }
@@ -1555,22 +1594,17 @@ cvs.addEventListener('mouseup', e=>{
   const node = nodeAt(e.clientX-rect.left, e.clientY-rect.top);
   if (node){
     const {x:wx,y:wy} = s2w(e.clientX-rect.left, e.clientY-rect.top);
-    // Clicking a growth pip sets the previewed stage.
-    if (node._pips){
-      const pip = node._pips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
-      if (pip){ growthStage[node.key] = pip.stage; }
-    }
-    // Clicking a modifier option button selects that option for its axis.
-    if (node._modopts){
-      const mo = node._modopts.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
-      if (mo){ const v=modSelFor(node.recipe, node.key).slice(); v[mo.ax]=mo.opt; modSel[node.key]=v; }
-    }
-    // Clicking a family variant's stage pip previews that variant's recipe at that stage.
-    if (node._fampips){
-      const fp = node._fampips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
-      if (fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; }
-    }
-    sel = { seq:[...node.sequence], recipe:node.recipe }; stagedEl=null; renderBuild(); renderList(); drawTree();
+    let hitControl=false;
+    // Clicking an on-canvas control (chain stage pip / modifier option / family pip) just toggles it — no pop-up.
+    if (node._pips){ const pip = node._pips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h); if (pip){ growthStage[node.key]=pip.stage; hitControl=true; } }
+    if (node._modopts){ const mo = node._modopts.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h); if (mo){ const v=modSelFor(node.recipe,node.key).slice(); v[mo.ax]=mo.opt; modSel[node.key]=v; hitControl=true; } }
+    if (node._fampips){ const fp = node._fampips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h); if (fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; hitControl=true; } }
+    sel = { seq:[...node.sequence], recipe:node.recipe }; renderBuild(); renderList(); drawTree();
+    if (!hitControl && node.sequence && node.sequence.length) openNodeEditor(node);   // click node body → open edit window
+  } else {
+    // click empty space → close the edit window and deselect
+    if (typeof closeNodeEditor==='function') closeNodeEditor();
+    sel = { seq:[], recipe:null }; renderBuild(); renderList(); drawTree();
   }
 });
 cvs.addEventListener('mouseleave', ()=>{ dragging=false; tip.style.display='none'; cvs.classList.remove('dragging'); });
@@ -1618,7 +1652,7 @@ cvs.addEventListener('touchend', e=>{
         if(node._pips){ const pip=node._pips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(pip) growthStage[node.key]=pip.stage; }
         if(node._modopts){ const mo=node._modopts.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(mo){const v=modSelFor(node.recipe,node.key).slice();v[mo.ax]=mo.opt;modSel[node.key]=v;} }
         if(node._fampips){ const fp=node._fampips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; } }
-      sel={seq:[...node.sequence],recipe:node.recipe}; stagedEl=null; renderBuild(); renderList(); drawTree(); } }
+      sel={seq:[...node.sequence],recipe:node.recipe}; renderBuild(); renderList(); drawTree(); } }
   if (e.touches.length===0) tStart=null;
 }, {passive:false});
 window.addEventListener('resize', drawTree);
@@ -1697,17 +1731,67 @@ function resetView(){ zoom=1; pan={x:40,y:0}; drawTree(); }
 // ================================================================
 function w2s(wx,wy){ const ch=wrap.clientHeight; return { x:wx*zoom+pan.x, y:wy*zoom+pan.y+ch/2 }; }
 let plusSpots=[];
+// ── unified feedback: non-blocking toast + styled confirm (replace browser alert/confirm) ──
+function toast(msg, kind){ const wrap=document.getElementById('toast-wrap'); if(!wrap){ return; }
+  kind = kind || 'err';                       // unspecified toasts are validation errors; success uses 'ok'
+  const t=document.createElement('div'); t.className='toast '+kind; t.textContent=msg; wrap.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  const ms = Math.min(6000, 2200 + msg.length*30);
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(), 200); }, ms);
+}
+let _confirmCb=null;
+function uiConfirm(message, onYes, opts){ opts=opts||{};
+  const ov=document.getElementById('confirm-overlay'); if(!ov){ if(onYes)onYes(); return; }
+  document.getElementById('confirmTitle').textContent = opts.title || 'Are you sure?';
+  document.getElementById('confirmMsg').textContent = message;
+  const ok=document.getElementById('confirmOk'); ok.textContent = opts.okLabel || 'Confirm';
+  ov.classList.toggle('danger', !!opts.danger);
+  ov.classList.add('on'); _confirmCb=onYes||null;
+}
+(function(){ const ov=document.getElementById('confirm-overlay'); if(!ov) return;
+  const close=()=>{ ov.classList.remove('on'); _confirmCb=null; };
+  document.getElementById('confirmCancel').onclick=close;
+  document.getElementById('confirmOk').onclick=()=>{ const cb=_confirmCb; close(); if(cb)cb(); };
+  ov.addEventListener('mousedown', e=>{ if(e.target===ov) close(); });
+  document.addEventListener('keydown', e=>{ if(!ov.classList.contains('on'))return;
+    if(e.key==='Escape'){ e.preventDefault(); close(); } else if(e.key==='Enter'){ e.preventDefault(); const cb=_confirmCb; close(); if(cb)cb(); } });
+})();
 function computeSpots(){ plusSpots=[]; const H=n=>nodeHeight(n);
-  layoutNodes.forEach(n=>{ const kids=Object.values(n.children||{});
+  const rx=n=> n.lx + (n.key===''?NW/2:NW);          // right edge (root is the narrow ▶ Start pill)
+  const cy=n=> n.ly + (n.key===''?NH:H(n))/2;        // vertical centre
+  layoutNodes.forEach(n=>{
+    if(n.isFamilyNode){                                   // family: one extend spot per variant, at its row end
+      const F=n.recipe;
+      F.family.forEach((v,vi)=>{
+        const last=familyVarLast(F,vi);
+        const ry=(n._famrowY && n._famrowY[vi]!=null)? n._famrowY[vi] : (n.ly+H(n)/2);
+        (n.famOut||[]).filter(o=>o.vi===vi).forEach(o=>{ const c=o.child;
+          plusSpots.push({kind:'between', parentSeq:last, childSeq:c.sequence.slice(), wx:(n.lx+NW + c.lx)/2, wy:(ry+(c.ly+H(c)/2))/2}); });
+        plusSpots.push({kind:'after', parentSeq:last, wx:n.lx+NW+22, wy:ry, leaf:true, lx:n.lx+NW, ly:ry});
+      });
+      return;
+    }
+    const kids=Object.values(n.children||{});
     kids.forEach(c=>{ plusSpots.push({kind:'between', parentSeq:n.sequence.slice(), childSeq:c.sequence.slice(),
-      wx:(n.lx+NW + c.lx)/2, wy:((n.ly+H(n)/2)+(c.ly+H(c)/2))/2}); });
-    if(kids.length===0) plusSpots.push({kind:'after', parentSeq:n.sequence.slice(), wx:n.lx+NW+22, wy:n.ly+H(n)/2});
+      wx:(rx(n) + c.lx)/2, wy:(cy(n)+(c.ly+H(c)/2))/2}); });
+    if(kids.length===0) plusSpots.push({kind:'after', parentSeq:n.sequence.slice(), wx:rx(n)+22, wy:cy(n), leaf:true, lx:rx(n), ly:cy(n)});
   });
 }
+// Leaf "add here" affordance is rendered as a DOM connector tied to each visible ＋ (see placePlus).
 const cvsOverlay=document.createElement('div'); cvsOverlay.id='cvs-overlay'; wrap.appendChild(cvsOverlay);
 const plusPool=[];
+const stubPool=[];
 function getPlus(i){ while(plusPool.length<=i){ const b=document.createElement('button'); b.className='cplus'; b.style.display='none';
     b.onclick=ev=>{ ev.stopPropagation(); openWizard(b, b._spot); }; cvsOverlay.appendChild(b); plusPool.push(b);} return plusPool[i]; }
+function getStub(i){ while(stubPool.length<=i){ const s=document.createElement('div'); s.className='cstub'; s.style.display='none';
+    s.innerHTML='<i class="cstub-solid"></i><i class="cstub-dot"></i>'; cvsOverlay.appendChild(s); stubPool.push(s);} return stubPool[i]; }
+// Position a ＋ button at a spot; for leaf spots also show a solid→dotted connector from the node edge.
+function placePlus(b, i, sp){ const s=w2s(sp.wx,sp.wy); b.style.left=(s.x-11)+'px'; b.style.top=(s.y-11)+'px'; b.style.display='flex'; b._spot=sp;
+  const stub=getStub(i);
+  if(sp.leaf && sp.lx!=null){ const e=w2s(sp.lx,sp.ly); const x0=e.x, x1=s.x-12, wdt=Math.max(0,x1-x0);
+    stub.style.left=x0+'px'; stub.style.top=(e.y-1)+'px'; stub.style.width=wdt+'px'; stub.style.display=wdt>4?'flex':'none'; }
+  else stub.style.display='none';
+}
 for(let i=0;i<8;i++) getPlus(i);
 const editBtn=document.createElement('button'); editBtn.className='cnedit'; editBtn.textContent='✎'; editBtn.style.display='none';
 editBtn.onclick=ev=>{ ev.stopPropagation(); const n=editBtn._node; if(!n)return;
@@ -1731,7 +1815,13 @@ function openNodeEditor(node, sx, sy){ sel={seq:[...node.sequence], recipe:node.
 }
 function closeNodeEditor(){ if(editWin) editWin.style.display='none'; }
 document.getElementById('nodeEditClose').onclick=closeNodeEditor;
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && nodeEditorOpen() && !wizOpen()) closeNodeEditor(); });
+document.addEventListener('keydown', e=>{ if(e.key!=='Escape') return;
+  if(wizOpen()) return;                                                    // wizard handles its own Esc
+  if(document.getElementById('confirm-overlay').classList.contains('on')) return;  // confirm handles its own
+  if(nodeEditorOpen()){ closeNodeEditor(); return; }                       // 1st Esc: close edit window
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+  if(sel && sel.seq && sel.seq.length){ sel={seq:[],recipe:null}; renderBuild(); renderList(); drawTree(); }  // else deselect
+});
 (function(){ const head=document.getElementById('nodeEditHead'); let dr=false, ox=0, oy=0;
   head.addEventListener('mousedown', e=>{ if(e.target.id==='nodeEditClose')return; dr=true; const r=editWin.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
     ox=e.clientX-r.left; oy=e.clientY-r.top; e.preventDefault(); });
@@ -1740,24 +1830,32 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && nodeEditorOpen(
     editWin.style.top=Math.max(0, Math.min(e.clientY-wr.top-oy, wrap.clientHeight-40))+'px'; });
   window.addEventListener('mouseup', ()=>{ if(dr){ dr=false; editWinPos={x:parseFloat(editWin.style.left)||14, y:parseFloat(editWin.style.top)||14}; } });
 })();
-function hideOverlay(){ plusPool.forEach(b=>b.style.display='none'); editBtn.style.display='none'; }
+function hideOverlay(){ plusPool.forEach(b=>b.style.display='none'); stubPool.forEach(s=>s.style.display='none'); editBtn.style.display='none'; }
 const IS_TOUCH = (typeof matchMedia==='function' && matchMedia('(pointer:coarse)').matches);
-wrap.addEventListener('mousemove', e=>{
-  if(IS_TOUCH) return;                       // touch shows controls persistently (see showTouchOverlay)
+let lastMouse=null, mouseInWrap=false;
+// Position the ＋ / ✎ overlay for the last known cursor position. Called on mousemove AND on every
+// drawTree (so the controls stay glued to their nodes while zooming/panning instead of drifting).
+function refreshDesktopOverlay(){
+  if(IS_TOUCH || !mouseInWrap || !lastMouse) return;
   if(dragging || wizOpen()){ hideOverlay(); return; }
-  const r=wrap.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  const mx=lastMouse.x, my=lastMouse.y;
   const near=[]; plusSpots.forEach(sp=>{ const s=w2s(sp.wx,sp.wy); const d=Math.hypot(s.x-mx,s.y-my); if(d<55) near.push({sp,s,d}); });
   near.sort((a,b)=>a.d-b.d); const show=near.slice(0,8);
-  plusPool.forEach((b,i)=>{ if(i<show.length){ const {sp,s}=show[i]; b.style.left=(s.x-11)+'px'; b.style.top=(s.y-11)+'px'; b.style.display='flex'; b._spot=sp; } else b.style.display='none'; });
+  plusPool.forEach((b,i)=>{ if(i<show.length){ placePlus(b,i,show[i].sp); } else { b.style.display='none'; getStub(i).style.display='none'; } });
   const node=nodeAt(mx,my);
   if(node && node.sequence && node.sequence.length){ const s=w2s(node.lx+NW, node.ly+nodeHeight(node)); editBtn.style.left=(s.x-23)+'px'; editBtn.style.top=(s.y-23)+'px'; editBtn.style.display='flex'; editBtn._node=node; }
   else editBtn.style.display='none';
+}
+wrap.addEventListener('mousemove', e=>{
+  if(IS_TOUCH) return;
+  const r=wrap.getBoundingClientRect(); lastMouse={x:e.clientX-r.left, y:e.clientY-r.top}; mouseInWrap=true;
+  refreshDesktopOverlay();
 });
-if(!IS_TOUCH) wrap.addEventListener('mouseleave', hideOverlay);
+if(!IS_TOUCH) wrap.addEventListener('mouseleave', ()=>{ mouseInWrap=false; hideOverlay(); });
 // Touch: keep the create/edit controls for the selected node always visible.
 function showTouchOverlay(){ hideOverlay(); if(!sel) return; const selK=(sel.seq||[]).join('\x1f');
   const adj=plusSpots.filter(sp=> sp.parentSeq.join('\x1f')===selK);
-  adj.forEach((sp,i)=>{ const b=getPlus(i); const s=w2s(sp.wx,sp.wy); b.style.left=(s.x-11)+'px'; b.style.top=(s.y-11)+'px'; b.style.display='flex'; b._spot=sp; });
+  adj.forEach((sp,i)=>{ placePlus(getPlus(i), i, sp); });
   const node=layoutNodes.find(n=>n.sequence.join('\x1f')===selK && n.sequence.length);
   if(node){ const s=w2s(node.lx+NW, node.ly+nodeHeight(node)); editBtn.style.left=(s.x-23)+'px'; editBtn.style.top=(s.y-23)+'px'; editBtn.style.display='flex'; editBtn._node=node; }
 }
@@ -1776,9 +1874,17 @@ function openWizard(anchor, spot){ closeWizard();
   pop.style.top=Math.min(ar.top-wr.top, wrap.clientHeight-280)+'px';
   pop.onmousedown=e=>e.stopPropagation();
   const where = spot.kind==='between' ? 'Insert between' : 'Add after';
+  function illegalEl(elId){
+    const p=spot.parentSeq;
+    if(spot.kind==='between'){ const childLast=spot.childSeq[p.length]; if(elId===childLast) return false; }
+    const occ=recipeOccupying(p.concat([elId]));
+    return !!occ;
+  }
   function draw(){
     let h=`<div class="cwh"><span>${where}</span><span class="cws">step ${st.step}/3</span></div>`;
-    h+=`<div class="eltoks" style="gap:5px">${elements.map(e=>eTok(e,{sel:st.el===e.id,data:`data-wel="${e.id}"`})).join('')}</div>`;
+    const anyFree = elements.some(e=>!illegalEl(e.id));
+    h+=`<div class="eltoks" style="gap:5px">${elements.map(e=>{ const bad=illegalEl(e.id); return eTok(e,{sel:st.el===e.id, dim:bad, data:`data-wel="${e.id}"${bad?' data-bad="1"':''}`}); }).join('')}</div>`;
+    if(!anyFree) h+=`<div class="ehint err" style="margin-top:5px">Every element already leads to an existing recipe here.</div>`;
     if(st.step>=2){ h+=`<div class="cwh" style="margin-top:9px">Type</div><div class="cwtypes">${WTYPES.map(t=>(spot.kind==='between'&&t[0]==='family')?'':`<button class="cwt ${st.type===t[0]?'on':''}" data-wt="${t[0]}">${t[1]}<span>${t[2]}</span><span class="cwtip">${t[3]}</span></button>`).join('')}</div>`; }
     if(st.step>=3){
       if(st.type==='connect'){ h+=`<div class="cwh" style="margin-top:9px">Link to existing recipe</div><input class="f" id="wq" placeholder="Search…" style="margin:0"><div class="cwlist" id="wlist"></div>`; }
@@ -1786,13 +1892,13 @@ function openWizard(anchor, spot){ closeWizard();
     }
     h+=`<div class="erow" style="margin-top:9px"><button class="btn btn-accent btn-sm" id="wok">${st.step<3?'Next':(st.type==='connect'?'Link':'Add '+st.type)}</button><button class="btn btn-ghost btn-sm" id="wcancel">Cancel</button></div>`;
     pop.innerHTML=h;
-    pop.querySelectorAll('[data-wel]').forEach(p=>p.onclick=()=>{st.el=p.dataset.wel; st.step=Math.max(st.step,2); draw();});
+    pop.querySelectorAll('[data-wel]').forEach(p=>p.onclick=()=>{ if(p.dataset.bad){ toast('That element already leads to an existing recipe here.','err'); return; } st.el=p.dataset.wel; st.step=Math.max(st.step,2); draw();});
     pop.querySelectorAll('[data-wt]').forEach(b=>b.onclick=()=>{st.type=b.dataset.wt; st.step=3; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0);});
     const wn=pop.querySelector('#wn'); if(wn) wn.oninput=()=>{ st.name=wn.value; const clash=recipes.find(r=>r.name.toLowerCase()===wn.value.trim().toLowerCase()); const hh=pop.querySelector('#wnh'); if(hh){hh.textContent=clash?'Name already exists.':''; hh.className='ehint err';} };
     const wq=pop.querySelector('#wq'); if(wq){ fillWList(''); wq.oninput=()=>fillWList(wq.value); }
     pop.querySelector('#wcancel').onclick=closeWizard;
     pop.querySelector('#wok').onclick=()=>{ if(st.step<3){ if(st.step===1&&!st.el){return;} st.step++; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0); return; }
-      const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link); if(err){ alert(err); return; } closeWizard(); };
+      const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link); if(err){ toast(err); return; } closeWizard(); };
   }
   function fillWList(q){ const list=pop.querySelector('#wlist'); if(!list)return; const items=recipes.filter(r=>r.name.toLowerCase().includes((q||'').toLowerCase())).slice(0,40);
     list.innerHTML=items.map(r=>`<div data-wr="${escAttr(r.name)}">${escHtml(r.name)}</div>`).join('')||'<div class="ehint" style="padding:4px 8px">no match</div>';
@@ -1842,642 +1948,7 @@ function wizCreate(spot, elId, type, name, link){
 // ================================================================
 //  BUILD TAB (context-aware)
 // ================================================================
-function renderFamilyPanel(panel, F){
-  const $=id=>document.getElementById(id);
-  const card=document.createElement('div'); card.className='card';
-  let html=`<div class="card-title">🌿 Chain family <span class="g-badge2">${F.family.length} variant${F.family.length>1?'s':''}</span></div>
-    <input class="f" id="famName" value="${escAttr(F.name)}" style="margin-bottom:4px">
-    <div class="add-hint">Shared base: ${prettySeq(F.sequence)||'—'}. Each variant grows by its element.</div>
-    <div id="famVars" style="margin-top:8px">`;
-  F.family.forEach((v,vi)=>{
-    html+=`<div class="fam-edit" data-vi="${vi}">
-      <div class="fam-edit-row">
-        <input class="f famv-name" data-vi="${vi}" value="${escAttr(v.name)}" placeholder="Variant" style="margin:0;flex:1">
-        <span class="stepper" title="stages"><button class="famv-dec" data-vi="${vi}">−</button><b>${v.stages}</b><button class="famv-inc" data-vi="${vi}">+</button></span>
-        <button class="btn btn-ghost btn-xs famv-build" data-vi="${vi}" title="Build a recipe after this variant's last stage">→</button>
-        <button class="btn btn-ghost btn-xs famv-rm" data-vi="${vi}" title="Remove variant">✕</button>
-      </div>
-      <div class="el-pills famv-elrow" style="margin:6px 0 0">${elements.map(e=>`<div class="el-pill famv-elpick${e.id===v.element?' staged':''}" data-vi="${vi}" data-el="${e.id}" style="background:${e.color}28;color:${e.color};border-color:${e.color}44">${e.emoji} ${e.name}</div>`).join('')}</div>`;
-    if (famOpenVar===vi){
-      const from=familyVarLast(F,vi);
-      html+=`<div class="fam-onward">
-        <div class="add-hint" style="margin:0 0 4px">Adds a recipe after the last stage of ${escHtml(v.name)}.</div>
-        <div class="el-pills">${elements.map(e=>{ const owner=recipeOccupying(from.concat([e.id]));
-          return `<div class="el-pill famo-el${owner?' dim':''}${famStagedEl===e.id?' staged':''}" data-el="${e.id}" data-vi="${vi}" style="background:${e.color}28;color:${e.color};border-color:${e.color}44" title="${owner?`"${owner.name}" already here`:'Add '+e.name}">${e.emoji} ${e.name}</div>`; }).join('')}</div>
-        <input class="f famo-name" data-vi="${vi}" placeholder="New recipe name…" style="margin:6px 0 0">
-        <button class="btn btn-accent btn-sm famo-add" data-vi="${vi}" style="margin-top:6px">Add child after ${escHtml(v.name)}</button>
-      </div>`;
-    }
-    html+=`</div>`;
-  });
-  html+=`</div>
-    <button class="btn btn-ghost btn-sm" id="famAdd" style="margin-top:6px">+ variant</button>
-    <div class="grow-promote"><button class="btn btn-ghost btn-sm" id="famDelete">Delete family</button></div>`;
-  card.innerHTML=html; panel.appendChild(card);
-
-  $('famName').onchange=()=>{ pushHistory(); F.name=$('famName').value.trim()||'Family'; commit(); };
-  document.querySelectorAll('.famv-name').forEach(i=>i.onchange=()=>{ pushHistory(); F.family[+i.dataset.vi].name=i.value.trim()||'Variant'; commit(); });
-  document.querySelectorAll('.famv-elpick').forEach(p=>p.onclick=()=>{ const vi=+p.dataset.vi, val=p.dataset.el;
-    if (F.family[vi].element===val) return;
-    if (F.family.some((x,j)=>j!==vi && x.element===val)){ alert('Another variant already grows by that element.'); return; }
-    const trial={sequence:F.sequence, family:F.family.map((x,j)=>j===vi?{...x,element:val}:x)};
-    const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==F);
-    if(clash){ alert(`That element collides with "${clash.name}".`); return; }
-    pushHistory(); F.family[vi].element=val; commit(); });
-  function setStages(vi, n){ n=Math.max(1,Math.min(12,n));
-    const trial={sequence:F.sequence, family:F.family.map((x,j)=>j===vi?{...x,stages:n}:x)};
-    const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==F);
-    if(clash){ alert(`Stage count collides with "${clash.name}".`); return; }
-    pushHistory(); F.family[vi].stages=n; commit(); }
-  document.querySelectorAll('.famv-dec').forEach(b=>b.onclick=()=>setStages(+b.dataset.vi, F.family[+b.dataset.vi].stages-1));
-  document.querySelectorAll('.famv-inc').forEach(b=>b.onclick=()=>setStages(+b.dataset.vi, F.family[+b.dataset.vi].stages+1));
-  document.querySelectorAll('.famv-rm').forEach(b=>b.onclick=()=>{ if(F.family.length<=1){alert('A family needs at least one variant. Delete the family instead.');return;}
-    pushHistory(); F.family.splice(+b.dataset.vi,1); commit(); });
-  document.querySelectorAll('.famv-build').forEach(b=>b.onclick=()=>{ const vi=+b.dataset.vi; famOpenVar = (famOpenVar===vi?null:vi); renderBuild(); });
-  document.querySelectorAll('.famo-el').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
-    famStagedEl=p.dataset.el; document.querySelectorAll('.famo-el').forEach(x=>x.classList.remove('staged')); p.classList.add('staged'); });
-  document.querySelectorAll('.famo-add').forEach(b=>b.onclick=()=>{ const vi=+b.dataset.vi;
-    if(!famStagedEl){ alert('Pick an element first.'); return; }
-    const nameI=document.querySelector(`.famo-name[data-vi="${vi}"]`); const name=(nameI.value||'').trim();
-    if(!name){ nameI.focus(); return; }
-    const newSeq=familyVarLast(F,vi).concat([famStagedEl]);
-    if(recipeByAnyOrigin(newSeq)){ alert('That path already produces a recipe.'); return; }
-    if(recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){ alert('Name already exists.'); return; }
-    pushHistory(); recipes.push({name, sequence:newSeq, description:'', altOrigins:[]});
-    palettes[pidx].recipes=recipes; famStagedEl=null; famOpenVar=null; commit(); });
-  $('famAdd').onclick=()=>{ const used=new Set(F.family.map(v=>v.element));
-    const free=elements.find(e=>!used.has(e.id));
-    if(!free){ alert('All elements are already used by variants.'); return; }
-    pushHistory(); F.family.push({name:'Variant', element:free.id, stages:4}); commit(); };
-  $('famDelete').onclick=()=>{ pushHistory(); recipes=recipes.filter(r=>r!==F); palettes[pidx].recipes=recipes; sel={seq:[],recipe:null}; commit(); };
-}
-
-function renderBuild() {
-  try { renderEditor(); } catch(e) {}
-  const panel = document.getElementById('buildPanel');
-  if (!panel) return;                       // Build tab retired — editor window drives everything
-  panel.innerHTML = '';
-  if (!sel) sel = { seq:[], recipe:null };
-
-  const isRoot = sel.seq.length === 0;
-  const selRecipe = isRoot ? null : ((sel.recipe && isFamily(sel.recipe)) ? sel.recipe : recipeBySeq(sel.seq));
-  const isGap = !isRoot && !selRecipe;
-
-  if (selRecipe && isFamily(selRecipe)) { renderFamilyPanel(panel, selRecipe); return; }
-
-  // ── Selected node card ──
-  const card = document.createElement('div');
-  card.className = 'card' + (isGap ? ' gap' : '');
-  if (isRoot) {
-    const pd = palettes[pidx].description;
-    card.innerHTML = `<div class="card-title">▶ Start</div>
-      <div class="card-desc">Root of <b style="color:var(--text)">${escHtml(palettes[pidx].name)}</b>. ${pd?escHtml(pd):'Add a one-element recipe below.'}</div>`;
-  } else {
-    const _bset = boundaryIndices(sel.seq); const _main = _bset.length?_bset[_bset.length-1]:0;
-    const seqHtml = sel.seq.map((id,i)=>{const el=elements.find(e=>e.id===id);
-      const div = _bset.includes(i) ? '<span class="seq-div main" title="replaceable base ends here">|</span>' : '';
-      const op = (_main>0 && i<_main) ? '0.5' : '1';
-      return div + (el?`<span style="background:${el.color}2a;color:${el.color};opacity:${op}">${el.emoji} ${el.name}</span>`:'');}).join('');
-    if (isGap) {
-      card.innerHTML = `<div class="card-title" style="color:var(--danger)">⚠ Unnamed step</div>
-        <div class="card-seq">${seqHtml}</div>
-        <div class="add-hint">Name this step to keep it, or remove it to pull its children one step closer to the parent.</div>
-        <input class="f" id="gapName" placeholder="Name this step…">
-        <textarea class="f" id="gapDesc" placeholder="Description (optional)"></textarea>
-        <div class="btn-row">
-          <button class="btn btn-accent btn-sm" id="btnNameGap">Name it</button>
-          <button class="btn btn-ghost btn-sm" id="btnRemoveGap">Remove step</button>
-        </div>`;
-    } else {
-      const origins = recipeOrigins(selRecipe);
-      const originsHtml = origins.map((o,i)=>{
-        const isPrimary = i===0;
-        return `<div class="origin-row">
-          <span class="origin-label">${isPrimary?'★':'↳'} ${escHtml(originLabel(o))}</span>
-          <span class="origin-cost" title="Cost = element count">${o.length}</span>
-          ${isPrimary?'<span class="origin-tag">primary</span>'
-                     :`<button class="origin-rm" data-alt="${i-1}" title="Remove this origin">✕</button>`}
-        </div>`;
-      }).join('');
-      card.innerHTML = `<div class="card-title">${selRecipe.name}${origins.length>1?` <span class="multi-badge" title="${origins.length} ways to make this">⟂${origins.length}</span>`:''}</div>
-        <label class="blabel">Origin${origins.length>1?'s':''} (by cost)</label>
-        <div class="origins">${originsHtml}</div>
-        <label class="blabel" style="margin-top:8px">Edit</label>
-        <input class="f" id="editName" value="${escAttr(selRecipe.name)}">
-        <textarea class="f" id="editDesc" placeholder="Description (optional)">${escHtml(selRecipe.description||'')}</textarea>
-        <div class="btn-row">
-          <button class="btn btn-accent btn-sm" id="btnSaveEdit">Save</button>
-          <button class="btn btn-danger btn-sm" id="btnDelRecipe">Delete</button>
-        </div>`;
-    }
-  }
-  panel.appendChild(card);
-
-  if (!isRoot && !isGap && selRecipe && !hasModifiers(selRecipe)) {
-    const g = document.createElement('div');
-    g.className = 'card';
-    if (isGrowth(selRecipe)) {
-      const st = Math.min(selRecipe.growth.stages, growthStage[sel.seq.join('\x1f')] || 1);
-      const gel = elements.find(e=>e.id===selRecipe.growth.element);
-      const stageSeqNow = growthStageSeq(selRecipe, st);
-      const dotsHtml = stageSeqNow.map(id=>{const e=elements.find(x=>x.id===id);
-        return e?`<span style="background:${e.color}2a;color:${e.color}">${e.emoji}</span>`:'';}).join('');
-      const pipsHtml = Array.from({length:selRecipe.growth.stages},(_,i)=>i+1)
-        .map(k=>`<button class="gpip${k===st?' on':''}" data-stage="${k}">${k}</button>`).join('');
-      // Advance element is derived from the path that reaches this node — not configurable.
-      g.innerHTML = `
-        <div class="card-title" style="font-size:.82rem">🌱 Chain <span class="g-badge2">${selRecipe.growth.stages} stages · ${gel?gel.emoji:''}</span></div>
-        <div class="gpips" id="gpips" style="margin-top:4px">${pipsHtml}</div>
-        <div class="card-seq" style="margin-top:6px" id="gstageSeq">${dotsHtml}</div>
-        <div class="add-hint" style="margin:4px 0 0">Stage ${st} · cost ${stageSeqNow.length}</div>
-        <div class="grow-config" style="margin-top:8px;padding-top:8px">
-          <div class="link-row">
-            <span class="add-hint" style="margin:0">Stages</span>
-            <input class="f" id="gStages" type="number" min="2" max="12" value="${selRecipe.growth.stages}" style="width:52px;margin-bottom:0">
-            <button class="btn btn-accent btn-sm" id="gApply">Apply</button>
-            <button class="btn btn-ghost btn-sm" id="gRemove">Remove</button>
-          </div>
-        </div>
-        ${st>=2 ? `<div class="grow-promote" style="margin-top:8px;padding-top:8px">
-          <button class="btn btn-ghost btn-sm" id="gPromote">⑂ Promote stage ${st}</button>
-        </div>` : ``}`;
-    } else {
-      const lastEl = elements.find(e=>e.id===selRecipe.sequence[selRecipe.sequence.length-1]);
-      g.className = 'card grow-make';
-      g.innerHTML = `
-        <div class="card-title" style="font-size:.82rem">🌱 Convert “${escHtml(selRecipe.name)}” into a chain</div>
-        <div class="add-hint">Replaces this single recipe with a 1–N growth series that repeats <b>${lastEl?lastEl.emoji+' '+lastEl.name:'its last element'}</b>. The node stays put and gains stage pips; nothing else changes.</div>
-        <div class="link-row">
-          <span class="add-hint" style="margin:0">Stages</span>
-          <input class="f" id="gNewStages" type="number" min="2" max="12" value="4" style="width:56px;margin-bottom:0">
-          <button class="btn btn-accent btn-sm" id="gMake">Convert</button>
-        </div>`;
-    }
-    panel.appendChild(g);
-  }
-
-  // ── Modifier panel (for a selected recipe that has modifier axes) ──
-  if (!isRoot && !isGap && selRecipe && hasModifiers(selRecipe)) {
-    const key = sel.seq.join('\x1f');
-    const selv = isModifier(selRecipe) ? modSelFor(selRecipe, key) : selRecipe.modifiers.map(()=>0);
-    const m = document.createElement('div'); m.className='card';
-    let html = `<div class="card-title" style="font-size:.82rem">⊞ Modifier <span class="g-badge2">${selRecipe.modifiers.length} ax${selRecipe.modifiers.length===1?'is':'es'}</span></div>`;
-
-    // axis + option editor
-    selRecipe.modifiers.forEach((ax,ai)=>{
-      html += `<div class="mod-axis-edit" data-ax="${ai}">
-        <div class="mod-axis-head">
-          <input class="f mod-axname" data-ax="${ai}" value="${escAttr(ax.name)}" style="margin:0;flex:1">
-          <button class="btn btn-ghost btn-xs mod-axrm" data-ax="${ai}" title="Remove axis">✕</button>
-        </div>
-        <div class="mod-opts-edit">`;
-      ax.options.forEach((o,oi)=>{
-        const chosen = selv[ai]===oi;
-        const elDots = (o.elements||[]).map(id=>{const e=elements.find(x=>x.id===id);return e?`<span style="color:${e.color}">${e.emoji}</span>`:'';}).join('');
-        html += `<div class="mod-opt-row${chosen?' chosen':''}">
-          <button class="mod-opt-pick" data-ax="${ai}" data-opt="${oi}" title="Preview this option">${chosen?'●':'○'}</button>
-          <input class="f mod-optlabel" data-ax="${ai}" data-opt="${oi}" value="${escAttr(o.label)}" style="margin:0;flex:1" placeholder="Option label">
-          <span class="mod-opt-dots">${elDots}</span>
-          <button class="btn btn-ghost btn-xs mod-optels" data-ax="${ai}" data-opt="${oi}" title="Choose elements">elements</button>
-          <button class="btn btn-ghost btn-xs mod-optrm" data-ax="${ai}" data-opt="${oi}" title="Remove option">✕</button>
-        </div>
-        <div class="mod-elpick" id="elpick-${ai}-${oi}" style="display:none">${
-          elements.map(e=>`<label class="mod-elchk" style="--elc:${e.color};border-color:${e.color}66;color:${e.color}"><input type="checkbox" data-ax="${ai}" data-opt="${oi}" value="${e.id}" ${(o.elements||[]).includes(e.id)?'checked':''}> ${e.emoji} ${e.name}</label>`).join('')
-        }</div>`;
-      });
-      html += `<button class="btn btn-ghost btn-xs mod-addopt" data-ax="${ai}">+ option</button>
-        </div></div>`;
-    });
-    html += `<button class="btn btn-ghost btn-sm mod-addaxis" style="margin-top:6px">+ axis</button>`;
-
-    // current combination + promote
-    if (isModifier(selRecipe)){
-      const combo = modCombos(selRecipe).find(c=>c.opts.join(',')===selv.join(',')) || {labels:selRecipe.modifiers.map((ax,i)=>ax.options[selv[i]].label), seq:selRecipe.sequence};
-      const cname = comboName(selRecipe, combo.labels);
-      const cdots = combo.seq.map(id=>{const e=elements.find(x=>x.id===id);return e?`<span style="background:${e.color}2a;color:${e.color}">${e.emoji}</span>`:'';}).join('');
-      const occ = recipeBySeq(combo.seq);
-      const isBase = combo.seq.join('\x1f')===selRecipe.sequence.join('\x1f');
-      html += `<div class="mod-combo">
-        <label class="blabel">Current combination</label>
-        <div class="mod-combo-name"><b>${escHtml(cname)}</b></div>
-        <div class="card-seq" style="margin-top:5px">${cdots}</div>
-        <div class="add-hint" style="margin:5px 0 0">${combo.seq.length} elements${occ&&!isBase?` · already a node: “${escHtml(occ.name)}”`:''}</div>
-        ${isBase ? `<div class="add-hint" style="margin-top:6px">Pick a non-default option to promote a real combination.</div>`
-                 : `<button class="btn btn-accent btn-sm mod-promote" style="margin-top:8px">⑂ Promote “${escHtml(cname)}”</button>`}
-      </div>`;
-    } else {
-      html += `<div class="add-hint" style="margin-top:8px">Add at least one axis with one option (and its elements) to activate this modifier.</div>`;
-    }
-    m.innerHTML = html;
-    panel.appendChild(m);
-  }
-
-  // ── Add child section (not for gap—name it first) ──
-  if (!isGap) {
-    const addWrap = document.createElement('div');
-    const canInsert = !isRoot && selRecipe && !isModifier(selRecipe) && !isFamily(selRecipe);
-    if (!canInsert) insertMode = false;
-    addWrap.innerHTML = `<div class="add-divider"></div>
-      <div class="blabel" style="display:flex;align-items:center;justify-content:space-between">
-        <span>${insertMode?'Insert before this node':'Add from here'}</span>
-        ${canInsert?`<button class="btn btn-ghost btn-xs" id="btnInsertToggle" style="${insertMode?'color:var(--accent);border-color:var(--accent)':''}">⎀ Insert before: ${insertMode?'on':'off'}</button>`:''}
-      </div>`;
-
-    // ── creation tool palette (like a paint toolbar) ──
-    let tools = [
-      ['basic',    '◆',  'Basic',    'A single new recipe'],
-      ['chain',    '🌱', 'Chain',    'A 1–N growth series'],
-      ['connect',  '🔗', 'Connect',  'Link this path to an existing recipe'],
-      ['modifier', '⊞',  'Modifier', 'Options table (roof×door style)'],
-      ['family',   '🌿', 'Family',   'Group several plant chains under this node']
-    ];
-    if (insertMode){ tools = tools.filter(t=>t[0]==='basic'||t[0]==='chain'||t[0]==='modifier');
-      if (buildTool==='connect'||buildTool==='family') buildTool='basic'; }
-    const tb = document.createElement('div'); tb.className = 'toolbar';
-    tools.forEach(([id,icon,label,desc])=>{
-      const t = document.createElement('button');
-      t.className = 'tool' + (buildTool===id?' on':'');
-      t.innerHTML = `<span class="t-ic">${icon}</span><span class="t-lb">${label}</span>`;
-      t.title = desc;
-      t.onclick = ()=>{ buildTool=id; renderBuild(); };
-      tb.appendChild(t);
-    });
-    addWrap.appendChild(tb);
-
-    if (insertMode) {
-      // reuse element pills + type tools to insert a node before the selected one
-      const pills = document.createElement('div'); pills.className='el-pills';
-      elements.forEach(el=>{ const p=document.createElement('div');
-        p.className='el-pill'+(stagedEl===el.id?' staged':'');
-        p.style.cssText=`background:${el.color}28;color:${el.color};border-color:${el.color}44`;
-        p.textContent=`${el.emoji} ${el.name}`;
-        p.onclick=()=>{ stagedEl = stagedEl===el.id?null:el.id; renderBuild(); };
-        pills.appendChild(p); });
-      addWrap.appendChild(pills);
-      const f=document.createElement('div');
-      const stagesRow = buildTool==='chain' ? `<input class="f" id="insStages" type="number" min="2" max="12" value="4" style="width:64px;margin-bottom:0">` : '';
-      f.innerHTML = `<div class="add-hint">${stagedEl?`Inserts a ${buildTool} step before this node, for it and everything built on it.`:'Pick the element to insert.'}</div>
-        ${stagedEl?`<div class="link-row">${stagesRow}<button class="btn btn-accent btn-sm" id="btnDoInsert">⎀ Insert ${buildTool} before</button></div>`:''}`;
-      addWrap.appendChild(f);
-      panel.appendChild(addWrap);
-    } else if (buildTool === 'family') {
-      const f = document.createElement('div');
-      f.innerHTML = `
-        <input class="f" id="famNewName" placeholder="Family name (e.g. Flowers)…" autocomplete="off">
-        <div class="add-hint">Creates a chain-family node under this one. Add variants (each a named plant growing by its own element) in the panel that appears.</div>
-        <button class="btn btn-accent btn-sm" id="btnAddFamily">Add chain family</button>`;
-      addWrap.appendChild(f);
-    } else {
-      // element pills (shared by basic / chain / connect / modifier)
-      const pills = document.createElement('div'); pills.className = 'el-pills';
-      const parentGrowth = selRecipe && isGrowth(selRecipe) ? selRecipe.growth.element : null;
-      elements.forEach(el=>{
-        const ep = effectiveParentSeq(selRecipe, sel.seq, el.id);
-        const owner = recipeOccupying([...ep, el.id]);
-        const exists = !!owner;
-        const p = document.createElement('div');
-        p.className = 'el-pill' + (stagedEl===el.id?' staged':'') + (exists?' dim':'');
-        p.style.cssText = `background:${el.color}28;color:${el.color};border-color:${el.color}44`;
-        p.textContent = `${el.emoji} ${el.name}`;
-        p.title = owner ? `"${owner.name}" already comes from here` : `Add ${el.name}`;
-        p.onclick = ()=>{ if(exists)return; stagedEl = stagedEl===el.id?null:el.id; renderBuild(); };
-        pills.appendChild(p);
-      });
-      addWrap.appendChild(pills);
-
-      const prev = document.createElement('div'); prev.className='preview';
-      if (stagedEl){ const el=elements.find(e=>e.id===stagedEl);
-        const base = sel.seq.map(id=>{const e2=elements.find(x=>x.id===id);return e2?e2.emoji:'';}).join(' ');
-        prev.innerHTML = `This path: <b>${base?base+' ':''}${el.emoji}</b>`; }
-      else prev.innerHTML = 'Pick an element to add as the next step.';
-      addWrap.appendChild(prev);
-
-      if (stagedEl){
-        const f = document.createElement('div');
-        if (buildTool === 'basic') {
-          f.innerHTML = `
-            <input class="f" id="childName" placeholder="New recipe name…" autocomplete="off">
-            <div id="childHint" class="add-hint"></div>
-            <textarea class="f" id="childDesc" placeholder="Description (optional)"></textarea>
-            <button class="btn btn-accent btn-sm" id="btnAddChild">Add basic node</button>`;
-        } else if (buildTool === 'chain') {
-          const el=elements.find(e=>e.id===stagedEl);
-          f.innerHTML = `
-            <input class="f" id="childName" placeholder="Chain name…" autocomplete="off">
-            <div class="add-hint">Grows by adding ${el?el.emoji+' '+el.name:''} each stage.</div>
-            <div class="link-row">
-              <input class="f" id="chainStages" type="number" min="2" max="12" value="4" style="width:64px;margin-bottom:0">
-              <button class="btn btn-accent btn-sm" id="btnAddChain">Add chain node</button>
-            </div>`;
-        } else if (buildTool === 'connect') {
-          f.innerHTML = `
-            <div class="combo">
-              <input class="f" id="linkSearch" placeholder="🔗 Type a recipe name…" autocomplete="off" style="margin-bottom:0">
-              <div id="linkResults" class="link-results"></div>
-            </div>
-            <div class="add-hint">Adds this path as another way to make the chosen recipe (a new origin).</div>`;
-        } else if (buildTool === 'modifier') {
-          f.innerHTML = `
-            <input class="f" id="childName" placeholder="Modifier node name…" autocomplete="off">
-            <div class="add-hint">Creates a node here, then you define its option axes (e.g. Roof, Door) in the panel above. Each combination can be promoted to its own recipe.</div>
-            <button class="btn btn-accent btn-sm" id="btnAddModifier">Add modifier node</button>`;
-        }
-        addWrap.appendChild(f);
-      }
-    }
-    panel.appendChild(addWrap);
-  }
-
-  // ── wire up ──
-  const $ = id => document.getElementById(id);
-  if ($('btnNameGap')) $('btnNameGap').onclick = ()=>{
-    const name=$('gapName').value.trim(); if(!name){$('gapName').focus();return;}
-    if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
-    pushHistory();
-    recipes.push({ name, sequence:[...sel.seq], description:$('gapDesc').value.trim() });
-    sel.recipe = recipeBySeq(sel.seq); commit();
-  };
-  if ($('btnRemoveGap')) $('btnRemoveGap').onclick = ()=>{
-    const err = removeStepAt([...sel.seq]);
-    if (err){ alert(err); return; }
-    palettes[pidx].recipes = recipes; sel = { seq:[], recipe:null }; commit();
-  };
-  if ($('btnInsertToggle')) $('btnInsertToggle').onclick = ()=>{ insertMode=!insertMode; stagedEl=null; renderBuild(); };
-  if ($('btnDoInsert')) $('btnDoInsert').onclick = ()=>{
-    if(!stagedEl){ alert('Pick an element to insert.'); return; }
-    const type=buildTool; const count = type==='chain' ? Math.max(2,Math.min(12,+($('insStages')||{}).value||4)) : 1;
-    const err = insertStepBefore([...sel.seq], stagedEl, count);
-    if (err){ alert(err); return; }
-    const newSeq=[...sel.seq.slice(0,-1), stagedEl];
-    const elName=(elements.find(e=>e.id===stagedEl)||{}).name||'step';
-    if (type==='chain' && !recipeBySeq(newSeq)) recipes.push({name:elName+' chain', sequence:newSeq, description:'', altOrigins:[], growth:{element:stagedEl, stages:count}});
-    else if (type==='modifier' && !recipeBySeq(newSeq)) recipes.push({name:elName+' options', sequence:newSeq, description:'', altOrigins:[], id:'mod'+Date.now(), modifiers:[{name:'Option', options:[{label:'None', elements:[]}]}]});
-    palettes[pidx].recipes = recipes; insertMode=false; stagedEl=null;
-    sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; commit();
-  };
-  if ($('btnSaveEdit')) $('btnSaveEdit').onclick = ()=>{
-    const name=$('editName').value.trim(); if(!name)return;
-    if (recipes.find(r=>r!==selRecipe && r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
-    pushHistory();
-    selRecipe.name = name; selRecipe.description = $('editDesc').value.trim(); commit();
-  };
-  if ($('btnDelRecipe')) $('btnDelRecipe').onclick = ()=>{
-    if(!confirm(`Delete "${selRecipe.name}"? Any steps built on it will become unnamed gaps.`))return;
-    pushHistory();
-    recipes = recipes.filter(r=>r!==selRecipe); palettes[pidx].recipes = recipes;
-    sel = { seq:[], recipe:null }; commit();
-  };
-  // ── basic-node creation (tool: basic) ──
-  if ($('btnAddChild')) {
-    const nameInput = $('childName'), hint = $('childHint'), addBtn = $('btnAddChild');
-    const refreshHint = ()=>{
-      const name = nameInput.value.trim();
-      const clash = name && recipes.find(r=>r.name.toLowerCase()===name.toLowerCase());
-      if (clash){
-        hint.innerHTML = `↔ <b>"${escHtml(clash.name)}"</b> already exists — use the <b>Connect</b> tool to add this path as another origin.`;
-        hint.className = 'add-hint warn'; addBtn.disabled = true;
-      } else {
-        hint.textContent = name ? 'Creates a brand-new recipe at this path.' : '';
-        hint.className = 'add-hint'; addBtn.disabled = false;
-      }
-    };
-    nameInput.oninput = refreshHint;
-    addBtn.onclick = ()=>{
-      const name = nameInput.value.trim(); if(!name){nameInput.focus();return;}
-      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
-      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
-      if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){ refreshHint(); return; }
-      pushHistory();
-      const nr = { name, sequence:newSeq, description:($('childDesc')?$('childDesc').value.trim():''), altOrigins:[] };
-      // Quick path: a name like "Fern 1-4" offers to become a chain.
-      const m = name.match(/\b(\d+)\s*-\s*(\d+)\b/);
-      if (m){
-        const lo=+m[1], hi=+m[2];
-        if (hi>lo && hi-lo+1>=2 && hi-lo+1<=12){
-          const ael = elements.find(e=>e.id===stagedEl);
-          if (confirm(`Make "${name}" a chain of ${hi-lo+1} stages growing by ${ael?ael.name:stagedEl}?`)){
-            nr.name = name.replace(/\s*\b\d+\s*-\s*\d+\b\s*/,' ').trim() || name;
-            nr.growth = { element:stagedEl, stages:hi-lo+1 };
-          }
-        }
-      }
-      recipes.push(nr);
-      palettes[pidx].recipes = recipes;
-      sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; stagedEl=null; commit();
-    };
-  }
-
-  // ── chain-node creation (tool: chain) ──
-  if ($('btnAddChain')) {
-    $('btnAddChain').onclick = ()=>{
-      const name = $('childName').value.trim(); if(!name){$('childName').focus();return;}
-      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
-      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
-      if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
-      const n=Math.max(2,Math.min(12,+$('chainStages').value||4));
-      // collision check on stages 2..n
-      for (let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq({sequence:newSeq,growth:{element:stagedEl,stages:n}},k));
-        if (occ){ alert(`Stage ${k} would collide with "${occ.name}". Lower the stage count.`); return; } }
-      pushHistory();
-      recipes.push({ name, sequence:newSeq, description:'', altOrigins:[], growth:{element:stagedEl, stages:n} });
-      palettes[pidx].recipes = recipes;
-      sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; stagedEl=null; commit();
-    };
-  }
-
-  // ── chain-family creation (tool: family) ──
-  if ($('btnAddFamily')) {
-    $('btnAddFamily').onclick = ()=>{
-      const name = $('famNewName').value.trim(); if(!name){$('famNewName').focus();return;}
-      // anchor the family at the selected node; variants fan out from here
-      const baseSeq = effectiveParentSeq(selRecipe, sel.seq, null);
-      // first variant: a free element off this base
-      const free = elements.find(e=>!recipeOccupying([...baseSeq, e.id])) || elements[0];
-      pushHistory();
-      const F = { name, sequence:[...baseSeq], description:'', altOrigins:[], id:'fam'+Date.now(),
-        family:[{name:'Variant 1', element:free.id, stages:4}] };
-      recipes.push(F); palettes[pidx].recipes = recipes;
-      famOpenVar=null; famStagedEl=null;
-      sel = { seq:[...baseSeq], recipe:F };   // select the family node (recipe carries family[])
-      commit();
-    };
-  }
-  if ($('btnAddModifier')) {
-    $('btnAddModifier').onclick = ()=>{
-      const name = $('childName').value.trim(); if(!name){$('childName').focus();return;}
-      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
-      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
-      if (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())){alert('Name already exists.');return;}
-      pushHistory();
-      // start with one axis holding a "None" option so the editor has something to grow from
-      recipes.push({ name, sequence:newSeq, description:'', altOrigins:[],
-        modifiers:[{name:'Option', options:[{label:'None', elements:[]}]}] });
-      palettes[pidx].recipes = recipes;
-      sel = { seq:newSeq, recipe:recipeBySeq(newSeq) }; stagedEl=null; commit();
-    };
-  }
-  if ($('linkSearch')) {
-    const search = $('linkSearch'), results = $('linkResults');
-    let hi = -1;
-    const linkTo = (target)=>{
-      if(!target) return;
-      const newSeq=[...effectiveParentSeq(selRecipe, sel.seq, stagedEl), stagedEl];
-      if (recipeByAnyOrigin(newSeq)){alert('This exact path already produces a recipe.');return;}
-      pushHistory();
-      target.altOrigins = target.altOrigins || [];
-      target.altOrigins.push(newSeq);
-      sel = { seq:[...target.sequence], recipe:target }; stagedEl=null; commit();
-    };
-    const filtered = ()=> [...recipes].sort((a,b)=>a.name.localeCompare(b.name))
-        .filter(r=> r.name.toLowerCase().includes(search.value.trim().toLowerCase())).slice(0,40);
-    const renderResults = ()=>{
-      if (!search.value.trim()){ results.style.display='none'; results.innerHTML=''; return; }
-      const list = filtered(); results.innerHTML='';
-      if (!list.length){ results.innerHTML='<div class="link-empty">No matching recipe</div>'; results.style.display='block'; return; }
-      list.forEach((r,idx)=>{
-        const oc = recipeOrigins(r).length;
-        const row = document.createElement('div');
-        row.className='link-result'+(idx===hi?' hi':'');
-        row.innerHTML = `<span>${escHtml(r.name)}</span><span class="lr-meta">${oc} origin${oc>1?'s':''}</span>`;
-        row.onmousedown = (e)=>{ e.preventDefault(); linkTo(r); };
-        results.appendChild(row);
-      });
-      results.style.display='block';
-    };
-    search.oninput = ()=>{ hi=-1; renderResults(); };
-    search.onfocus = renderResults;
-    search.onblur  = ()=> setTimeout(()=>{ if(results) results.style.display='none'; }, 120);
-    search.onkeydown = (e)=>{
-      const list = filtered();
-      if (e.key==='ArrowDown'){ e.preventDefault(); hi=Math.min(hi+1, list.length-1); renderResults(); }
-      else if (e.key==='ArrowUp'){ e.preventDefault(); hi=Math.max(hi-1, 0); renderResults(); }
-      else if (e.key==='Enter'){ e.preventDefault(); if(hi>=0 && list[hi]) linkTo(list[hi]); else if(list.length===1) linkTo(list[0]); }
-      else if (e.key==='Escape'){ search.value=''; renderResults(); }
-    };
-  }
-  // remove an alternate origin from the edit card
-  document.querySelectorAll('.origin-rm').forEach(b=> b.onclick = ()=>{
-    const idx = +b.dataset.alt;
-    pushHistory();
-    selRecipe.altOrigins.splice(idx, 1); commit();
-  });
-
-  // ── growth handlers ──
-  const key = sel && sel.seq ? sel.seq.join('\x1f') : '';
-  document.querySelectorAll('.gpip').forEach(b=> b.onclick = ()=>{ growthStage[key] = +b.dataset.stage; renderBuild(); drawTree(); });
-  if ($('gMake')) $('gMake').onclick = ()=>{
-    const el=selRecipe.sequence[selRecipe.sequence.length-1];   // advance = element that reaches this node
-    const n=Math.max(2,Math.min(12,+$('gNewStages').value||4));
-    for (let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq({sequence:selRecipe.sequence,growth:{element:el,stages:n}},k));
-      if (occ && occ!==selRecipe){ alert(`Stage ${k} would collide with "${occ.name}". Lower the stage count.`); return; } }
-    pushHistory(); selRecipe.growth={element:el,stages:n}; commit();
-  };
-  if ($('gApply')) $('gApply').onclick = ()=>{
-    const el=selRecipe.growth.element, n=Math.max(2,Math.min(12,+$('gStages').value||2));
-    for (let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq({sequence:selRecipe.sequence,growth:{element:el,stages:n}},k));
-      if (occ && occ!==selRecipe){ alert(`Stage ${k} would collide with "${occ.name}". Lower the stage count.`); return; } }
-    pushHistory(); selRecipe.growth={element:el,stages:n}; growthStage[key]=Math.min(growthStage[key]||1,n); commit();
-  };
-  if ($('gRemove')) $('gRemove').onclick = ()=>{ pushHistory(); delete selRecipe.growth; commit(); };
-  if ($('gPromote')) $('gPromote').onclick = ()=>{
-    const k = Math.min(selRecipe.growth.stages, growthStage[key] || 1);   // promote the SELECTED stage
-    if (k < 2) return;
-    const el=selRecipe.growth.element, total=selRecipe.growth.stages;
-    const promotedSeq = growthStageSeq(selRecipe, k);
-    const existing = recipeBySeq(promotedSeq);
-    let nr = existing;
-    if (!existing){
-      // Auto-name (no browser dialog, which the claude.ai sandbox blocks). Dedupe if taken.
-      let base = `${selRecipe.name} ${k}`, name = base, n = 2;
-      while (recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())) name = `${base} (${n++})`;
-      const rem = total - k + 1;                        // stages k..total become the new series
-      nr = { name, sequence:promotedSeq, description:'', altOrigins:[] };
-      if (rem >= 2) nr.growth = { element:el, stages:rem };
-    }
-    pushHistory();
-    if (!existing) recipes.push(nr);
-    if (k-1 >= 2) selRecipe.growth.stages = k-1; else delete selRecipe.growth;  // original keeps 1..k-1
-    palettes[pidx].recipes = recipes;
-    sel = { seq:[...promotedSeq], recipe:nr };           // select the promoted node (rename via the name field)
-    growthStage[promotedSeq.join('\x1f')] = 1;
-    commit();
-  };
-
-  // ── modifier editor handlers ──
-  if (selRecipe && hasModifiers(selRecipe)) {
-    const mkey = sel.seq.join('\x1f');
-    const reselect = ()=>{ renderBuild(); drawTree(); };          // live edit, not yet committed visually
-    // preview an option (no commit)
-    document.querySelectorAll('.mod-opt-pick').forEach(b=> b.onclick=()=>{
-      const ai=+b.dataset.ax, oi=+b.dataset.opt; const v=modSelFor(selRecipe,mkey).slice(); v[ai]=oi; modSel[mkey]=v; reselect();
-    });
-    // axis rename (commit on change)
-    document.querySelectorAll('.mod-axname').forEach(inp=> inp.onchange=()=>{
-      pushHistory(); selRecipe.modifiers[+inp.dataset.ax].name = inp.value.trim()||'Axis'; commit();
-    });
-    // option label rename
-    document.querySelectorAll('.mod-optlabel').forEach(inp=> inp.onchange=()=>{
-      pushHistory(); selRecipe.modifiers[+inp.dataset.ax].options[+inp.dataset.opt].label = inp.value.trim()||'Option'; commit();
-    });
-    // toggle element picker
-    document.querySelectorAll('.mod-optels').forEach(b=> b.onclick=()=>{
-      const box=document.getElementById(`elpick-${b.dataset.ax}-${b.dataset.opt}`);
-      if(box) box.style.display = box.style.display==='none'?'flex':'none';
-    });
-    // element checkbox -> set option.elements
-    document.querySelectorAll('.mod-elchk input').forEach(chk=> chk.onchange=()=>{
-      const ai=+chk.dataset.ax, oi=+chk.dataset.opt;
-      const opt=selRecipe.modifiers[ai].options[oi];
-      const set=new Set(opt.elements||[]);
-      if(chk.checked) set.add(chk.value); else set.delete(chk.value);
-      // collision guard: would any resulting combo clash with another recipe?
-      const trial=JSON.parse(JSON.stringify(selRecipe)); trial.modifiers[ai].options[oi].elements=[...set];
-      const clash=modCombos(trial).map(c=>c.seq).find(s=>{ const o=recipeOccupying(s); return o && o!==selRecipe; });
-      if(clash){ const o=recipeOccupying(clash); alert(`That would make a combination collide with "${o.name}".`); chk.checked=!chk.checked; return; }
-      pushHistory(); opt.elements=[...set]; commit();
-    });
-    // add option
-    document.querySelectorAll('.mod-addopt').forEach(b=> b.onclick=()=>{
-      pushHistory(); selRecipe.modifiers[+b.dataset.ax].options.push({label:'Option', elements:[]}); commit();
-    });
-    // remove option
-    document.querySelectorAll('.mod-optrm').forEach(b=> b.onclick=()=>{
-      const ax=selRecipe.modifiers[+b.dataset.ax]; if(ax.options.length<=1){alert('An axis needs at least one option. Remove the axis instead.');return;}
-      pushHistory(); ax.options.splice(+b.dataset.opt,1); delete modSel[mkey]; commit();
-    });
-    // remove axis
-    document.querySelectorAll('.mod-axrm').forEach(b=> b.onclick=()=>{
-      pushHistory(); selRecipe.modifiers.splice(+b.dataset.ax,1);
-      if(!selRecipe.modifiers.length) delete selRecipe.modifiers;
-      delete modSel[mkey]; commit();
-    });
-    // add axis
-    document.querySelectorAll('.mod-addaxis').forEach(b=> b.onclick=()=>{
-      pushHistory(); (selRecipe.modifiers=selRecipe.modifiers||[]).push({name:'Axis', options:[{label:'None',elements:[]}]});
-      delete modSel[mkey]; commit();
-    });
-    // promote current combination (behavior 1)
-    const pb=document.querySelector('.mod-promote');
-    if (pb) pb.onclick=()=>{
-      const selv=modSelFor(selRecipe,mkey);
-      const combo=modCombos(selRecipe).find(c=>c.opts.join(',')===selv.join(','));
-      if(!combo || !combo.seq.length) return;
-      if(combo.seq.join('\x1f')===selRecipe.sequence.join('\x1f')) return;  // base, nothing to promote
-      const existing=recipeBySeq(combo.seq);
-      let nr=existing;
-      if(!existing){
-        let base=comboName(selRecipe,combo.labels), name=base, n=2;
-        while(recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
-        nr={name, sequence:combo.seq, description:'', altOrigins:[]};
-      }
-      pushHistory();
-      if(!existing) recipes.push(nr);
-      palettes[pidx].recipes=recipes;
-      sel={seq:[...combo.seq], recipe:nr};
-      commit();
-    };
-  }
-}
+function renderBuild() { try { renderEditor(); } catch(e) {} }   // Build tab retired — the floating editor window is the sole editor surface.
 // ── Contextual "Edit" inspector (parallel to the Build tab) ──
 const EL_INI = {};                       // short label per element: unique-enough initials
 function elInitials(){ const seen={}; elements.forEach(e=>{ let s=e.name.slice(0,1).toUpperCase(); if(seen[s]) s=e.name.slice(0,2); seen[e.name.slice(0,1).toUpperCase()]=1; EL_INI[e.id]=s; }); }
@@ -2600,16 +2071,16 @@ function wireEditor(S){
       if(r && v!==r.name){ pushHistory(); r.name=v; commit(); } }
   }
   const grm=document.getElementById('eGapRm');
-  if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ alert(err); return; } sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); };
+  if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ toast(err); return; } sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); };
 
   document.querySelectorAll('#eReach .eltok').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
-    const err=changeReach(seq, p.dataset.reach); if(err){ alert(err); return; }
+    const err=changeReach(seq, p.dataset.reach); if(err){ toast(err); return; }
     const ns=seq.slice(); ns[ns.length-1]=p.dataset.reach; sel={seq:ns, recipe:recipeBySeq(ns)}; commit(); });
 
   // chain stages
   const cst=document.getElementById('eCst');
   if(cst){ const setStg=n=>{ n=Math.max(2,Math.min(12,n));
-      for(let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq(r,k)); if(occ&&occ!==r){ alert(`Stage ${k} collides with “${occ.name}”.`); return; } }
+      for(let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq(r,k)); if(occ&&occ!==r){ toast(`Stage ${k} collides with “${occ.name}”.`); return; } }
       pushHistory(); r.growth.stages=n; commit(); };
     document.getElementById('eCdec').onclick=()=>setStg(r.growth.stages-1);
     document.getElementById('eCinc').onclick=()=>setStg(r.growth.stages+1); }
@@ -2617,7 +2088,7 @@ function wireEditor(S){
   document.querySelectorAll('#eStagePips .eltok').forEach(p=>p.onclick=()=>{ growthStage[key]=+p.dataset.stage; renderEditor(); });
   const eToBasic=document.getElementById('eToBasic'); if(eToBasic) eToBasic.onclick=()=>{ pushHistory(); delete r.growth; commit(); };
   const ePromote=document.getElementById('ePromoteStage');
-  if(ePromote) ePromote.onclick=()=>{ const k=Math.min(r.growth.stages, growthStage[key]||1); if(k<2){ alert('Pick stage 2 or higher to promote.'); return; }
+  if(ePromote) ePromote.onclick=()=>{ const k=Math.min(r.growth.stages, growthStage[key]||1); if(k<2){ toast('Pick stage 2 or higher to promote.'); return; }
     const el=r.growth.element, total=r.growth.stages, pseq=growthStageSeq(r,k), existing=recipeBySeq(pseq);
     let nr=existing; if(!existing){ let base=`${r.name} ${k}`, name=base, n=2; while(recipes.find(x=>x.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
       const rem=total-k+1; nr={name,sequence:pseq,description:'',altOrigins:[]}; if(rem>=2) nr.growth={element:el,stages:rem}; }
@@ -2626,7 +2097,7 @@ function wireEditor(S){
   const eToChain=document.getElementById('eToChain');
   if(eToChain) eToChain.onclick=()=>{ const el=seq[seq.length-1]; let n=0;
     for(let cand=4;cand>=2;cand--){ let ok=true; for(let k=2;k<=cand;k++){ const occ=recipeOccupying(growthStageSeq({sequence:r.sequence,growth:{element:el,stages:cand}},k)); if(occ&&occ!==r){ok=false;break;} } if(ok){n=cand;break;} }
-    if(!n){ alert('Can’t convert: the next step already exists as another recipe.'); return; }
+    if(!n){ toast('Can’t convert: the next step already exists as another recipe.'); return; }
     pushHistory(); r.growth={element:el,stages:n}; commit(); };
   const eDesc=document.getElementById('eDesc'); if(eDesc) eDesc.onchange=()=>{ pushHistory(); r.description=eDesc.value.trim(); commit(); };
 
@@ -2641,14 +2112,14 @@ function wireEditor(S){
         <div class="eltoks">${elements.map(e=>eTok(e,{sel:v.element===e.id,data:`data-vel="${vi}"`})).join('')}</div></div>`; }).join('');
     vars.querySelectorAll('[data-vn]').forEach(i=>i.onchange=()=>{ pushHistory(); r.family[+i.dataset.vn].name=i.value.trim()||'Variant'; commit(); });
     const famSet=(vi,patch)=>{ const trial={sequence:r.sequence, family:r.family.map((x,j)=>j===vi?{...x,...patch}:x)};
-      const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r); if(clash){ alert(`Collides with “${clash.name}”.`); return false; } return true; };
+      const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r); if(clash){ toast(`Collides with “${clash.name}”.`); return false; } return true; };
     vars.querySelectorAll('[data-vinc]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.vinc; if(famSet(i,{stages:r.family[i].stages+1})){ pushHistory(); r.family[i].stages++; commit(); } });
     vars.querySelectorAll('[data-vdec]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.vdec; if(r.family[i].stages<=1)return; pushHistory(); r.family[i].stages--; commit(); });
-    vars.querySelectorAll('[data-vrm]').forEach(b=>b.onclick=()=>{ if(r.family.length<=1){ alert('A family needs at least one variant.'); return; } pushHistory(); r.family.splice(+b.dataset.vrm,1); commit(); });
+    vars.querySelectorAll('[data-vrm]').forEach(b=>b.onclick=()=>{ if(r.family.length<=1){ toast('A family needs at least one variant.'); return; } pushHistory(); r.family.splice(+b.dataset.vrm,1); commit(); });
     vars.querySelectorAll('[data-vel]').forEach(p=>p.onclick=()=>{ const i=+p.dataset.vel, eid=p.dataset.el; if(r.family[i].element===eid)return;
-      if(r.family.some((x,j)=>j!==i&&x.element===eid)){ alert('Another variant already grows by that element.'); return; }
+      if(r.family.some((x,j)=>j!==i&&x.element===eid)){ toast('Another variant already grows by that element.'); return; }
       if(famSet(i,{element:eid})){ pushHistory(); r.family[i].element=eid; commit(); } });
-    const av=document.getElementById('eAddVar'); if(av&&!av.disabled) av.onclick=()=>{ const used=r.family.map(v=>v.element); const free=elements.find(e=>!used.includes(e.id)); if(!free){alert('No elements left');return;} pushHistory(); r.family.push({name:'Variant',element:free.id,stages:4}); commit(); };
+    const av=document.getElementById('eAddVar'); if(av&&!av.disabled) av.onclick=()=>{ const used=r.family.map(v=>v.element); const free=elements.find(e=>!used.includes(e.id)); if(!free){toast('No elements left');return;} pushHistory(); r.family.push({name:'Variant',element:free.id,stages:4}); commit(); };
   }
 
   // modifier axes (foldable, multi-element options)
@@ -2666,14 +2137,14 @@ function wireEditor(S){
       </div>`; }).join('');
     axes.querySelectorAll('[data-fold]').forEach(b=>b.onclick=()=>{ r._fold[+b.dataset.fold]=!r._fold[+b.dataset.fold]; wireEditor(S); });
     axes.querySelectorAll('[data-axn]').forEach(i=>i.onchange=()=>{ const a=+i.dataset.axn, v=i.value.trim();
-      if(!v){ alert('Axis name cannot be empty'); i.value=r.modifiers[a].name; return; }
-      if(r.modifiers.some((x,j)=>j!==a&&x.name.toLowerCase()===v.toLowerCase())){ alert('Another axis has that name'); i.value=r.modifiers[a].name; return; }
+      if(!v){ toast('Axis name cannot be empty'); i.value=r.modifiers[a].name; return; }
+      if(r.modifiers.some((x,j)=>j!==a&&x.name.toLowerCase()===v.toLowerCase())){ toast('Another axis has that name'); i.value=r.modifiers[a].name; return; }
       pushHistory(); r.modifiers[a].name=v; commit(); });
     axes.querySelectorAll('[data-opl]').forEach(i=>i.onchange=()=>{ const[a,o]=i.dataset.opl.split('-').map(Number); pushHistory(); r.modifiers[a].options[o].label=i.value.trim()||'Option'; commit(); });
     axes.querySelectorAll('[data-ope]').forEach(p=>p.onclick=()=>{ const[a,o]=p.dataset.ope.split('-').map(Number); const opt=r.modifiers[a].options[o]; const set=opt.elements||[]; const eid=p.dataset.el;
       const idx=set.indexOf(eid); pushHistory(); if(idx>=0) set.splice(idx,1); else set.push(eid); opt.elements=set; commit(); });
-    axes.querySelectorAll('[data-rmop]').forEach(b=>b.onclick=()=>{ const[a,o]=b.dataset.rmop.split('-').map(Number); if(r.modifiers[a].options.length<=1){alert('An axis needs ≥1 option');return;} pushHistory(); r.modifiers[a].options.splice(o,1); commit(); });
-    axes.querySelectorAll('[data-rmax]').forEach(b=>b.onclick=()=>{ if(r.modifiers.length<=1){alert('A modifier needs ≥1 axis');return;} const a=+b.dataset.rmax; pushHistory(); r.modifiers.splice(a,1); r._fold.splice(a,1); commit(); });
+    axes.querySelectorAll('[data-rmop]').forEach(b=>b.onclick=()=>{ const[a,o]=b.dataset.rmop.split('-').map(Number); if(r.modifiers[a].options.length<=1){toast('An axis needs ≥1 option');return;} pushHistory(); r.modifiers[a].options.splice(o,1); commit(); });
+    axes.querySelectorAll('[data-rmax]').forEach(b=>b.onclick=()=>{ if(r.modifiers.length<=1){toast('A modifier needs ≥1 axis');return;} const a=+b.dataset.rmax; pushHistory(); r.modifiers.splice(a,1); r._fold.splice(a,1); commit(); });
     axes.querySelectorAll('[data-addop]').forEach(b=>b.onclick=()=>{ pushHistory(); r.modifiers[+b.dataset.addop].options.push({label:'New option',elements:[]}); commit(); });
     const aa=document.getElementById('eAddAxis'); if(aa) aa.onclick=()=>{ pushHistory(); r.modifiers.push({name:'New axis',options:[{label:'None',elements:[]},{label:'Option',elements:[]}]}); r._fold.push(false); commit(); };
     // promote combination
@@ -2681,8 +2152,8 @@ function wireEditor(S){
     combo.innerHTML=r.modifiers.map((ax,ai)=>`<div class="erow" style="margin-bottom:4px"><span class="ehint" style="margin:0;min-width:50px">${escHtml(ax.name)}</span><span class="seg" style="flex:1">${ax.options.map((o,oi)=>`<button class="${selv[ai]===oi?'on':''}" data-msel="${ai}-${oi}">${escHtml(o.label)}</button>`).join('')}</span></div>`).join('')
       +`<button class="btn btn-ghost btn-xs" id="ePromote" style="margin-top:6px">⑂ Promote this combination</button>`;
     combo.querySelectorAll('[data-msel]').forEach(b=>b.onclick=()=>{ const[a,o]=b.dataset.msel.split('-').map(Number); const v=modSelFor(r,mkey).slice(); v[a]=o; modSel[mkey]=v; wireEditor(S); });
-    const pb=document.getElementById('ePromote'); if(pb) pb.onclick=()=>{ const v=modSelFor(r,mkey); const c=modCombos(r).find(x=>x.opts.join(',')===v.join(',')); if(!c||!c.seq.length||c.seq.join('\x1f')===r.sequence.join('\x1f')){ alert('Pick a non-empty combination.'); return; }
-      if(recipeBySeq(c.seq)){ alert('That combination is already its own recipe.'); return; }
+    const pb=document.getElementById('ePromote'); if(pb) pb.onclick=()=>{ const v=modSelFor(r,mkey); const c=modCombos(r).find(x=>x.opts.join(',')===v.join(',')); if(!c||!c.seq.length||c.seq.join('\x1f')===r.sequence.join('\x1f')){ toast('Pick a non-empty combination.'); return; }
+      if(recipeBySeq(c.seq)){ toast('That combination is already its own recipe.'); return; }
       let base=comboName(r,c.labels), name=base, n=2; while(recipes.find(x=>x.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
       pushHistory(); const nr={name,sequence:[...c.seq],description:'',altOrigins:[]}; recipes.push(nr); palettes[pidx].recipes=recipes; sel={seq:[...c.seq],recipe:nr}; commit(); };
   }
@@ -2714,14 +2185,15 @@ function renderList() {
   shown.forEach(r=>{
     const row = document.createElement('div');
     row.className = 'recipe-row' + (sel && recipeBySeq(sel.seq)===r ? ' sel' : '');
-    row.onclick = ()=>{ sel={seq:[...r.sequence],recipe:r}; stagedEl=null; renderBuild(); renderList(); drawTree(); };
+    row.onclick = ()=>{ sel={seq:[...r.sequence],recipe:r}; renderBuild(); renderList(); drawTree(); };
     const seqHtml = r.sequence.map(id=>{const e=elements.find(x=>x.id===id);
       return e?`<span style="background:${e.color}2a;color:${e.color}">${e.emoji} ${e.name}</span>`:'';}).join('');
     const del = document.createElement('button'); del.className='rdel'; del.innerHTML='🗑'; del.title='Delete';
-    del.onclick = e=>{ e.stopPropagation(); if(!confirm(`Delete "${r.name}"?`))return;
+    del.onclick = e=>{ e.stopPropagation(); uiConfirm(`Delete “${r.name}”? Any steps built on it become unnamed gaps.`, ()=>{
       pushHistory();
       recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes;
-      if(sel&&recipeBySeq(sel.seq)===r) sel={seq:[],recipe:null}; commit(); };
+      if(sel&&recipeBySeq(sel.seq)===r) sel={seq:[],recipe:null}; commit();
+    }, {title:'Delete recipe?', okLabel:'Delete', danger:true}); };
     row.innerHTML = `<div class="recipe-info"><div class="rname">${escHtml(r.name)}${isGrowth(r)?` <span class="g-badge2">🌱${r.growth.stages}</span>`:''}</div><div class="rseq">${seqHtml}</div>${r.description?`<div class="rdesc">${escHtml(r.description)}</div>`:''}</div>`;
     row.appendChild(del); el.appendChild(row);
   });
@@ -2783,13 +2255,17 @@ function renderStats() {
   const usage={}; elements.forEach(e=>usage[e.id]=0);
   allSeqs.forEach(seq=>seq.forEach(id=>{if(id in usage)usage[id]++;}));
   const maxU=Math.max(1,...Object.values(usage));
-  const h1=document.createElement('div'); h1.className='section-head'; h1.textContent='Element usage';
-  h1.title='How many times each element appears across all recipes (chains counted per stage).'; el.appendChild(h1);
-  elements.forEach(e=>{ const row=document.createElement('div'); row.className='bar-row';
-    row.title=`${e.name}: appears in ${usage[e.id]} recipe step${usage[e.id]===1?'':'s'} across the palette.`;
+  const h1=document.createElement('div'); h1.className='section-head'; h1.textContent='Element usage (steps)';
+  h1.title='How many recipe STEPS use each element across all expanded sequences (chains counted per stage, families per variant-stage, modifiers per combination). This counts step occurrences, not recipes — one multi-step recipe contributes several.'; el.appendChild(h1);
+  const statHover=(row,pred)=>{ row.style.cursor='default'; row.onmouseenter=()=>{ highlightFn=pred; drawTree(); }; row.onmouseleave=()=>{ if(highlightFn){ highlightFn=null; drawTree(); } }; };
+  const isPlainBasic=r=>r && !isGrowth(r)&&!isModifier(r)&&!isFamily(r);
+  elements.forEach(e=>{ const row=document.createElement('div'); row.className='bar-row'; row.style.cursor='default';
+    row.title=`${e.name}: appears in ${usage[e.id]} recipe step${usage[e.id]===1?'':'s'} across the palette (not ${usage[e.id]} recipes).`;
     row.innerHTML=`<div class="bar-label" title="${e.name}">${e.emoji} ${e.name}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${(usage[e.id]/maxU*100).toFixed(1)}%;background:${e.color}"></div></div>
-      <div class="bar-num">${usage[e.id]}</div>`; el.appendChild(row); });
+      <div class="bar-num">${usage[e.id]}</div>`;
+    statHover(row,(n)=>nodeHasEl(n,e.id));
+    el.appendChild(row); });
 
   const maxLen = allSeqs.reduce((m,s)=>Math.max(m,s.length),0);
   const depths = new Array(maxLen).fill(0);
@@ -2800,7 +2276,9 @@ function renderStats() {
   depths.forEach((count,i)=>{ const row=document.createElement('div'); row.className='bar-row';
     const l=`${i+1} element${i?'s':''}`;
     row.title=`${count} recipe${count===1?'':'s'} made of exactly ${i+1} element${i?'s':''}.`;
-    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/maxD*100).toFixed(1)}%;background:var(--accent)"></div></div><div class="bar-num">${count}</div>`; el.appendChild(row); });
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(count/maxD*100).toFixed(1)}%;background:var(--accent)"></div></div><div class="bar-num">${count}</div>`;
+    const L=i+1; statHover(row,(n)=> n.recipe? expandedSequences(n.recipe).some(s=>s.length===L) : (n.sequence||[]).length===L);
+    el.appendChild(row); });
 
   // ── Node types (by node, not expanded) ──
   const nChain = recipes.filter(isGrowth).length;
@@ -2817,8 +2295,10 @@ function renderStats() {
     ['⊞ Modifier',nMod,'var(--accent)','A node with option axes (e.g. roof, door); each combination can become a recipe.'],
     ['⟂ Multi-origin',nMulti,'var(--warn)','Recipes that can be made more than one way (have alternate origins).']];
   const maxT=Math.max(1,...types.map(t=>t[1]));
-  types.forEach(([l,c,col,tip])=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
-    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxT*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
+  const typePreds=[ n=>isPlainBasic(n.recipe), n=>n.recipe&&isGrowth(n.recipe), n=>n.recipe&&isFamily(n.recipe), n=>n.recipe&&isModifier(n.recipe), n=>n.recipe&&(n.recipe.altOrigins||[]).length ];
+  types.forEach(([l,c,col,tip],ti)=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxT*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`;
+    statHover(row,typePreds[ti]); el.appendChild(row); });
 
   // ── Tree links: the implicit parent→child link every node has (built from sequences) ──
   const _root = buildTrie();
@@ -2831,8 +2311,10 @@ function renderStats() {
     ['Parent links',treeLinks,'var(--accent)','Total parent→child links in the tree — one per node, so roughly the node count.'],
     ['Branch points',branchNodes,'var(--accent2)','Nodes that split into more than one child.']];
   const maxL=Math.max(1,...links.map(c=>c[1]));
-  links.forEach(([l,c,col,tip])=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
-    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxL*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
+  const linkPreds=[ ()=>true, n=>Object.keys(n.children||{}).length>1 ];
+  links.forEach(([l,c,col,tip],li)=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxL*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`;
+    statHover(row,linkPreds[li]); el.appendChild(row); });
 
   // ── Alternate origins: the extra "Connect" links making a recipe reachable a 2nd way ──
   // Direct = same-depth alternative (origin length matches the canonical). Indirect = different length.
@@ -2848,8 +2330,14 @@ function renderStats() {
     ['Indirect',connIndirect,'var(--warn)','Alternate origin of a different length — a shortcut or longer path that spans depths.'],
     ['Multi-origin nodes',multiNodes,'var(--muted)','How many distinct recipes have at least one alternate origin.']];
   const maxC=Math.max(1,...conns.map(c=>c[1]));
-  conns.forEach(([l,c,col,tip])=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
-    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxC*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`; el.appendChild(row); });
+  const connPreds=[
+    n=>n.recipe&&(n.recipe.altOrigins||[]).length,
+    n=>n.recipe&&(n.recipe.altOrigins||[]).some(o=>o.length===n.recipe.sequence.length),
+    n=>n.recipe&&(n.recipe.altOrigins||[]).some(o=>o.length!==n.recipe.sequence.length),
+    n=>n.recipe&&(n.recipe.altOrigins||[]).length ];
+  conns.forEach(([l,c,col,tip],ci)=>{ const row=document.createElement('div'); row.className='bar-row'; row.title=tip;
+    row.innerHTML=`<div class="bar-label">${l}</div><div class="bar-track"><div class="bar-fill" style="width:${(c/maxC*100).toFixed(1)}%;background:${col}"></div></div><div class="bar-num">${c}</div>`;
+    statHover(row,connPreds[ci]); el.appendChild(row); });
 
   const total = expandedCount();
   const gaps=getGaps(buildTrie());
@@ -2995,6 +2483,7 @@ function exportAllPalettes(){
   a.href=URL.createObjectURL(new Blob([JSON.stringify(palettes,null,2)],{type:'application/json'}));
   const stamp=new Date().toISOString().slice(0,10);
   a.download=`palette-editor-backup-${stamp}.json`; a.click();
+  toast(`Exported ${palettes.length} palette(s).`,'ok');
 }
 document.getElementById('restoreInput').addEventListener('change', e=>{
   const file=e.target.files[0]; if(!file)return;
@@ -3003,9 +2492,10 @@ document.getElementById('restoreInput').addEventListener('change', e=>{
     try{
       const data=JSON.parse(reader.result);
       if(!Array.isArray(data)||!data.length||!data[0].elements) throw new Error('Not a palette backup file');
-      if(!confirm(`Restore ${data.length} palette(s)? This replaces your current palettes.`))return;
-      palettes=normalise(data); pidx=0; savePalettes(); syncPalSelect(); loadPalette(0);
-    }catch(err){ alert('Could not restore: '+err.message); }
+      uiConfirm(`Restore ${data.length} palette(s)? This replaces your current palettes.`, ()=>{
+        palettes=normalise(data); pidx=0; savePalettes(); syncPalSelect(); loadPalette(0); toast(`Restored ${data.length} palette(s).`,'ok');
+      }, {title:'Restore from backup?', okLabel:'Restore', danger:true});
+    }catch(err){ toast('Could not restore: '+err.message,'err'); }
   };
   reader.readAsText(file);
   e.target.value='';
@@ -3058,7 +2548,7 @@ document.getElementById('btnEdit').onclick=()=>openModal('edit');
 
 document.getElementById('btnModalSave').onclick=()=>{
   const palName=document.getElementById('mPalName').value.trim();
-  if(!palName){alert('Please name the palette.');return;}
+  if(!palName){toast('Please name the palette.');return;}
   const rows=document.querySelectorAll('#mElRows .el-row');
   const elems=[]; let err=null;
   rows.forEach(row=>{
@@ -3070,32 +2560,30 @@ document.getElementById('btnModalSave').onclick=()=>{
     if(elems.find(e=>e.id===id)){err=`Duplicate id "${id}".`;return;}
     elems.push({id,name,color,emoji});
   });
-  if(err){alert(err);return;}
-  if(!elems.length){alert('Add at least one element.');return;}
+  if(err){toast(err,'err');return;}
+  if(!elems.length){toast('Add at least one element.','err');return;}
   const palDesc=document.getElementById('mPalDesc').value.trim();
 
   if(modalMode==='new'){
     pushHistory();
     palettes.push({name:palName,description:palDesc,elements:elems,recipes:[]});
     pidx=palettes.length-1; savePalettes(); syncPalSelect(); loadPalette(pidx);
+    overlay.classList.remove('on'); toast(`Created “${palName}”.`,'ok');
   } else {
-    // Detect removed elements that are in use
     const keptIds=new Set(elems.map(e=>e.id));
     const removed=elements.filter(e=>!keptIds.has(e.id));
     const affected=recipes.filter(r=>r.sequence.some(id=>!keptIds.has(id)));
+    const apply=(dropAffected)=>{
+      pushHistory();
+      if(dropAffected) recipes=recipes.filter(r=>r.sequence.every(id=>keptIds.has(id)));
+      palettes[pidx].name=palName; palettes[pidx].description=palDesc; palettes[pidx].elements=elems; palettes[pidx].recipes=recipes;
+      savePalettes(); syncPalSelect(); loadPalette(pidx); overlay.classList.remove('on'); toast('Palette saved.','ok');
+    };
     if(affected.length){
       const names=removed.map(e=>e.name).join(', ');
-      if(!confirm(`Removing ${names} will delete ${affected.length} recipe(s) that use it. Continue?`))return;
-      pushHistory();
-      recipes=recipes.filter(r=>r.sequence.every(id=>keptIds.has(id)));
-    } else { pushHistory(); }
-    palettes[pidx].name=palName;
-    palettes[pidx].description=palDesc;
-    palettes[pidx].elements=elems;
-    palettes[pidx].recipes=recipes;
-    savePalettes(); syncPalSelect(); loadPalette(pidx);
+      uiConfirm(`Removing ${names} will delete ${affected.length} recipe(s) that use it. Continue?`, ()=>apply(true), {title:'Remove elements in use?', okLabel:'Delete recipes', danger:true});
+    } else apply(false);
   }
-  overlay.classList.remove('on');
 };
 
 // ================================================================
@@ -3110,7 +2598,7 @@ function restoreSnapshot(s){
   pidx = Math.min(d.pidx || 0, palettes.length - 1);
   elements = palettes[pidx].elements;
   recipes  = palettes[pidx].recipes;
-  sel = { seq:[], recipe:null }; stagedEl = null;
+  sel = { seq:[], recipe:null };
 }
 function undo(){ if(!undoStack.length)return; redoStack.push(snapshot()); restoreSnapshot(undoStack.pop());
   savePalettes({force:true}); syncPalSelect(); rebuildAll(); updateUndoButtons(); }
@@ -3130,6 +2618,15 @@ document.addEventListener('keydown', e=>{
     e.preventDefault(); e.shiftKey ? redo() : undo();
   } else if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y'){
     if (typing) return; e.preventDefault(); redo();
+  } else if ((e.key==='Delete'||e.key==='Backspace') && !typing && sel && sel.seq && sel.seq.length){
+    const r = (sel.recipe && isFamily(sel.recipe)) ? sel.recipe : recipeBySeq(sel.seq);
+    e.preventDefault();
+    if (r){ const name=r.name; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes;
+      sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function') closeNodeEditor(); commit(); toast(`Deleted “${name}” — Ctrl+Z to undo`,'ok'); }
+    else { const err=removeStepAt([...sel.seq]); if(err){ toast(err,'err'); return; }
+      sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function') closeNodeEditor(); commit(); }
+  } else if (e.key.toLowerCase()==='f' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey){
+    e.preventDefault(); fitToView();
   }
 });
 
