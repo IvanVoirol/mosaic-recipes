@@ -360,6 +360,7 @@ canvas.dragging{cursor:grabbing;}
 #empty-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;
   background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--muted);font-size:.86rem;backdrop-filter:blur(4px);}
 #empty-hint b{color:var(--text);}
+#minimap{position:absolute;right:12px;top:48px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:#0e0e14cc;backdrop-filter:blur(4px);cursor:crosshair;box-shadow:0 6px 20px #0007;}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -501,6 +502,7 @@ canvas.dragging{cursor:grabbing;}
       <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select · ✎ to edit</div>
       <div id="el-legend"></div>
       <div id="empty-hint" style="display:none">Hover <b>▶ Start</b> and click the <b>＋</b> to add your first recipe.</div>
+      <canvas id="minimap" width="158" height="106" title="Overview — click or drag to navigate"></canvas>
 
       <!-- floating node editor window (opened by a node's ✎) -->
       <div id="nodeEditWin" style="display:none">
@@ -565,7 +567,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.16';
+const APP_VERSION = 'v2.20';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1167,9 +1169,9 @@ function drawTree() {
   drawAltEdges();
   layoutNodes.forEach(n => { if(highlightFn) ctx.globalAlpha = highlightFn(n) ? 1 : 0.12; drawNode(n); });
   ctx.globalAlpha = 1;
-  try { computeSpots(); } catch(e) {}
+  try { computeSpots(); if(nodeDragging) drawReparentHint(); } catch(e) {}
   ctx.restore();
-  try { if(IS_TOUCH) showTouchOverlay(); else refreshDesktopOverlay(); buildLegend();
+  try { if(IS_TOUCH) showTouchOverlay(); else refreshDesktopOverlay(); buildLegend(); drawMinimap();
     const eh=document.getElementById('empty-hint'); if(eh) eh.style.display = recipes.length ? 'none' : 'block'; } catch(e) {}
 }
 let highlightFn = null;
@@ -1516,6 +1518,25 @@ function roundRect(ctx,x,y,w,h,r){ ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(
 // ================================================================
 const tip = document.getElementById('tip');
 let dragging=false, dStart={x:0,y:0}, pStart={x:0,y:0};
+let dragMaybe=false, nodeDragging=false, dragNode=null, reparentTarget=null, reparentValid=false, reparentCursor={x:0,y:0};
+// Move a node (and its whole subtree) to depart from a new parent, keeping its reaching element.
+function reparentNode(nodeSeq, newParentSeq){
+  if(!nodeSeq.length) return 'Cannot move the Start node.';
+  const el=nodeSeq[nodeSeq.length-1], newSeq=newParentSeq.concat([el]);
+  const ns=nodeSeq.join('\x1f'), np=newParentSeq.join('\x1f');
+  if(newSeq.join('\x1f')===ns) return null;                                   // already there
+  if(np===ns || np.startsWith(ns+'\x1f')) return 'Can’t move a node into its own branch.';
+  const startsWith=arr=> arr.length>=nodeSeq.length && nodeSeq.every((e,i)=>arr[i]===e);
+  const moved=recipes.filter(x=>startsWith(x.sequence));
+  const untouched=new Set(recipes.filter(x=>!moved.includes(x)).map(x=>x.sequence.join('\x1f')));
+  const proposed=moved.map(x=>({x, s:newSeq.concat(x.sequence.slice(nodeSeq.length))}));
+  const seen=new Set();
+  for(const {s} of proposed){ const k=s.join('\x1f'); if(untouched.has(k)||seen.has(k)) return 'That spot is already taken.'; seen.add(k); }
+  pushHistory();
+  proposed.forEach(({x,s})=>{ x.sequence=s; });
+  recipes.forEach(x=>{ (x.altOrigins||[]).forEach((o,i)=>{ if(startsWith(o)) x.altOrigins[i]=newSeq.concat(o.slice(nodeSeq.length)); }); });
+  return null;
+}
 
 function s2w(sx,sy){ const ch=wrap.clientHeight; return { x:(sx-pan.x)/zoom, y:(sy-pan.y-ch/2)/zoom }; }
 function nodeAt(sx,sy){ const {x:wx,y:wy}=s2w(sx,sy);
@@ -1523,10 +1544,29 @@ function nodeAt(sx,sy){ const {x:wx,y:wy}=s2w(sx,sy);
 function badgeAt(sx,sy){ const {x:wx,y:wy}=s2w(sx,sy);
   return edgeBadges.find(b=>{ const dx=wx-b.wx,dy=wy-b.wy; return dx*dx+dy*dy <= (b.r+3)*(b.r+3); })||null; }
 
-cvs.addEventListener('mousedown', e=>{ dragging=true; dStart={x:e.clientX,y:e.clientY}; pStart={...pan}; cvs.classList.add('dragging'); });
+cvs.addEventListener('mousedown', e=>{
+  const rect=wrap.getBoundingClientRect(), lx=e.clientX-rect.left, ly=e.clientY-rect.top;
+  const n=nodeAt(lx,ly); const {x:wx,y:wy}=s2w(lx,ly);
+  const inRects = arr => arr && arr.some(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
+  const onControl = n && (inRects(n._pips)||inRects(n._modopts)||inRects(n._fampips));
+  dStart={x:e.clientX,y:e.clientY};
+  if (n && n.key!=='' && !onControl){ dragMaybe=true; dragNode=n; }   // potential drag-to-reparent (or a click)
+  else { dragging=true; pStart={...pan}; cvs.classList.add('dragging'); }
+});
 cvs.addEventListener('mousemove', e=>{
   if (dragging){ pan.x=pStart.x+(e.clientX-dStart.x); pan.y=pStart.y+(e.clientY-dStart.y); drawTree(); return; }
   const rect=wrap.getBoundingClientRect(); const lx=e.clientX-rect.left, ly=e.clientY-rect.top;
+  // start / continue a drag-to-reparent
+  if (dragMaybe && !nodeDragging && Math.abs(e.clientX-dStart.x)+Math.abs(e.clientY-dStart.y) > 4){ nodeDragging=true; tip.style.display='none'; }
+  if (nodeDragging){
+    reparentCursor = s2w(lx,ly);
+    const t = nodeAt(lx,ly);
+    const sseq = dragNode.sequence.join('\x1f');
+    reparentValid = !!t && t!==dragNode && !(t.sequence.join('\x1f')===sseq) && !(t.sequence.join('\x1f').startsWith(sseq+'\x1f'))
+                    && t.sequence.join('\x1f')!==dragNode.sequence.slice(0,-1).join('\x1f');   // not its current parent
+    reparentTarget = (t && t!==dragNode) ? t : null;
+    cvs.style.cursor='grabbing'; drawTree(); return;
+  }
   const node = nodeAt(lx,ly);
   const {x:wx,y:wy} = s2w(lx,ly);
   const inRects = arr => arr && arr.some(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
@@ -1587,8 +1627,14 @@ function showTip(e){ tip.style.display='block'; tip.style.left=(e.clientX+14)+'p
 })();
 
 cvs.addEventListener('mouseup', e=>{
+  if (nodeDragging){
+    const rect=wrap.getBoundingClientRect(); const t=nodeAt(e.clientX-rect.left, e.clientY-rect.top);
+    if (t && t!==dragNode){ const err=reparentNode([...dragNode.sequence], [...t.sequence]);
+      if (err) toast(err,'err'); else { sel={seq:t.sequence.concat([dragNode.sequence[dragNode.sequence.length-1]]), recipe:null}; sel.recipe=recipeBySeq(sel.seq); toast('Moved.','ok'); commit(); } }
+    nodeDragging=false; dragMaybe=false; dragNode=null; reparentTarget=null; cvs.classList.remove('dragging'); cvs.style.cursor='grab'; drawTree(); return;
+  }
   const moved = Math.abs(e.clientX-dStart.x)+Math.abs(e.clientY-dStart.y) > 3;
-  dragging=false; cvs.classList.remove('dragging');
+  dragging=false; dragMaybe=false; dragNode=null; cvs.classList.remove('dragging');
   if (moved) return;
   const rect=wrap.getBoundingClientRect();
   const node = nodeAt(e.clientX-rect.left, e.clientY-rect.top);
@@ -1607,7 +1653,7 @@ cvs.addEventListener('mouseup', e=>{
     sel = { seq:[], recipe:null }; renderBuild(); renderList(); drawTree();
   }
 });
-cvs.addEventListener('mouseleave', ()=>{ dragging=false; tip.style.display='none'; cvs.classList.remove('dragging'); });
+cvs.addEventListener('mouseleave', ()=>{ if(nodeDragging){ nodeDragging=false; dragMaybe=false; dragNode=null; reparentTarget=null; drawTree(); } dragging=false; dragMaybe=false; tip.style.display='none'; cvs.classList.remove('dragging'); });
 cvs.addEventListener('wheel', e=>{
   e.preventDefault();
   const rect = wrap.getBoundingClientRect();
@@ -1730,6 +1776,48 @@ function resetView(){ zoom=1; pan={x:40,y:0}; drawTree(); }
 //  CANVAS ＋ ADD-WIZARD + ✎ EDIT  (overlay over the canvas)
 // ================================================================
 function w2s(wx,wy){ const ch=wrap.clientHeight; return { x:wx*zoom+pan.x, y:wy*zoom+pan.y+ch/2 }; }
+// ── minimap: scaled overview + draggable viewport ──
+const mm=document.getElementById('minimap'); const mmx=mm?mm.getContext('2d'):null; let mmDragging=false;
+function cvsVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888'; }
+function drawMinimap(){
+  if(!mm||!mmx) return;
+  if(layoutNodes.length<=1){ mm.style.display='none'; return; } mm.style.display='block';
+  const W=mm.width,H=mm.height; mmx.clearRect(0,0,W,H);
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  layoutNodes.forEach(n=>{ const w=n.key===''?NW/2:NW,h=n.key===''?NH:nodeHeight(n);
+    minX=Math.min(minX,n.lx);minY=Math.min(minY,n.ly);maxX=Math.max(maxX,n.lx+w);maxY=Math.max(maxY,n.ly+h); });
+  const pad=8, bw=(maxX-minX)||1, bh=(maxY-minY)||1, sc=Math.min((W-2*pad)/bw,(H-2*pad)/bh);
+  const offX=(W-bw*sc)/2, offY=(H-bh*sc)/2; mm._map={minX,minY,sc,offX,offY};
+  const cA=cvsVar('--accent'), cA2=cvsVar('--accent2'), cT=cvsVar('--text');
+  layoutNodes.forEach(n=>{ const w=n.key===''?NW/2:NW,h=n.key===''?NH:nodeHeight(n);
+    const fam=familyColor(n.sequence);
+    mmx.fillStyle = n.key==='' ? cA2 : (fam ? fam : (n.recipe===null?'#5b5b66':cA));
+    mmx.fillRect(offX+(n.lx-minX)*sc, offY+(n.ly-minY)*sc, Math.max(1.5,w*sc), Math.max(1.5,h*sc)); });
+  const cw=wrap.clientWidth, ch=wrap.clientHeight, tl=s2w(0,0), br=s2w(cw,ch);
+  const vx=offX+(tl.x-minX)*sc, vy=offY+(tl.y-minY)*sc, vw=(br.x-tl.x)*sc, vh=(br.y-tl.y)*sc;
+  mmx.fillStyle='#ffffff14'; mmx.fillRect(vx,vy,vw,vh);
+  mmx.strokeStyle=cT; mmx.lineWidth=1.2; mmx.strokeRect(vx,vy,vw,vh);
+}
+function drawReparentHint(){
+  if(!dragNode) return;
+  const s=dragNode, sw=s.key===''?NW/2:NW, sh=s.key===''?NH:nodeHeight(s);
+  const sx=s.lx+sw/2, sy=s.ly+sh/2;
+  ctx.save();
+  ctx.strokeStyle=cvsVar('--accent')+'cc'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(reparentCursor.x,reparentCursor.y); ctx.stroke(); ctx.setLineDash([]);
+  if(reparentTarget){ const t=reparentTarget, tw=t.key===''?NW/2:NW, th=t.key===''?NH:nodeHeight(t);
+    ctx.strokeStyle=reparentValid?'#2ec27e':'#e01b24'; ctx.lineWidth=2.5; ctx.strokeRect(t.lx-3,t.ly-3,tw+6,th+6); }
+  ctx.globalAlpha=0.6; ctx.strokeStyle=cvsVar('--accent'); ctx.lineWidth=2; ctx.strokeRect(s.lx-2,s.ly-2,sw+4,sh+4);
+  ctx.restore();
+}
+function mmToWorld(ev){ const r=mm.getBoundingClientRect(), m=mm._map; if(!m) return null;
+  return { x:m.minX+(ev.clientX-r.left-m.offX)/m.sc, y:m.minY+(ev.clientY-r.top-m.offY)/m.sc }; }
+function mmCenterOn(ev){ const p=mmToWorld(ev); if(!p) return; pan.x=wrap.clientWidth/2 - p.x*zoom; pan.y = -p.y*zoom; drawTree(); }
+if(mm){
+  mm.addEventListener('mousedown', e=>{ e.stopPropagation(); e.preventDefault(); mmDragging=true; mmCenterOn(e); });
+  window.addEventListener('mousemove', e=>{ if(mmDragging) mmCenterOn(e); });
+  window.addEventListener('mouseup', ()=>{ mmDragging=false; });
+}
 let plusSpots=[];
 // ── unified feedback: non-blocking toast + styled confirm (replace browser alert/confirm) ──
 function toast(msg, kind){ const wrap=document.getElementById('toast-wrap'); if(!wrap){ return; }
@@ -1837,7 +1925,7 @@ let lastMouse=null, mouseInWrap=false;
 // drawTree (so the controls stay glued to their nodes while zooming/panning instead of drifting).
 function refreshDesktopOverlay(){
   if(IS_TOUCH || !mouseInWrap || !lastMouse) return;
-  if(dragging || wizOpen()){ hideOverlay(); return; }
+  if(dragging || nodeDragging || wizOpen()){ hideOverlay(); return; }
   const mx=lastMouse.x, my=lastMouse.y;
   const near=[]; plusSpots.forEach(sp=>{ const s=w2s(sp.wx,sp.wy); const d=Math.hypot(s.x-mx,s.y-my); if(d<55) near.push({sp,s,d}); });
   near.sort((a,b)=>a.d-b.d); const show=near.slice(0,8);
@@ -2086,7 +2174,19 @@ function wireEditor(S){
     document.getElementById('eCinc').onclick=()=>setStg(r.growth.stages+1); }
   const key=seq.join('\x1f');
   document.querySelectorAll('#eStagePips .eltok').forEach(p=>p.onclick=()=>{ growthStage[key]=+p.dataset.stage; renderEditor(); });
-  const eToBasic=document.getElementById('eToBasic'); if(eToBasic) eToBasic.onclick=()=>{ pushHistory(); delete r.growth; commit(); };
+  const eToBasic=document.getElementById('eToBasic'); if(eToBasic) eToBasic.onclick=()=>{
+    const base=r.sequence.slice(), el=r.growth.element, drop=r.growth.stages-1;
+    const thru=(arr)=> arr.length>base.length && base.every((e,i)=>arr[i]===e);
+    const hasRun=(arr)=>{ if(arr.length<base.length+drop) return false; for(let i=0;i<drop;i++) if(arr[base.length+i]!==el) return false; return true; };
+    const seqTargets=recipes.filter(x=>x!==r && thru(x.sequence) && hasRun(x.sequence));   // children that departed from the last stage
+    const untouched=new Set(recipes.filter(x=>!seqTargets.includes(x)).map(x=>x.sequence.join('\x1f')));
+    const proposed=seqTargets.map(x=>{ const s=x.sequence.slice(); s.splice(base.length,drop); return {x,s}; });
+    const seen=new Set();
+    for(const {s} of proposed){ const k=s.join('\x1f'); if(untouched.has(k)||seen.has(k)){ toast('Converting would collide with an existing recipe.'); return; } seen.add(k); }
+    pushHistory();
+    proposed.forEach(({x,s})=>{ x.sequence=s; });
+    recipes.forEach(x=>{ (x.altOrigins||[]).forEach(o=>{ if(thru(o)&&hasRun(o)) o.splice(base.length,drop); }); });
+    delete r.growth; commit(); };
   const ePromote=document.getElementById('ePromoteStage');
   if(ePromote) ePromote.onclick=()=>{ const k=Math.min(r.growth.stages, growthStage[key]||1); if(k<2){ toast('Pick stage 2 or higher to promote.'); return; }
     const el=r.growth.element, total=r.growth.stages, pseq=growthStageSeq(r,k), existing=recipeBySeq(pseq);
@@ -2095,10 +2195,20 @@ function wireEditor(S){
     pushHistory(); if(!existing) recipes.push(nr); if(k-1>=2) r.growth.stages=k-1; else delete r.growth;
     palettes[pidx].recipes=recipes; sel={seq:[...pseq],recipe:nr}; growthStage[pseq.join('\x1f')]=1; commit(); };
   const eToChain=document.getElementById('eToChain');
-  if(eToChain) eToChain.onclick=()=>{ const el=seq[seq.length-1]; let n=0;
-    for(let cand=4;cand>=2;cand--){ let ok=true; for(let k=2;k<=cand;k++){ const occ=recipeOccupying(growthStageSeq({sequence:r.sequence,growth:{element:el,stages:cand}},k)); if(occ&&occ!==r){ok=false;break;} } if(ok){n=cand;break;} }
+  if(eToChain) eToChain.onclick=()=>{ const el=seq[seq.length-1]; const base=r.sequence.slice();
+    let n=0;
+    for(let cand=4;cand>=2;cand--){ let ok=true; for(let k=2;k<=cand;k++){ const occ=recipeOccupying(growthStageSeq({sequence:base,growth:{element:el,stages:cand}},k)); if(occ&&occ!==r){ok=false;break;} } if(ok){n=cand;break;} }
     if(!n){ toast('Can’t convert: the next step already exists as another recipe.'); return; }
-    pushHistory(); r.growth={element:el,stages:n}; commit(); };
+    // Existing children depart from stage 1 — push them so they depart from the LAST stage:
+    // insert (n-1) copies of the growth element at the base boundary, for every origin that runs past this node.
+    const ins=Array(n-1).fill(el);
+    const thru=(arr)=> arr.length>base.length && base.every((e,i)=>arr[i]===e);
+    pushHistory();
+    recipes.forEach(x=>{
+      if(x!==r && thru(x.sequence)) x.sequence.splice(base.length,0,...ins);
+      (x.altOrigins||[]).forEach(o=>{ if(thru(o)) o.splice(base.length,0,...ins); });
+    });
+    r.growth={element:el,stages:n}; commit(); };
   const eDesc=document.getElementById('eDesc'); if(eDesc) eDesc.onchange=()=>{ pushHistory(); r.description=eDesc.value.trim(); commit(); };
 
   // family variants
