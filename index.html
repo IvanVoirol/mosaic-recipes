@@ -353,8 +353,12 @@ canvas.dragging{cursor:grabbing;}
 #nodeEditTitle{flex:1;font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
 #nodeEditClose:hover{color:var(--text);background:#ffffff14;}
-#el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(4px);max-width:160px;}
-#el-legend .leg-title{font-size:.56rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:5px;}
+#el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(4px);max-width:184px;}
+#el-legend .leg-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+#el-legend .leg-title{font-size:.56rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;}
+#el-legend .leg-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+#el-legend .leg-toggle button{background:none;border:none;color:var(--muted);font-size:.6rem;font-weight:600;padding:2px 7px;cursor:pointer;line-height:1.4;}
+#el-legend .leg-toggle button.on{background:var(--accent);color:#0c0c10;}
 #el-legend .leg-item{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text);padding:2px 4px;border-radius:6px;cursor:pointer;white-space:nowrap;}
 #el-legend .leg-item:hover{background:#9d7fea22;}
 #el-legend .leg-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
@@ -568,7 +572,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.22';
+const APP_VERSION = 'v2.25';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1181,12 +1185,39 @@ function drawTree() {
 }
 let highlightFn = null;
 function nodeHasEl(n, el){ try{ if(n.recipe){ return expandedSequences(n.recipe).some(s=>s.includes(el)); } return (n.sequence||[]).includes(el); }catch(e){ return false; } }
+// ── view mode: 'edit' (author) vs 'analyse' (read-only saturation view) ──
+let viewMode='edit'; try{ const v=localStorage.getItem('paletteViewMode'); if(v==='analyse'||v==='edit') viewMode=v; }catch(e){}
+const PIPH=12;                                   // reserved height (px) for one slot-pip row in analyse mode
+// Mirrors the wizard's illegalEl: an element is free at a node iff recipeOccupying(departureSeq+[el]) is empty,
+// where the departure is the node's own sequence (families: each variant's last sequence) — same as computeSpots.
+function nodeFreeForEl(node,id){
+  if(node.key==='') return !recipeOccupying([id]);
+  const r=node.recipe;
+  if(r && isFamily(r)) return r.family.some((v,vi)=> !recipeOccupying(familyVarLast(r,vi).concat([id])));
+  return !recipeOccupying(node.sequence.concat([id]));
+}
+// Six element slots for a departure sequence: filled = taken (recipeOccupying), hollow = available — exactly the wizard's check.
+function drawSlotPips(departSeq, px, py){ const sz=9, gap=3;
+  elements.forEach((e,i)=>{ const x0=px+i*(sz+gap);
+    roundRect(ctx, x0, py, sz, sz, 2);
+    if(recipeOccupying(departSeq.concat([e.id]))){ ctx.fillStyle=e.color; ctx.fill(); ctx.strokeStyle=e.color; ctx.lineWidth=1; ctx.stroke(); }
+    else { ctx.strokeStyle=e.color; ctx.lineWidth=1.5; ctx.stroke(); }
+  });
+}
+function setViewMode(m){ viewMode=m; try{ localStorage.setItem('paletteViewMode',m); }catch(e){}
+  if(m==='analyse' && typeof closeNodeEditor==='function') closeNodeEditor();
+  buildLegend(); drawTree(); }
 let _legendSig='';
 function buildLegend(){ const box=document.getElementById('el-legend'); if(!box) return;
-  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name).join('|');
+  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name).join('|')+'#'+viewMode;
   if(sig===_legendSig && box.children.length) return; _legendSig=sig;
-  box.innerHTML='<div class="leg-title">Elements</div>'+elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${e.emoji} ${escHtml(e.name)}</div>`).join('');
-  box.querySelectorAll('.leg-item').forEach(it=>{ it.onmouseenter=()=>{ const id=it.dataset.el; highlightFn=(n)=>nodeHasEl(n,id); drawTree(); }; it.onmouseleave=()=>{ if(highlightFn){ highlightFn=null; drawTree(); } }; });
+  box.innerHTML='<div class="leg-head"><span class="leg-title">Elements</span>'
+    +`<span class="leg-toggle"><button data-vm="edit" class="${viewMode==='edit'?'on':''}">Edit</button><button data-vm="analyse" class="${viewMode==='analyse'?'on':''}">Analyse</button></span></div>`
+    +elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${e.emoji} ${escHtml(e.name)}</div>`).join('');
+  box.querySelectorAll('.leg-toggle button').forEach(b=>{ b.onclick=()=>setViewMode(b.dataset.vm); });
+  box.querySelectorAll('.leg-item').forEach(it=>{
+    it.onmouseenter=()=>{ const id=it.dataset.el; highlightFn = (viewMode==='analyse') ? (n=>nodeFreeForEl(n,id)) : (n=>nodeHasEl(n,id)); drawTree(); };
+    it.onmouseleave=()=>{ if(highlightFn){ highlightFn=null; drawTree(); } }; });
 }
 let curPath = new Set();
 
@@ -1354,13 +1385,14 @@ function modOptionRows(r){
 // Per-node height. Modifier nodes grow to fit one labelled row of option buttons per axis.
 function nodeHeight(node){
   const r = node && node.recipe;
+  const ana = viewMode==='analyse';
   if (r && isModifier(r)){
     const rows = modOptionRows(r).reduce((s,rr)=>s+rr.length,0);
     const labels = r.modifiers.length;                 // one axis-name line each
-    return 30 + labels*14 + rows*18 + (settings.showDots?24:6);
+    return 30 + labels*14 + rows*18 + (settings.showDots?24:6) + (ana?PIPH:0);
   }
-  if (r && isFamily(r)){ return 26 + r.family.length*18 + (settings.showDots?20:6); }
-  return NH;
+  if (r && isFamily(r)){ return 26 + r.family.length*18 + (settings.showDots?20:6) + (ana? r.family.length*PIPH : 0); }
+  return NH + (ana && !(node&&node.key==='') ? PIPH : 0);
 }
 
 function drawNode(node) {
@@ -1385,16 +1417,19 @@ function drawNode(node) {
     ctx.restore(); return;
   }
   if (isGap) {
+    const Hg = nodeHeight(node);
     ctx.setLineDash([4,3]);
     ctx.strokeStyle = isSel ? '#f06b6b' : (onPath ? settings.accent : '#f06b6b88'); ctx.lineWidth = (isSel||onPath)?2:1.5;
-    roundRect(ctx,x,y,NW,NH,8); ctx.stroke(); ctx.setLineDash([]);
+    roundRect(ctx,x,y,NW,Hg,8); ctx.stroke(); ctx.setLineDash([]);
     ctx.fillStyle='#f06b6baa'; ctx.font='600 10px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='top';
     ctx.fillText('⚠ unnamed', x+8, y+8);
-    if (settings.showDots) drawSeqDots(node.sequence, x, y+NH-12, true);
+    if (viewMode==='analyse') drawSlotPips(node.sequence, x+8, y+Hg-PIPH+1);
+    else if (settings.showDots) drawSeqDots(node.sequence, x, y+NH-12, true);
     ctx.restore(); return;
   }
   // recipe node
   const H = nodeHeight(node);
+  const SD = settings.showDots && viewMode!=='analyse';   // seq dots are an edit-mode aid; analyse shows slot pips instead
   const fam = familyColor(node.sequence);
   if (fam && !isSel){ ctx.fillStyle = mix(TH.node, fam, 0.18); }
   else ctx.fillStyle = isSel ? settings.accent+'1f' : TH.node;
@@ -1440,9 +1475,10 @@ function drawNode(node) {
       node._famrows.push({ vi, x:x, y:ry, w:NW, h:16 });
       node._famrowY[vi] = ry+7;          // world y of this variant's row (edge origin)
       ry += 18;
+      if (viewMode==='analyse'){ drawSlotPips(familyVarLast(recipe, vi), x+(fam?20:17), ry); ry += PIPH; }
     });
     // one shared recipe row showing the active variant + stage
-    if (settings.showDots){ const seqAt=familyVarSeq(recipe, act.vi, act.k);
+    if (SD){ const seqAt=familyVarSeq(recipe, act.vi, act.k);
       drawDotsWindow(x, y+H-12, recipe.sequence.length, seqAt.length);
       drawSeqDots(seqAt, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
   } else if (hasModifiers(recipe)) {
@@ -1477,11 +1513,11 @@ function drawNode(node) {
           by += bh + 2;
         });
       });
-      if (settings.showDots){
+      if (SD){
         const combo = modCombos(recipe).find(c=>c.opts.join(',')===selv.join(','));
         if (combo){ drawDotsWindow(x, y+H-12, recipe.sequence.length, combo.seq.length); drawSeqDots(combo.seq, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
       }
-    } else if (settings.showDots) {
+    } else if (SD) {
       drawSeqDots(recipe.sequence, x, y+H-12, false);
     }
   } else if (isGrowth(recipe)) {
@@ -1504,12 +1540,15 @@ function drawNode(node) {
       node._pips.push({ stage:k, x:px, y:py, w:pw, h:ph });
     }
     // dots for the SELECTED stage's full element sequence (like the prototype)
-    if (settings.showDots){ const ss=growthStageSeq(recipe, st);
+    if (SD){ const ss=growthStageSeq(recipe, st);
       let wfrom=recipe.sequence.length; const ge=recipe.growth.element;   // include stage-1's growth element (the trailing run in the base)
       while(wfrom>0 && recipe.sequence[wfrom-1]===ge) wfrom--;
       drawDotsWindow(x, y+H-12, wfrom, ss.length); drawSeqDots(ss, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
-  } else if (settings.showDots) {
+  } else if (SD) {
     drawSeqDots(recipe.sequence, x, y+H-12, false, boundaryIndices(recipe.sequence));
+  }
+  if (viewMode==='analyse' && !isFamily(recipe)){           // one slot row; departure = node's own sequence (mirrors wizard spot)
+    drawSlotPips(node.sequence, x+(fam?11:8), y+H-PIPH+1);
   }
   ctx.restore();
 }
@@ -1572,7 +1611,7 @@ cvs.addEventListener('mousedown', e=>{
   const inRects = arr => arr && arr.some(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
   const onControl = n && (inRects(n._pips)||inRects(n._modopts)||inRects(n._fampips));
   dStart={x:e.clientX,y:e.clientY};
-  if (n && n.key!=='' && !onControl){ dragMaybe=true; dragNode=n; }   // potential drag-to-reparent (or a click)
+  if (n && n.key!=='' && !onControl && viewMode!=='analyse'){ dragMaybe=true; dragNode=n; }   // potential drag-to-reparent (or a click)
   else { dragging=true; pStart={...pan}; cvs.classList.add('dragging'); }
 });
 cvs.addEventListener('mousemove', e=>{
@@ -1933,7 +1972,7 @@ function focusNode(seq, recipe, opts){
       const ncx = node.lx + (node.key===''?NW/2:NW)/2, ncy = node.ly + (node.key===''?NH:nodeHeight(node))/2;
       pan.x = cw/2 - ncx*zoom; pan.y = -ncy*zoom; }
   }
-  if(opts.open && seq.length){
+  if(opts.open && seq.length && viewMode!=='analyse'){
     const node = layoutNodes.find(n => (recipe && n.recipe===recipe) || n.key===key) || { sequence:[...seq], recipe };
     openNodeEditor(node);                          // selects + renders
   } else {
@@ -1964,7 +2003,7 @@ let lastMouse=null, mouseInWrap=false;
 // drawTree (so the controls stay glued to their nodes while zooming/panning instead of drifting).
 function refreshDesktopOverlay(){
   if(IS_TOUCH || !mouseInWrap || !lastMouse) return;
-  if(dragging || nodeDragging || wizOpen()){ hideOverlay(); return; }
+  if(dragging || nodeDragging || wizOpen() || viewMode==='analyse'){ hideOverlay(); return; }
   const mx=lastMouse.x, my=lastMouse.y;
   const near=[]; plusSpots.forEach(sp=>{ const s=w2s(sp.wx,sp.wy); const d=Math.hypot(s.x-mx,s.y-my); if(d<55) near.push({sp,s,d}); });
   near.sort((a,b)=>a.d-b.d); const show=near.slice(0,8);
@@ -1980,7 +2019,7 @@ wrap.addEventListener('mousemove', e=>{
 });
 if(!IS_TOUCH) wrap.addEventListener('mouseleave', ()=>{ mouseInWrap=false; hideOverlay(); });
 // Touch: keep the create/edit controls for the selected node always visible.
-function showTouchOverlay(){ hideOverlay(); if(!sel) return; const selK=(sel.seq||[]).join('\x1f');
+function showTouchOverlay(){ hideOverlay(); if(viewMode==='analyse'||!sel) return; const selK=(sel.seq||[]).join('\x1f');
   const adj=plusSpots.filter(sp=> sp.parentSeq.join('\x1f')===selK);
   adj.forEach((sp,i)=>{ placePlus(getPlus(i), i, sp); });
   const node=layoutNodes.find(n=>n.sequence.join('\x1f')===selK && n.sequence.length);
@@ -2767,7 +2806,7 @@ document.addEventListener('keydown', e=>{
     e.preventDefault(); e.shiftKey ? redo() : undo();
   } else if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y'){
     if (typing) return; e.preventDefault(); redo();
-  } else if ((e.key==='Delete'||e.key==='Backspace') && !typing && sel && sel.seq && sel.seq.length){
+  } else if ((e.key==='Delete'||e.key==='Backspace') && !typing && viewMode!=='analyse' && sel && sel.seq && sel.seq.length){
     const r = (sel.recipe && isFamily(sel.recipe)) ? sel.recipe : recipeBySeq(sel.seq);
     e.preventDefault();
     if (r){ const name=r.name; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes;
