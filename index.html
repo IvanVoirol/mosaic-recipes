@@ -79,15 +79,12 @@
 html,body{height:100%;font:14px/1.4 'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);}
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 
-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;
-  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;}
-header h1{font-size:.9rem;font-weight:800;color:var(--accent);letter-spacing:.06em;white-space:nowrap;}
-#menuToggle{position:absolute;left:8px;top:8px;z-index:31;width:38px;height:38px;font-size:1.4rem;line-height:1;
+#menuToggle{position:absolute;left:10px;top:10px;z-index:31;width:38px;height:38px;font-size:1.4rem;line-height:1;
   display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:9px;}
-#cvs-palname{position:absolute;left:54px;top:8px;height:38px;z-index:20;display:flex;align-items:center;
+#cvs-palname{position:absolute;left:56px;top:10px;height:38px;z-index:20;display:flex;align-items:center;
   color:var(--text);font-size:.84rem;font-weight:600;letter-spacing:.02em;pointer-events:none;max-width:42vw;}
 #cvs-palname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.app-menu{position:absolute;top:52px;left:8px;z-index:60;min-width:236px;
+.app-menu{position:absolute;top:54px;left:10px;z-index:60;min-width:236px;
   background:var(--surface);border:1px solid var(--border);border-radius:10px;
   box-shadow:0 12px 34px rgba(0,0,0,.5);padding:10px;display:none;flex-direction:column;gap:8px;}
 .app-menu.on{display:flex;}
@@ -97,10 +94,6 @@ header h1{font-size:.9rem;font-weight:800;color:var(--accent);letter-spacing:.06
 .am-row{display:flex;gap:6px;}
 .am-row .btn{flex:1;justify-content:center;}
 .am-div{height:1px;background:var(--border);margin:1px 0;}
-.palette-bar{display:flex;align-items:center;gap:6px;flex:1;min-width:0;}
-.palette-bar label{color:var(--muted);font-size:.78rem;white-space:nowrap;}
-.palette-bar select{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);
-  color:var(--text);border-radius:var(--r);padding:4px 8px;font:inherit;}
 
 #main{display:flex;flex:1;overflow:hidden;}
 #sidebar{width:268px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
@@ -109,10 +102,10 @@ header h1{font-size:.9rem;font-weight:800;color:var(--accent);letter-spacing:.06
 #sidebar-resize{width:6px;flex-shrink:0;cursor:col-resize;background:var(--border);opacity:.4;transition:opacity .15s;}
 #sidebar-resize:hover{opacity:1;background:var(--accent);}
 #sidebar-resize.hidden{display:none;}
-#sidebar-show{position:absolute;left:8px;top:52px;z-index:30;display:none;width:38px;height:38px;border-radius:9px;
+#sidebar-show{position:absolute;left:10px;top:54px;z-index:30;display:none;width:38px;height:38px;border-radius:9px;
   text-align:center;line-height:36px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:1.4rem;padding:0;}
 #sidebar-show.on{display:block;}
-#node-search{position:absolute;left:50%;transform:translateX(-50%);top:8px;z-index:25;width:260px;}
+#node-search{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:25;width:260px;}
 #nodeSearchInput{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);
   border-radius:8px;padding:7px 10px;font:inherit;font-size:.8rem;}
 #nodeSearchInput:focus{outline:none;border-color:var(--accent);}
@@ -377,7 +370,7 @@ canvas.dragging{cursor:grabbing;}
 #nodeEditTitle{flex:1;font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
 #nodeEditClose:hover{color:var(--text);background:#ffffff14;}
-#el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(4px);max-width:184px;}
+#el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(20,20,28,.86);border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(6px);max-width:184px;box-shadow:0 6px 20px #0006;}
 #el-legend .leg-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
 #el-legend .leg-title{font-size:.56rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;}
 #el-legend .leg-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
@@ -389,7 +382,7 @@ canvas.dragging{cursor:grabbing;}
 #empty-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;
   background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--muted);font-size:.86rem;backdrop-filter:blur(4px);}
 #empty-hint b{color:var(--text);}
-#minimap{position:absolute;right:12px;top:48px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:#0e0e14cc;backdrop-filter:blur(4px);cursor:crosshair;box-shadow:0 6px 20px #0007;}
+#minimap{position:absolute;right:10px;top:50px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:rgba(20,20,28,.86);backdrop-filter:blur(6px);cursor:crosshair;box-shadow:0 6px 20px #0006;}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -404,9 +397,9 @@ canvas.dragging{cursor:grabbing;}
   color:var(--text);margin:0 0 14px;}
 .set-box{margin-bottom:34px;}
 .set-box:first-child{margin-top:2px;}
-#cvs-hint{position:absolute;bottom:10px;right:12px;color:var(--muted);font-size:.68rem;pointer-events:none;}
+#cvs-hint{position:absolute;bottom:10px;right:10px;color:var(--muted);font-size:.68rem;pointer-events:none;}
 #cvs-hud{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem;margin-right:4px;pointer-events:auto;}
-#cvs-controls{position:absolute;top:10px;right:12px;display:flex;align-items:center;gap:6px;}
+#cvs-controls{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:6px;}
 #cvs-controls .btn-icon{background:var(--surface);}
 
 #tip{position:fixed;display:none;pointer-events:none;background:var(--surface);border:1px solid var(--border);
@@ -445,7 +438,13 @@ canvas.dragging{cursor:grabbing;}
 .el-row input.id:disabled{opacity:.5;cursor:not-allowed;}
 .el-row input.nm{flex:1;min-width:0;}
 .el-row input.col{width:46px;height:30px;padding:2px;cursor:pointer;}
-.el-row input.em{width:48px;text-align:center;}
+.el-row .em{width:48px;text-align:center;}
+.el-row .el-img{width:30px;height:30px;flex:0 0 auto;border:1px solid var(--border);border-radius:6px;background:#0c0c10;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;}
+.el-row .el-img img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;}
+.el-row .el-img span{color:var(--muted);font-size:1rem;line-height:1;}
+.leg-img{width:15px;height:15px;border-radius:3px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;margin-right:7px;background:#0c0c10;}
+.eltok-img{width:15px;height:15px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;}
+.tipseq-img{width:14px;height:14px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;margin-right:2px;}
 .el-row .rm-el{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 4px;}
 .el-row .reorder{display:flex;flex-direction:column;width:18px;}
 .el-row .reorder button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.5rem;line-height:1;padding:1px;}
@@ -599,7 +598,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.35';
+const APP_VERSION = 'v2.39';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -706,7 +705,6 @@ async function apiSave(p) {
   if (!r.ok) throw new Error('save failed');
   return { ok: true, palette: (await r.json()).palette };
 }
-async function apiDelete(id) { try { await fetch(`${API}/${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (e) {} }
 
 // Save the CURRENT palette to the server (debounced); always mirror to localStorage.
 // force:true skips the version check (used by undo/redo and "Overwrite").
@@ -798,7 +796,7 @@ function hideConflict(){ const b=document.getElementById('conflictBanner'); b.cl
 const DEFAULT_SETTINGS = {
   theme:'dark', accent:'#9d7fea', edgeStyle:'curved',
   showBadges:true, showDots:true, spacing:'comfortable',
-  gridStyle:'dots', gridSize:'medium', gridOpacity:40, gridDotSize:2.6,
+  gridStyle:'dots', gridSize:'medium', gridOpacity:40, gridDotSize:2.6, linkOpacity:80,
   colorBy:'off', colorDepth:1, colorMode:'lightness',   // family coloring
   nodeWidth:190
 };
@@ -1035,11 +1033,6 @@ function comboName(r, labels){
 function prettySeq(seq){ return seq.map(id=>{const e=elements.find(x=>x.id===id);return e?`${e.emoji} ${e.name}`:id;}).join(' + '); }
 // Branch point when adding `elId` from the selected recipe. For a chain, adding its
 // advance element continues PAST the last stage instead of colliding with stage 2.
-function effectiveParentSeq(r, seq, elId){
-  // Children of a chain branch from its LAST stage (the fully grown form), for any element.
-  if (r && isGrowth(r)) return growthStageSeq(r, r.growth.stages);
-  return seq;
-}
 // Modular vs necessary — ONLY for a node reachable by multiple origins (alternate
 // parents). The part its origins share (common suffix) is necessary; the differing
 // prefix is modular (the swappable base). Nodes with one origin have no split.
@@ -1048,9 +1041,6 @@ function commonSuffixLen(seqs){
   const n=Math.min(...seqs.map(s=>s.length)); let c=0;
   for(let i=1;i<=n;i++){ const e=seqs[0][seqs[0].length-i]; if(seqs.every(s=>s[s.length-i]===e)) c++; else break; }
   return c;
-}
-function boundaryIndex(seq, depth){
-  const a=boundaryIndices(seq); return a.length? a[a.length-1] : 0;
 }
 // Every divider position along a recipe's path: each ancestor (or the node itself)
 // reachable by multiple origins contributes a divider where its origins diverge.
@@ -1181,8 +1171,10 @@ function drawSeqDots(seq, x, yBottom, emoji, boundary){
   seq.forEach((id,i)=>{
     const el = elements.find(e=>e.id===id); if(!el) return;
     const cx = x + 8 + i*step + r;
-    if (emoji){ ctx.font=`${Math.round(r*1.8)}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
-      ctx.fillStyle='#fff9'; ctx.fillText(el.emoji, x+8+i*step, yBottom); }
+    if (emoji){ const eim=getElIcon(el);
+      if(eim){ const d=Math.round(r*1.9); ctx.imageSmoothingEnabled=false; ctx.drawImage(eim, x+8+i*step, yBottom-d/2, d, d); ctx.imageSmoothingEnabled=true; }
+      else { ctx.font=`${Math.round(r*1.8)}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillStyle='#fff9'; ctx.fillText(el.emoji, x+8+i*step, yBottom); } }
     else { ctx.beginPath(); ctx.arc(cx, yBottom, r, 0, Math.PI*2);
       if (maxB && i < maxB){ ctx.fillStyle=el.color+'44'; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=el.color+'aa'; ctx.stroke(); }
       else { ctx.fillStyle = el.color+'cc'; ctx.fill(); } }
@@ -1238,10 +1230,26 @@ function nodeFreeForEl(node,id){
 }
 // Per-recipe icon image cache (decoded async; repaint on load).
 const iconCache={};
-function getIcon(r){ if(!r||!r.icon) return null;
-  let c=iconCache[r.id];
-  if(!c || c.url!==r.icon){ const img=new Image(); img.onload=()=>{ try{drawTree();}catch(e){} }; img.src=r.icon; iconCache[r.id]={url:r.icon, img}; return null; }
+// Decode a data-URL into a cached <img>, keyed by `key`; returns the image once ready
+// (and repaints on load), or null while it decodes / when there's no source.
+function loadCachedImg(key, url){ if(!url) return null;
+  let c=iconCache[key];
+  if(!c || c.url!==url){ const img=new Image(); img.onload=()=>{ try{drawTree();}catch(e){} }; img.src=url; iconCache[key]={url, img}; return null; }
   return (c.img.complete && c.img.naturalWidth) ? c.img : null;
+}
+function getIcon(r){ return r ? loadCachedImg(r.id, r.icon) : null; }
+function getElIcon(el){ return el ? loadCachedImg('el_'+el.id, el.icon) : null; }
+// Read an uploaded image file, downscale it to a 32×32 pixel-art PNG (nearest-neighbour),
+// and hand the data-URL to `onReady`. Used by both the recipe- and element-icon pickers.
+function fileToIconURL(file, onReady){
+  if(!file || !/^image\//.test(file.type)){ toast('Please choose an image file.','err'); return; }
+  const fr=new FileReader();
+  fr.onload=()=>{ const im=new Image();
+    im.onload=()=>{ const cv=document.createElement('canvas'); cv.width=32; cv.height=32;
+      const cx=cv.getContext('2d'); cx.imageSmoothingEnabled=false; cx.clearRect(0,0,32,32); cx.drawImage(im,0,0,32,32);
+      onReady(cv.toDataURL('image/png')); };
+    im.onerror=()=>toast('Couldn’t read that image.','err'); im.src=fr.result; };
+  fr.onerror=()=>toast('Couldn’t read that file.','err'); fr.readAsDataURL(file);
 }
 // Slot pips emphasising AVAILABILITY: a free element is a big bright colour chip (you can add it here);
 // a used element recedes to a small dim dot. `sz` lets families use a more compact row.
@@ -1262,11 +1270,11 @@ function setViewMode(m){ viewMode=m; try{ localStorage.setItem('paletteViewMode'
   buildLegend(); drawTree(); }
 let _legendSig='';
 function buildLegend(){ const box=document.getElementById('el-legend'); if(!box) return;
-  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name).join('|')+'#'+viewMode;
+  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name+(e.icon?'1':'0')).join('|')+'#'+viewMode;
   if(sig===_legendSig && box.children.length) return; _legendSig=sig;
   box.innerHTML='<div class="leg-head"><span class="leg-title">Elements</span>'
     +`<span class="leg-toggle"><button data-vm="edit" class="${viewMode==='edit'?'on':''}">Edit</button><button data-vm="analyse" class="${viewMode==='analyse'?'on':''}">Analyse</button></span></div>`
-    +elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${e.emoji} ${escHtml(e.name)}</div>`).join('');
+    +elements.map(e=>`<div class="leg-item" data-el="${e.id}">${e.icon?`<img class="leg-img" src="${escAttr(e.icon)}" alt="">`:`<span class="leg-dot" style="background:${e.color}"></span>`}${e.icon?'':e.emoji+' '}${escHtml(e.name)}</div>`).join('');
   box.querySelectorAll('.leg-toggle button').forEach(b=>{ b.onclick=()=>setViewMode(b.dataset.vm); });
   box.querySelectorAll('.leg-item').forEach(it=>{
     it.onmouseenter=()=>{ const id=it.dataset.el; highlightFn = (viewMode==='analyse') ? (n=>nodeFreeForEl(n,id)) : (n=>nodeHasEl(n,id)); drawTree(); };
@@ -1365,7 +1373,7 @@ function drawGrid(cw, ch) {
   const ox = ((pan.x % gx) + gx) % gx;
   const oy = ((oy0 % gy) + gy) % gy;
 
-  const op = Math.max(0, Math.min(1, (settings.gridOpacity==null?40:settings.gridOpacity)/100));
+  const op = Math.max(0, Math.min(0.4, (settings.gridOpacity==null?40:settings.gridOpacity)/100));
   if (op<=0) return;
   ctx.save(); ctx.globalAlpha = op;
   const gcol = '#ffffff';                    // 100% = white, lower = faded toward bg
@@ -1409,16 +1417,18 @@ function drawEdge(parent, child) {
     ctx.strokeStyle = '#00000066'; ctx.lineWidth = (onPath?tw+1.6:tw) + 3; ctx.stroke();
   }
   if (onPath) { ctx.strokeStyle = settings.accent; ctx.lineWidth = tw + 1.6; }
-  else { ctx.strokeStyle = isGap ? '#f06b6bcc' : color; ctx.lineWidth = isGap ? Math.max(1.4, tw*0.7) : tw; }
-  ctx.stroke(); ctx.setLineDash([]);
+  else { ctx.strokeStyle = isGap ? '#f06b6bcc' : color; ctx.lineWidth = isGap ? Math.max(1.4, tw*0.7) : tw;
+    ctx.globalAlpha = (settings.linkOpacity==null?80:settings.linkOpacity)/100; }
+  ctx.stroke(); ctx.globalAlpha=1; ctx.setLineDash([]);
 
   if (settings.showBadges && el) {
     const bx = mx, by = (sy+ey)/2;
     ctx.beginPath(); ctx.arc(bx,by,9,0,Math.PI*2);
     ctx.fillStyle = el.color + '33'; ctx.fill();
     ctx.strokeStyle = el.color + '88'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.font = '11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle = TH.text; ctx.fillText(el.emoji, bx, by);
+    const eim=getElIcon(el);
+    if(eim){ const d=14; ctx.imageSmoothingEnabled=false; ctx.drawImage(eim, bx-d/2, by-d/2, d, d); ctx.imageSmoothingEnabled=true; }
+    else { ctx.font = '11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle = TH.text; ctx.fillText(el.emoji, bx, by); }
     edgeBadges.push({ wx:bx, wy:by, r:9, el });
   }
   ctx.restore();
@@ -1501,7 +1511,7 @@ function drawNode(node) {
   }
   let nameX = x+(fam?11:8);
   // ── Level-of-detail by zoom: Far = icon-led, Mid = icon + name + elements, Near = full detail below ──
-  if (zoom < 0.75 && node.key!==''){
+  if (zoom < 0.6 && node.key!==''){
     node._pips=[]; node._modopts=[]; node._fampips=[];                 // no on-node controls at this zoom
     const im = recipe.icon ? getIcon(recipe) : null;
     if (zoom < 0.22){                                                  // VERY FAR: just the icon, oversized (may overflow the node)
@@ -1520,9 +1530,12 @@ function drawNode(node) {
     while (ctx.measureText(nm).width>maxW && nm.length>1) nm=nm.slice(0,-1);
     if (nm!==recipe.name && nm.length>1) nm=nm.slice(0,-1)+'…';
     ctx.fillText(nm, tx, far ? y+H/2 : y+H/2-9);
-    if (!far){                                                         // Mid: element colour chips under the name
+    if (!far && settings.showDots){                                    // Mid: element colour chips (or images) under the name
       const rad=6.5, step=17; let cxp=tx; const cyp=y+H/2+13;
-      recipe.sequence.slice(0,8).forEach(id=>{ const e=elements.find(x=>x.id===id); if(e){ ctx.beginPath(); ctx.arc(cxp+rad, cyp, rad, 0, Math.PI*2); ctx.fillStyle=e.color; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle='#00000040'; ctx.stroke(); cxp+=step; } });
+      recipe.sequence.slice(0,8).forEach(id=>{ const e=elements.find(x=>x.id===id); if(!e) return; const eim=getElIcon(e);
+        if(eim){ const d=rad*2+1; ctx.imageSmoothingEnabled=false; ctx.drawImage(eim, cxp, cyp-rad-0.5, d, d); ctx.imageSmoothingEnabled=true; }
+        else { ctx.beginPath(); ctx.arc(cxp+rad, cyp, rad, 0, Math.PI*2); ctx.fillStyle=e.color; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle='#00000040'; ctx.stroke(); }
+        cxp+=step; });
     }
     ctx.restore(); return;
   }
@@ -1736,7 +1749,7 @@ cvs.addEventListener('mousemove', e=>{
           + `<span>${escHtml(originLabel(o))}</span><span class="tip-cost">cost ${o.length}</span></div>`).join('');
     } else {
       document.getElementById('tip-seq').innerHTML = node.sequence.map(id=>{const el=elements.find(e=>e.id===id);
-        return el?`<span style="background:${el.color}33;color:${el.color}">${el.emoji} ${el.name}</span>`:'';}).join('');
+        return el?`<span style="background:${el.color}33;color:${el.color}">${el.icon?`<img class="tipseq-img" src="${escAttr(el.icon)}">`:el.emoji} ${escHtml(el.name)}</span>`:'';}).join('');
     }
     document.getElementById('tip-desc').textContent = (!isGap && r.description) ? r.description : '';
     document.getElementById('tip-gap').textContent = isGap ? 'Intermediate step with no recipe. Click to name it.' : '';
@@ -2208,7 +2221,7 @@ function renderBuild() { try { renderEditor(); } catch(e) {} }   // Build tab re
 const EL_INI = {};                       // short label per element: unique-enough initials
 function elInitials(){ const seen={}; elements.forEach(e=>{ let s=e.name.slice(0,1).toUpperCase(); if(seen[s]) s=e.name.slice(0,2); seen[e.name.slice(0,1).toUpperCase()]=1; EL_INI[e.id]=s; }); }
 function eTok(el, o){ o=o||{}; if(!el) return `<span class="eltok ${o.sel?'sel':''}" data-el="none" ${o.data||''} style="background:var(--bg);color:var(--muted);border-color:var(--border)" title="None">∅</span>`;
-  return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}">${el.emoji}<span>${EL_INI[el.id]||''}</span></span>`; }
+  return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}">${el.icon?`<img class="eltok-img" src="${escAttr(el.icon)}" alt="">`:el.emoji}<span>${EL_INI[el.id]||''}</span></span>`; }
 function nameExists(name, except){ return recipes.some(r=>r!==except && r.name.toLowerCase()===name.trim().toLowerCase()); }
 
 // Which last-step elements are free at this path (no sibling recipe already there).
@@ -2386,14 +2399,7 @@ function wireEditor(S){
     r.growth={element:el,stages:n}; commit(); };
   const eDesc=document.getElementById('eDesc'); if(eDesc) eDesc.onchange=()=>{ pushHistory(); r.description=eDesc.value.trim(); commit(); };
   const eIconUp=document.getElementById('eIconUp'), eIconFile=document.getElementById('eIconFile'), eIconPrev=document.getElementById('eIconPrev');
-  const setIconFromFile=(f)=>{ if(!f || !/^image\//.test(f.type)){ toast('Please choose an image file.','err'); return; }
-    const fr=new FileReader();
-    fr.onload=()=>{ const im=new Image();
-      im.onload=()=>{ const cv=document.createElement('canvas'); cv.width=32; cv.height=32;
-        const cx=cv.getContext('2d'); cx.imageSmoothingEnabled=false; cx.clearRect(0,0,32,32); cx.drawImage(im,0,0,32,32);
-        pushHistory(); r.icon=cv.toDataURL('image/png'); delete iconCache[r.id]; commit(); toast('Icon set.','ok'); };
-      im.onerror=()=>toast('Couldn’t read that image.','err'); im.src=fr.result; };
-    fr.onerror=()=>toast('Couldn’t read that file.','err'); fr.readAsDataURL(f); };
+  const setIconFromFile=(f)=>fileToIconURL(f, url=>{ pushHistory(); r.icon=url; delete iconCache[r.id]; commit(); toast('Icon set.','ok'); });
   if(eIconUp&&eIconFile){ eIconUp.onclick=()=>eIconFile.click(); eIconFile.onchange=()=>setIconFromFile(eIconFile.files&&eIconFile.files[0]); }
   if(eIconPrev){ eIconPrev.title='Drop an image here';
     eIconPrev.ondragover=e=>{ e.preventDefault(); eIconPrev.classList.add('drop'); };
@@ -2689,11 +2695,12 @@ function renderSettings() {
   group('Edge style', seg([['curved','Curved'],['straight','Straight'],['stepped','Stepped']], settings.edgeStyle, v=>settings.edgeStyle=v));
   group('Node spacing', seg([['compact','Compact'],['comfortable','Comfort'],['spacious','Spacious']], settings.spacing, v=>settings.spacing=v));
   group('Node width', seg([[160,'S'],[190,'M'],[230,'L'],[280,'XL']], settings.nodeWidth||190, v=>settings.nodeWidth=v));
+  slider('Link opacity', 20, 100, 5, settings.linkOpacity==null?80:settings.linkOpacity, v=>settings.linkOpacity=v);
 
   section('Grid');
   group('Grid style', seg([['dots','Dots'],['lines','Lines'],['none','None']], settings.gridStyle, v=>settings.gridStyle=v));
   group('Grid size', seg([['small','Small'],['medium','Medium'],['large','Large'],['match','Match nodes']], settings.gridSize, v=>settings.gridSize=v));
-  slider('Grid opacity', 0, 100, 5, settings.gridOpacity==null?40:settings.gridOpacity, v=>settings.gridOpacity=v);
+  slider('Grid opacity', 0, 40, 2, Math.min(40, settings.gridOpacity==null?40:settings.gridOpacity), v=>settings.gridOpacity=v);
   group('Grid dot size', seg([[1.8,'S'],[2.8,'M'],[4,'L']], settings.gridDotSize||2.6, v=>settings.gridDotSize=v));
 
   section('Coloring');
@@ -2819,25 +2826,30 @@ function openModal(mode){
   } else {
     document.getElementById('mPalName').value = palettes[pidx].name;
     document.getElementById('mPalDesc').value = palettes[pidx].description || '';
-    elements.forEach(e=>addElRow(e.id, e.name, e.color, e.emoji, true));
+    elements.forEach(e=>addElRow(e.id, e.name, e.color, e.emoji, true, e.icon||''));
   }
   overlay.classList.add('on'); document.getElementById('mPalName').focus();
 }
-function addElRow(id='', name='', color='#888888', emoji='❓', existing=false){
+function addElRow(id='', name='', color='#888888', emoji='❓', existing=false, icon=''){
   const c=document.getElementById('mElRows'); const row=document.createElement('div'); row.className='el-row';
   const usedCount = existing ? recipes.filter(r=>r.sequence.includes(id)).length : 0;
   row.dataset.orig = existing ? id : '';
+  row.dataset.icon = icon || '';
   row.innerHTML=`
     <span class="reorder"><button class="up" title="Move up">▲</button><button class="down" title="Move down">▼</button></span>
     <input class="id" type="text" placeholder="id" value="${escAttr(id)}" ${existing?'disabled':''} title="${existing?'id is locked for existing elements':'lowercase, no spaces'}">
     <input class="nm" type="text" placeholder="Display name" value="${escAttr(name)}">
     <input class="col" type="color" value="${color}">
     <input class="em" type="text" placeholder="🌿" value="${escAttr(emoji)}" maxlength="2">
+    <div class="el-img" title="Click to set a 32×32 image · Alt-click to clear">${icon?`<img src="${escAttr(icon)}" alt="">`:'<span>+</span>'}<input type="file" accept="image/*" class="elimg-file" style="display:none"></div>
     ${usedCount?`<span class="inuse" title="Used in ${usedCount} recipe(s)">×${usedCount}</span>`:''}
     <button class="rm-el" title="Remove">✕</button>`;
   row.querySelector('.rm-el').onclick=()=>row.remove();
   row.querySelector('.up').onclick=()=>{ if(row.previousElementSibling) c.insertBefore(row, row.previousElementSibling); };
   row.querySelector('.down').onclick=()=>{ if(row.nextElementSibling) c.insertBefore(row.nextElementSibling, row); };
+  const imgCell=row.querySelector('.el-img'), fileIn=row.querySelector('.elimg-file');
+  imgCell.onclick=(e)=>{ if(e.target===fileIn) return; if(e.altKey){ row.dataset.icon=''; imgCell.querySelector('img')?.remove(); if(!imgCell.querySelector('span')) imgCell.insertAdjacentHTML('afterbegin','<span>+</span>'); return; } fileIn.click(); };
+  fileIn.onchange=()=>fileToIconURL(fileIn.files&&fileIn.files[0], url=>{ row.dataset.icon=url; imgCell.querySelector('span')?.remove(); let ig=imgCell.querySelector('img'); if(!ig){ ig=document.createElement('img'); imgCell.insertAdjacentElement('afterbegin', ig); } ig.src=url; });
   c.appendChild(row);
 }
 document.getElementById('btnAddEl').onclick=()=>addElRow();
@@ -2858,7 +2870,7 @@ document.getElementById('btnModalSave').onclick=()=>{
     if(!id||!name){err='Every element needs an id and a name.';return;}
     if(!/^[a-z][a-z0-9_]*$/.test(id)){err=`Invalid id "${id}".`;return;}
     if(elems.find(e=>e.id===id)){err=`Duplicate id "${id}".`;return;}
-    elems.push({id,name,color,emoji});
+    const icon=row.dataset.icon||''; elems.push(icon?{id,name,color,emoji,icon}:{id,name,color,emoji});
   });
   if(err){toast(err,'err');return;}
   if(!elems.length){toast('Add at least one element.','err');return;}
