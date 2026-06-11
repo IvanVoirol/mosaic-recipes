@@ -439,12 +439,6 @@ canvas.dragging{cursor:grabbing;}
 .el-row input.nm{flex:1;min-width:0;}
 .el-row input.col{width:46px;height:30px;padding:2px;cursor:pointer;}
 .el-row .em{width:48px;text-align:center;}
-.el-row .el-img{width:30px;height:30px;flex:0 0 auto;border:1px solid var(--border);border-radius:6px;background:#0c0c10;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;}
-.el-row .el-img img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;}
-.el-row .el-img span{color:var(--muted);font-size:1rem;line-height:1;}
-.leg-img{width:15px;height:15px;border-radius:3px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;margin-right:7px;background:#0c0c10;}
-.eltok-img{width:15px;height:15px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;}
-.tipseq-img{width:14px;height:14px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;margin-right:2px;}
 .el-row .rm-el{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 4px;}
 .el-row .reorder{display:flex;flex-direction:column;width:18px;}
 .el-row .reorder button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.5rem;line-height:1;padding:1px;}
@@ -598,7 +592,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.39';
+const APP_VERSION = 'v2.40';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1171,10 +1165,8 @@ function drawSeqDots(seq, x, yBottom, emoji, boundary){
   seq.forEach((id,i)=>{
     const el = elements.find(e=>e.id===id); if(!el) return;
     const cx = x + 8 + i*step + r;
-    if (emoji){ const eim=getElIcon(el);
-      if(eim){ const d=Math.round(r*1.9); ctx.imageSmoothingEnabled=false; ctx.drawImage(eim, x+8+i*step, yBottom-d/2, d, d); ctx.imageSmoothingEnabled=true; }
-      else { ctx.font=`${Math.round(r*1.8)}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
-        ctx.fillStyle='#fff9'; ctx.fillText(el.emoji, x+8+i*step, yBottom); } }
+    if (emoji){ ctx.font=`${Math.round(r*1.8)}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillStyle='#fff9'; ctx.fillText(el.emoji, x+8+i*step, yBottom); }
     else { ctx.beginPath(); ctx.arc(cx, yBottom, r, 0, Math.PI*2);
       if (maxB && i < maxB){ ctx.fillStyle=el.color+'44'; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=el.color+'aa'; ctx.stroke(); }
       else { ctx.fillStyle = el.color+'cc'; ctx.fill(); } }
@@ -1238,7 +1230,6 @@ function loadCachedImg(key, url){ if(!url) return null;
   return (c.img.complete && c.img.naturalWidth) ? c.img : null;
 }
 function getIcon(r){ return r ? loadCachedImg(r.id, r.icon) : null; }
-function getElIcon(el){ return el ? loadCachedImg('el_'+el.id, el.icon) : null; }
 // Read an uploaded image file, downscale it to a 32×32 pixel-art PNG (nearest-neighbour),
 // and hand the data-URL to `onReady`. Used by both the recipe- and element-icon pickers.
 function fileToIconURL(file, onReady){
@@ -1270,11 +1261,11 @@ function setViewMode(m){ viewMode=m; try{ localStorage.setItem('paletteViewMode'
   buildLegend(); drawTree(); }
 let _legendSig='';
 function buildLegend(){ const box=document.getElementById('el-legend'); if(!box) return;
-  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name+(e.icon?'1':'0')).join('|')+'#'+viewMode;
+  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name).join('|')+'#'+viewMode;
   if(sig===_legendSig && box.children.length) return; _legendSig=sig;
   box.innerHTML='<div class="leg-head"><span class="leg-title">Elements</span>'
     +`<span class="leg-toggle"><button data-vm="edit" class="${viewMode==='edit'?'on':''}">Edit</button><button data-vm="analyse" class="${viewMode==='analyse'?'on':''}">Analyse</button></span></div>`
-    +elements.map(e=>`<div class="leg-item" data-el="${e.id}">${e.icon?`<img class="leg-img" src="${escAttr(e.icon)}" alt="">`:`<span class="leg-dot" style="background:${e.color}"></span>`}${e.icon?'':e.emoji+' '}${escHtml(e.name)}</div>`).join('');
+    +elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${e.emoji} ${escHtml(e.name)}</div>`).join('');
   box.querySelectorAll('.leg-toggle button').forEach(b=>{ b.onclick=()=>setViewMode(b.dataset.vm); });
   box.querySelectorAll('.leg-item').forEach(it=>{
     it.onmouseenter=()=>{ const id=it.dataset.el; highlightFn = (viewMode==='analyse') ? (n=>nodeFreeForEl(n,id)) : (n=>nodeHasEl(n,id)); drawTree(); };
@@ -1426,9 +1417,8 @@ function drawEdge(parent, child) {
     ctx.beginPath(); ctx.arc(bx,by,9,0,Math.PI*2);
     ctx.fillStyle = el.color + '33'; ctx.fill();
     ctx.strokeStyle = el.color + '88'; ctx.lineWidth = 1; ctx.stroke();
-    const eim=getElIcon(el);
-    if(eim){ const d=14; ctx.imageSmoothingEnabled=false; ctx.drawImage(eim, bx-d/2, by-d/2, d, d); ctx.imageSmoothingEnabled=true; }
-    else { ctx.font = '11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle = TH.text; ctx.fillText(el.emoji, bx, by); }
+    ctx.font = '11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = TH.text; ctx.fillText(el.emoji, bx, by);
     edgeBadges.push({ wx:bx, wy:by, r:9, el });
   }
   ctx.restore();
@@ -1530,12 +1520,9 @@ function drawNode(node) {
     while (ctx.measureText(nm).width>maxW && nm.length>1) nm=nm.slice(0,-1);
     if (nm!==recipe.name && nm.length>1) nm=nm.slice(0,-1)+'…';
     ctx.fillText(nm, tx, far ? y+H/2 : y+H/2-9);
-    if (!far && settings.showDots){                                    // Mid: element colour chips (or images) under the name
+    if (!far && settings.showDots){                                    // Mid: element colour dots under the name
       const rad=6.5, step=17; let cxp=tx; const cyp=y+H/2+13;
-      recipe.sequence.slice(0,8).forEach(id=>{ const e=elements.find(x=>x.id===id); if(!e) return; const eim=getElIcon(e);
-        if(eim){ const d=rad*2+1; ctx.imageSmoothingEnabled=false; ctx.drawImage(eim, cxp, cyp-rad-0.5, d, d); ctx.imageSmoothingEnabled=true; }
-        else { ctx.beginPath(); ctx.arc(cxp+rad, cyp, rad, 0, Math.PI*2); ctx.fillStyle=e.color; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle='#00000040'; ctx.stroke(); }
-        cxp+=step; });
+      recipe.sequence.slice(0,8).forEach(id=>{ const e=elements.find(x=>x.id===id); if(e){ ctx.beginPath(); ctx.arc(cxp+rad, cyp, rad, 0, Math.PI*2); ctx.fillStyle=e.color; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle='#00000040'; ctx.stroke(); cxp+=step; } });
     }
     ctx.restore(); return;
   }
@@ -1749,7 +1736,7 @@ cvs.addEventListener('mousemove', e=>{
           + `<span>${escHtml(originLabel(o))}</span><span class="tip-cost">cost ${o.length}</span></div>`).join('');
     } else {
       document.getElementById('tip-seq').innerHTML = node.sequence.map(id=>{const el=elements.find(e=>e.id===id);
-        return el?`<span style="background:${el.color}33;color:${el.color}">${el.icon?`<img class="tipseq-img" src="${escAttr(el.icon)}">`:el.emoji} ${escHtml(el.name)}</span>`:'';}).join('');
+        return el?`<span style="background:${el.color}33;color:${el.color}">${el.emoji} ${escHtml(el.name)}</span>`:'';}).join('');
     }
     document.getElementById('tip-desc').textContent = (!isGap && r.description) ? r.description : '';
     document.getElementById('tip-gap').textContent = isGap ? 'Intermediate step with no recipe. Click to name it.' : '';
@@ -2221,7 +2208,7 @@ function renderBuild() { try { renderEditor(); } catch(e) {} }   // Build tab re
 const EL_INI = {};                       // short label per element: unique-enough initials
 function elInitials(){ const seen={}; elements.forEach(e=>{ let s=e.name.slice(0,1).toUpperCase(); if(seen[s]) s=e.name.slice(0,2); seen[e.name.slice(0,1).toUpperCase()]=1; EL_INI[e.id]=s; }); }
 function eTok(el, o){ o=o||{}; if(!el) return `<span class="eltok ${o.sel?'sel':''}" data-el="none" ${o.data||''} style="background:var(--bg);color:var(--muted);border-color:var(--border)" title="None">∅</span>`;
-  return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}">${el.icon?`<img class="eltok-img" src="${escAttr(el.icon)}" alt="">`:el.emoji}<span>${EL_INI[el.id]||''}</span></span>`; }
+  return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}">${el.emoji}<span>${EL_INI[el.id]||''}</span></span>`; }
 function nameExists(name, except){ return recipes.some(r=>r!==except && r.name.toLowerCase()===name.trim().toLowerCase()); }
 
 // Which last-step elements are free at this path (no sibling recipe already there).
@@ -2826,30 +2813,25 @@ function openModal(mode){
   } else {
     document.getElementById('mPalName').value = palettes[pidx].name;
     document.getElementById('mPalDesc').value = palettes[pidx].description || '';
-    elements.forEach(e=>addElRow(e.id, e.name, e.color, e.emoji, true, e.icon||''));
+    elements.forEach(e=>addElRow(e.id, e.name, e.color, e.emoji, true));
   }
   overlay.classList.add('on'); document.getElementById('mPalName').focus();
 }
-function addElRow(id='', name='', color='#888888', emoji='❓', existing=false, icon=''){
+function addElRow(id='', name='', color='#888888', emoji='❓', existing=false){
   const c=document.getElementById('mElRows'); const row=document.createElement('div'); row.className='el-row';
   const usedCount = existing ? recipes.filter(r=>r.sequence.includes(id)).length : 0;
   row.dataset.orig = existing ? id : '';
-  row.dataset.icon = icon || '';
   row.innerHTML=`
     <span class="reorder"><button class="up" title="Move up">▲</button><button class="down" title="Move down">▼</button></span>
     <input class="id" type="text" placeholder="id" value="${escAttr(id)}" ${existing?'disabled':''} title="${existing?'id is locked for existing elements':'lowercase, no spaces'}">
     <input class="nm" type="text" placeholder="Display name" value="${escAttr(name)}">
     <input class="col" type="color" value="${color}">
     <input class="em" type="text" placeholder="🌿" value="${escAttr(emoji)}" maxlength="2">
-    <div class="el-img" title="Click to set a 32×32 image · Alt-click to clear">${icon?`<img src="${escAttr(icon)}" alt="">`:'<span>+</span>'}<input type="file" accept="image/*" class="elimg-file" style="display:none"></div>
     ${usedCount?`<span class="inuse" title="Used in ${usedCount} recipe(s)">×${usedCount}</span>`:''}
     <button class="rm-el" title="Remove">✕</button>`;
   row.querySelector('.rm-el').onclick=()=>row.remove();
   row.querySelector('.up').onclick=()=>{ if(row.previousElementSibling) c.insertBefore(row, row.previousElementSibling); };
   row.querySelector('.down').onclick=()=>{ if(row.nextElementSibling) c.insertBefore(row.nextElementSibling, row); };
-  const imgCell=row.querySelector('.el-img'), fileIn=row.querySelector('.elimg-file');
-  imgCell.onclick=(e)=>{ if(e.target===fileIn) return; if(e.altKey){ row.dataset.icon=''; imgCell.querySelector('img')?.remove(); if(!imgCell.querySelector('span')) imgCell.insertAdjacentHTML('afterbegin','<span>+</span>'); return; } fileIn.click(); };
-  fileIn.onchange=()=>fileToIconURL(fileIn.files&&fileIn.files[0], url=>{ row.dataset.icon=url; imgCell.querySelector('span')?.remove(); let ig=imgCell.querySelector('img'); if(!ig){ ig=document.createElement('img'); imgCell.insertAdjacentElement('afterbegin', ig); } ig.src=url; });
   c.appendChild(row);
 }
 document.getElementById('btnAddEl').onclick=()=>addElRow();
@@ -2870,7 +2852,7 @@ document.getElementById('btnModalSave').onclick=()=>{
     if(!id||!name){err='Every element needs an id and a name.';return;}
     if(!/^[a-z][a-z0-9_]*$/.test(id)){err=`Invalid id "${id}".`;return;}
     if(elems.find(e=>e.id===id)){err=`Duplicate id "${id}".`;return;}
-    const icon=row.dataset.icon||''; elems.push(icon?{id,name,color,emoji,icon}:{id,name,color,emoji});
+    elems.push({id,name,color,emoji});
   });
   if(err){toast(err,'err');return;}
   if(!elems.length){toast('Add at least one element.','err');return;}
