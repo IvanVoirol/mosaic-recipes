@@ -17,7 +17,7 @@
 
   Fields:
     name      – shown in the selector
-    elements  – array of { id, name, color, emoji }   (id: lowercase, no spaces)
+    elements  – array of { id, name, color }   (id: lowercase, no spaces)
     recipes   – array of { name, sequence:[ids], description? }
 =================================================================
 -->
@@ -316,15 +316,6 @@ canvas.dragging{cursor:grabbing;}
 /* contextual Edit inspector */
 .ez{padding:11px 12px;border-bottom:1px solid var(--border);} .ez:last-child{border-bottom:none;}
 .ezh{font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:7px;}
-.icon-row{display:flex;align-items:center;gap:10px;}
-.icon-prev{width:48px;height:48px;flex:0 0 auto;border:1px solid var(--border);border-radius:8px;background:#0c0c10;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-.icon-prev img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;}
-.icon-prev span{font-size:.6rem;color:var(--muted);}
-.icon-btns{display:flex;gap:6px;flex-wrap:wrap;}
-.icon-prev.drop{border-color:var(--accent);background:#1a1a24;}
-.rthumb{flex:0 0 auto;width:26px;height:26px;border-radius:5px;overflow:hidden;background:#0c0c10;border:1px solid var(--border);margin-right:8px;}
-.rthumb img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;}
-.ns-thumb{width:18px;height:18px;border-radius:4px;object-fit:contain;image-rendering:pixelated;margin-right:6px;vertical-align:middle;background:#0c0c10;}
 .eidrow{display:flex;align-items:center;gap:8px;}
 .ebadge{font-size:.54rem;text-transform:uppercase;letter-spacing:.05em;border-radius:99px;padding:2px 8px;font-weight:700;white-space:nowrap;}
 .ename{flex:1;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:inherit;font-size:1rem;font-weight:600;padding:2px 0;}
@@ -370,7 +361,7 @@ canvas.dragging{cursor:grabbing;}
 #nodeEditTitle{flex:1;font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
 #nodeEditClose:hover{color:var(--text);background:#ffffff14;}
-#el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(20,20,28,.86);border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(6px);max-width:184px;box-shadow:0 6px 20px #0006;}
+#el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(20,20,28,.86);border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(6px);max-width:250px;box-shadow:0 6px 20px #0006;}
 #el-legend .leg-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
 #el-legend .leg-title{font-size:.56rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;}
 #el-legend .leg-toggle{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;}
@@ -379,6 +370,19 @@ canvas.dragging{cursor:grabbing;}
 #el-legend .leg-item{display:flex;align-items:center;gap:6px;font-size:.74rem;color:var(--text);padding:2px 4px;border-radius:6px;cursor:pointer;white-space:nowrap;}
 #el-legend .leg-item:hover{background:#9d7fea22;}
 #el-legend .leg-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;}
+#el-legend .leg-nm{overflow:hidden;text-overflow:ellipsis;}
+#el-legend .leg-desc{font-size:.62rem;color:var(--muted);line-height:1.35;margin:-2px 0 7px;}
+#el-legend .craftrow{cursor:default;}
+#el-legend .inv-step{margin-left:auto;display:inline-flex;align-items:center;gap:3px;flex:0 0 auto;}
+#el-legend .inv-b{width:18px;height:18px;border:1px solid var(--border);border-radius:5px;background:#15151d;color:var(--text);cursor:pointer;font:600 .82rem/1 sans-serif;padding:0;}
+#el-legend .inv-b:hover{border-color:var(--accent);color:var(--accent);}
+#el-legend .inv-n{min-width:15px;text-align:center;font:600 .76rem ui-monospace,monospace;font-variant-numeric:tabular-nums;}
+#el-legend .inv-in{width:30px;height:18px;border:1px solid var(--border);border-radius:5px;background:#15151d;color:var(--text);text-align:center;font:600 .74rem ui-monospace,monospace;padding:0;}
+#el-legend .inv-in:focus{outline:none;border-color:var(--accent);}
+#el-legend .inv-rst{font-size:.74rem;}
+#el-legend .leg-foot{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:.66rem;color:var(--muted);}
+#el-legend .leg-clear{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:.62rem;padding:2px 8px;}
+#el-legend .leg-clear:hover{color:var(--text);border-color:var(--accent);}
 #empty-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;pointer-events:none;
   background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--muted);font-size:.86rem;backdrop-filter:blur(4px);}
 #empty-hint b{color:var(--text);}
@@ -401,11 +405,32 @@ canvas.dragging{cursor:grabbing;}
 #cvs-hud{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem;margin-right:4px;pointer-events:auto;}
 #cvs-controls{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:6px;}
 #cvs-controls .btn-icon{background:var(--surface);}
+#btnHelp{font-weight:700;width:30px;text-align:center;}
+
+.help-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  background:#0a0a0fbb;backdrop-filter:blur(2px);z-index:300;}
+.help-overlay.on{display:flex;}
+.help-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;
+  max-width:560px;width:calc(100% - 48px);box-shadow:0 20px 60px #000000a0;}
+.help-head{display:flex;align-items:center;margin-bottom:12px;}
+.help-title{font-weight:700;font-size:.95rem;}
+.help-x{margin-left:auto;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);
+  cursor:pointer;font:inherit;width:26px;height:26px;line-height:1;}
+.help-x:hover{color:var(--text);border-color:var(--accent);}
+.help-cols{display:flex;gap:26px;flex-wrap:wrap;}
+.help-sec{flex:1;min-width:210px;}
+.help-h{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.help-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:.8rem;color:var(--text);}
+.help-row span:last-child{margin-left:auto;color:var(--muted);text-align:right;}
+.help-row kbd{background:#15151d;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;
+  padding:1px 6px;font:600 .72rem ui-monospace,monospace;color:var(--text);}
+.help-g{background:#15151d;border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:.72rem;color:var(--text);}
+.help-modes{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+.help-modes .help-g{flex:0 0 auto;min-width:66px;text-align:center;}
 
 #tip{position:fixed;display:none;pointer-events:none;background:var(--surface);border:1px solid var(--border);
   border-radius:var(--r);padding:8px 10px;font-size:.78rem;max-width:200px;box-shadow:0 6px 24px #00000080;z-index:200;}
 #tip .tname{font-weight:700;margin-bottom:4px;}
-#tip .tip-icon{width:22px;height:22px;border-radius:4px;object-fit:contain;image-rendering:pixelated;vertical-align:middle;margin-right:7px;background:#0c0c10;border:1px solid var(--border);}
 #tip .tseq{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:3px;}
 #tip .tseq span{font-size:.68rem;padding:1px 5px;border-radius:4px;}
 #tip .tdesc{color:var(--muted);font-size:.72rem;font-style:italic;margin-top:3px;}
@@ -438,7 +463,6 @@ canvas.dragging{cursor:grabbing;}
 .el-row input.id:disabled{opacity:.5;cursor:not-allowed;}
 .el-row input.nm{flex:1;min-width:0;}
 .el-row input.col{width:46px;height:30px;padding:2px;cursor:pointer;}
-.el-row .em{width:48px;text-align:center;}
 .el-row .rm-el{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:2px 4px;}
 .el-row .reorder{display:flex;flex-direction:column;width:18px;}
 .el-row .reorder button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.5rem;line-height:1;padding:1px;}
@@ -523,11 +547,43 @@ canvas.dragging{cursor:grabbing;}
         <span id="cvs-hud"><span class="appver" id="appVer"></span><span id="syncStatus" class="sync" title="Storage status"></span></span>
         <button class="btn-icon" id="btnFit" title="Fit tree to view">⤢</button>
         <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
+        <button class="btn-icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
       </div>
       <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select · ✎ to edit</div>
       <div id="el-legend"></div>
       <div id="empty-hint" style="display:none">Hover <b>▶ Start</b> and click the <b>＋</b> to add your first recipe.</div>
       <canvas id="minimap" width="158" height="106" title="Overview — click or drag to navigate"></canvas>
+      <div id="help-overlay" class="help-overlay">
+        <div class="help-card">
+          <div class="help-head"><span class="help-title">Shortcuts &amp; gestures</span><button class="help-x" id="helpClose" title="Close (Esc)">✕</button></div>
+          <div class="help-cols">
+            <div class="help-sec">
+              <div class="help-h">Keyboard</div>
+              <div class="help-row"><kbd>Ctrl</kbd><kbd>Z</kbd><span>Undo</span></div>
+              <div class="help-row"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Z</kbd><span>Redo</span></div>
+              <div class="help-row"><kbd>Delete</kbd><span>Delete selected node</span></div>
+              <div class="help-row"><kbd>F</kbd><span>Fit tree to view</span></div>
+              <div class="help-row"><kbd>Esc</kbd><span>Close editor / deselect</span></div>
+              <div class="help-row"><kbd>?</kbd><span>This help</span></div>
+            </div>
+            <div class="help-sec">
+              <div class="help-h">Canvas</div>
+              <div class="help-row"><span class="help-g">Scroll / pinch</span><span>Zoom</span></div>
+              <div class="help-row"><span class="help-g">Drag empty</span><span>Pan</span></div>
+              <div class="help-row"><span class="help-g">Click node</span><span>Select &amp; edit</span></div>
+              <div class="help-row"><span class="help-g">Drag node</span><span>Re-parent branch</span></div>
+              <div class="help-row"><span class="help-g">＋</span><span>Add a recipe</span></div>
+              <div class="help-row"><span class="help-g">▸ / ▾</span><span>Expand / collapse a chain, family or modifier</span></div>
+            </div>
+          </div>
+          <div class="help-modes">
+            <div class="help-h">View modes</div>
+            <div class="help-row"><span class="help-g">Edit</span><span>Build &amp; edit the recipe tree</span></div>
+            <div class="help-row"><span class="help-g">Coverage</span><span>Bright chips show elements still free to add at each node</span></div>
+            <div class="help-row"><span class="help-g">Craft</span><span>Set element quantities; nodes turn green when craftable, purple at the frontier. Click a node to load its needs</span></div>
+          </div>
+        </div>
+      </div>
 
       <!-- floating node editor window (opened by a node's ✎) -->
       <div id="nodeEditWin" style="display:none">
@@ -567,7 +623,7 @@ canvas.dragging{cursor:grabbing;}
     <label>Elements <span style="text-transform:none;letter-spacing:0;color:var(--muted)">(id: lowercase, no spaces · drag order sets tree top→bottom)</span></label>
     <div class="el-header">
       <span style="width:46px">Order</span><span style="width:78px">ID</span><span style="flex:1">Name</span>
-      <span style="width:46px">Color</span><span style="width:48px">Emoji</span>
+      <span style="width:46px">Color</span>
     </div>
     <div id="mElRows"></div>
     <button class="btn btn-ghost btn-sm" id="btnAddEl" style="margin-top:4px">＋ Add element</button>
@@ -592,7 +648,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.40';
+const APP_VERSION = 'v2.46';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -625,8 +681,10 @@ const RAW = JSON.parse(document.getElementById('PALETTES_DATA').textContent);
 function normalise(list) {
   list.forEach(p => {
     if (p.description === undefined) p.description = '';
+    (p.elements||[]).forEach(e => { delete e.emoji; delete e.icon; });   // emoji/element-icon features removed
     p.recipes.forEach(r => {
       if (r.description === undefined) r.description = '';
+      delete r.icon;                                                     // recipe-icon feature removed
       if (!Array.isArray(r.altOrigins)) r.altOrigins = [];
       // Growth must be {element, stages>=2}; drop anything malformed.
       if (r.growth && !(r.growth.element && r.growth.stages >= 2)) delete r.growth;
@@ -864,7 +922,8 @@ function loadPalette(idx) {
   recipes  = palettes[idx].recipes;
   const hn = document.getElementById('palNameHdr'); if (hn) hn.textContent = (palettes[idx] && palettes[idx].name) || 'Palette Editor';
   sel = { seq: [], recipe: null };  // start at root
- 
+  loadExpanded();
+  loadInv();
   rebuildAll();
 }
 
@@ -1024,7 +1083,7 @@ function comboName(r, labels){
   const parts = labels.filter((l,i)=> (r.modifiers[i].options.find(o=>o.label===l)||{}).elements?.length);
   return parts.length ? `${r.name} (${parts.join(', ')})` : r.name;
 }
-function prettySeq(seq){ return seq.map(id=>{const e=elements.find(x=>x.id===id);return e?`${e.emoji} ${e.name}`:id;}).join(' + '); }
+function prettySeq(seq){ return seq.map(id=>{const e=elements.find(x=>x.id===id);return e?e.name:id;}).join(' + '); }
 // Branch point when adding `elId` from the selected recipe. For a chain, adding its
 // advance element continues PAST the last stage instead of colliding with stage 2.
 // Modular vs necessary — ONLY for a node reachable by multiple origins (alternate
@@ -1079,7 +1138,7 @@ function familyColor(seq){
 // when the parent step isn't itself a named recipe.
 function originLabel(o){
   const last = o[o.length-1]; const el = elements.find(e=>e.id===last);
-  const elTag = el ? `${el.emoji} ${el.name}` : last;
+  const elTag = el ? el.name : last;
   if (o.length === 1) return `▶ Start  +  ${elTag}`;
   const parent = recipeBySeq(o.slice(0,-1));
   return parent ? `${parent.name}  +  ${elTag}` : prettySeq(o);
@@ -1103,7 +1162,7 @@ function layoutTrie(root) {
       const cs = k.map(c=>c.ly + nodeHeight(c)/2);
       n.ly = (Math.min(...cs)+Math.max(...cs))/2 - nodeHeight(n)/2; }
   })(root);
-  (function cx(n,d){ n.lx = d * sp.col; Object.values(n.children).forEach(c=>cx(c,d+1)); })(root,0);
+  (function cx(n,d){ n.lx = d * sp.col; const span=nodeColSpan(n); Object.values(n.children).forEach(c=>cx(c,d+span)); })(root,0);
   // push apart nodes that overlap within the same column (tall modifier nodes)
   const all=[]; (function w(n){ if(n.key!=='') all.push(n); sortedChildren(n).forEach(w); })(root);
   const cols={}; all.forEach(n=>{ (cols[n.lx]=cols[n.lx]||[]).push(n); });
@@ -1165,11 +1224,9 @@ function drawSeqDots(seq, x, yBottom, emoji, boundary){
   seq.forEach((id,i)=>{
     const el = elements.find(e=>e.id===id); if(!el) return;
     const cx = x + 8 + i*step + r;
-    if (emoji){ ctx.font=`${Math.round(r*1.8)}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
-      ctx.fillStyle='#fff9'; ctx.fillText(el.emoji, x+8+i*step, yBottom); }
-    else { ctx.beginPath(); ctx.arc(cx, yBottom, r, 0, Math.PI*2);
-      if (maxB && i < maxB){ ctx.fillStyle=el.color+'44'; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=el.color+'aa'; ctx.stroke(); }
-      else { ctx.fillStyle = el.color+'cc'; ctx.fill(); } }
+    ctx.beginPath(); ctx.arc(cx, yBottom, r, 0, Math.PI*2);
+    if (maxB && i < maxB){ ctx.fillStyle=el.color+'44'; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=el.color+'aa'; ctx.stroke(); }
+    else { ctx.fillStyle = el.color+'cc'; ctx.fill(); }
   });
   bset.forEach(b=>{ if(b>0&&b<n){ const dx = x + 8 + b*step - step*0.18;
     ctx.strokeStyle = TH.muted; ctx.lineWidth=1; ctx.setLineDash([2,2]);
@@ -1190,6 +1247,7 @@ function drawTree() {
   layoutNodes = trieFlatten(root);
   edgeBadges = [];
   curPath = pathKeySet();
+  layoutNodes.forEach(n=>{ if(isNodeExpanded(n)){ const I=compositeInternals(n); n._internals=I; n._childExit=I.childExit; n._famrowY=I.famrowY; } else { n._childExit=null; } });
 
   ctx.save();
   ctx.translate(pan.x, pan.y + ch/2);
@@ -1210,7 +1268,7 @@ function drawTree() {
 let highlightFn = null;
 function nodeHasEl(n, el){ try{ if(n.recipe){ return expandedSequences(n.recipe).some(s=>s.includes(el)); } return (n.sequence||[]).includes(el); }catch(e){ return false; } }
 // ── view mode: 'edit' (author) vs 'analyse' (read-only saturation view) ──
-let viewMode='edit'; try{ const v=localStorage.getItem('paletteViewMode'); if(v==='analyse'||v==='edit') viewMode=v; }catch(e){}
+let viewMode='edit'; try{ const v=localStorage.getItem('paletteViewMode'); if(v==='analyse'||v==='edit'||v==='craft') viewMode=v; }catch(e){}
 const PIPH=12;                                   // reserved height (px) for one slot-pip row in analyse mode
 // Mirrors the wizard's illegalEl: an element is free at a node iff recipeOccupying(departureSeq+[el]) is empty,
 // where the departure is the node's own sequence (families: each variant's last sequence) — same as computeSpots.
@@ -1219,28 +1277,6 @@ function nodeFreeForEl(node,id){
   const r=node.recipe;
   if(r && isFamily(r)) return r.family.some((v,vi)=> !recipeOccupying(familyVarLast(r,vi).concat([id])));
   return !recipeOccupying(node.sequence.concat([id]));
-}
-// Per-recipe icon image cache (decoded async; repaint on load).
-const iconCache={};
-// Decode a data-URL into a cached <img>, keyed by `key`; returns the image once ready
-// (and repaints on load), or null while it decodes / when there's no source.
-function loadCachedImg(key, url){ if(!url) return null;
-  let c=iconCache[key];
-  if(!c || c.url!==url){ const img=new Image(); img.onload=()=>{ try{drawTree();}catch(e){} }; img.src=url; iconCache[key]={url, img}; return null; }
-  return (c.img.complete && c.img.naturalWidth) ? c.img : null;
-}
-function getIcon(r){ return r ? loadCachedImg(r.id, r.icon) : null; }
-// Read an uploaded image file, downscale it to a 32×32 pixel-art PNG (nearest-neighbour),
-// and hand the data-URL to `onReady`. Used by both the recipe- and element-icon pickers.
-function fileToIconURL(file, onReady){
-  if(!file || !/^image\//.test(file.type)){ toast('Please choose an image file.','err'); return; }
-  const fr=new FileReader();
-  fr.onload=()=>{ const im=new Image();
-    im.onload=()=>{ const cv=document.createElement('canvas'); cv.width=32; cv.height=32;
-      const cx=cv.getContext('2d'); cx.imageSmoothingEnabled=false; cx.clearRect(0,0,32,32); cx.drawImage(im,0,0,32,32);
-      onReady(cv.toDataURL('image/png')); };
-    im.onerror=()=>toast('Couldn’t read that image.','err'); im.src=fr.result; };
-  fr.onerror=()=>toast('Couldn’t read that file.','err'); fr.readAsDataURL(file);
 }
 // Slot pips emphasising AVAILABILITY: a free element is a big bright colour chip (you can add it here);
 // a used element recedes to a small dim dot. `sz` lets families use a more compact row.
@@ -1257,19 +1293,63 @@ function drawSlotPips(departSeq, px, py, sz){ sz = sz||14; const gap = Math.max(
   });
 }
 function setViewMode(m){ viewMode=m; try{ localStorage.setItem('paletteViewMode',m); }catch(e){}
-  if(m==='analyse' && typeof closeNodeEditor==='function') closeNodeEditor();
+  if((m==='analyse'||m==='craft') && typeof closeNodeEditor==='function') closeNodeEditor();
   buildLegend(); drawTree(); }
+
+// ── craft view: per-element quantity inventory + craftability (capability with quantities:
+//    a node is craftable when, for every element, your count ≥ how many times it appears) ──
+let craftInv = {};
+function invStoreKey(){ const p=palettes[pidx]; return 'paletteInv:'+((p&&p.id)||('idx'+pidx)); }
+function loadInv(){ try{ craftInv=JSON.parse(localStorage.getItem(invStoreKey())||'{}')||{}; }catch(e){ craftInv={}; } }
+function saveInv(){ try{ localStorage.setItem(invStoreKey(), JSON.stringify(craftInv)); }catch(e){} }
+function invCount(id){ return Math.max(0, craftInv[id]|0); }
+function setInv(id,v){ v=Math.max(0,v|0); if(v) craftInv[id]=v; else delete craftInv[id]; saveInv(); }
+function seqNeeds(seq){ const m={}; (seq||[]).forEach(id=>{ m[id]=(m[id]||0)+1; }); return m; }
+function seqCraftable(seq){ if(!seq||!seq.length) return false; const m=seqNeeds(seq); for(const id in m){ if(invCount(id)<m[id]) return false; } return true; }
+function craftSet(id,v){ setInv(id,v); const el=document.getElementById('inv-'+id); if(el) el.value=invCount(id); drawTree(); updateCraftSummary(); }
+function craftAdjust(id,delta){ craftSet(id, invCount(id)+delta); }
+function craftFill(seq){ const need=seqNeeds(seq); craftInv={}; for(const id in need) craftInv[id]=need[id]; saveInv();
+  elements.forEach(e=>{ const el=document.getElementById('inv-'+e.id); if(el) el.value=invCount(e.id); }); drawTree(); updateCraftSummary(); }
+function updateCraftSummary(){ const s=document.getElementById('craftSummary'); if(!s) return; let c=0,t=0;
+  layoutNodes.forEach(n=>{ if(n.recipe && n.sequence && n.sequence.length){ t++; if(seqCraftable(n.sequence)) c++; } });
+  s.textContent = t ? (c+'/'+t+' craftable') : ''; }
 let _legendSig='';
 function buildLegend(){ const box=document.getElementById('el-legend'); if(!box) return;
-  const sig=elements.map(e=>e.id+e.emoji+e.color+e.name).join('|')+'#'+viewMode;
-  if(sig===_legendSig && box.children.length) return; _legendSig=sig;
-  box.innerHTML='<div class="leg-head"><span class="leg-title">Elements</span>'
-    +`<span class="leg-toggle"><button data-vm="edit" class="${viewMode==='edit'?'on':''}">Edit</button><button data-vm="analyse" class="${viewMode==='analyse'?'on':''}">Analyse</button></span></div>`
-    +elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${e.emoji} ${escHtml(e.name)}</div>`).join('');
+  const craft = viewMode==='craft';
+  const sig=elements.map(e=>e.id+e.color+e.name).join('|')+'#'+viewMode;
+  if(sig===_legendSig && box.children.length){ if(craft) updateCraftSummary(); return; } _legendSig=sig;
+  const seg=`<span class="leg-toggle">`
+    +`<button data-vm="edit" title="Build & edit the recipe tree" class="${viewMode==='edit'?'on':''}">Edit</button>`
+    +`<button data-vm="analyse" title="Read-only: which elements are still free to add at each node" class="${viewMode==='analyse'?'on':''}">Coverage</button>`
+    +`<button data-vm="craft" title="Set the quantities you have; see what's craftable" class="${craft?'on':''}">Craft</button></span>`;
+  const DESC={edit:'Build &amp; rearrange the recipe tree.',
+              analyse:'Bright chips = elements still free to add here; dim = already used.',
+              craft:'Set what you have; nodes colour by what you can make.'};
+  const items = craft
+    ? elements.map(e=>`<div class="leg-item craftrow" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span><span class="leg-nm">${escHtml(e.name)}</span>`
+        +`<span class="inv-step"><button class="inv-b" data-act="dec" data-el="${e.id}">−</button>`
+        +`<input class="inv-in" id="inv-${e.id}" data-el="${e.id}" type="text" inputmode="numeric" value="${invCount(e.id)}">`
+        +`<button class="inv-b" data-act="inc" data-el="${e.id}">+</button>`
+        +`<button class="inv-b inv-rst" data-act="rst" data-el="${e.id}" title="Reset this element">↺</button></span></div>`).join('')
+    : elements.map(e=>`<div class="leg-item" data-el="${e.id}"><span class="leg-dot" style="background:${e.color}"></span>${escHtml(e.name)}</div>`).join('');
+  box.innerHTML=`<div class="leg-head"><span class="leg-title">${craft?'Inventory':'Elements'}</span>${seg}</div>`
+    +`<div class="leg-desc">${DESC[viewMode]||''}</div>`+items
+    + (craft?`<div class="leg-foot"><span id="craftSummary"></span><button class="leg-clear" id="invClear">Reset all</button></div>`:'');
   box.querySelectorAll('.leg-toggle button').forEach(b=>{ b.onclick=()=>setViewMode(b.dataset.vm); });
+  if(craft){
+    box.querySelectorAll('.inv-b').forEach(b=>{ b.onclick=e=>{ e.stopPropagation(); const id=b.dataset.el, act=b.dataset.act;
+      if(act==='inc') craftAdjust(id,1); else if(act==='dec') craftAdjust(id,-1); else craftSet(id,0); }; });
+    box.querySelectorAll('.inv-in').forEach(inp=>{
+      inp.onclick=e=>e.stopPropagation();
+      inp.onkeydown=e=>e.stopPropagation();                 // typing digits must not fire canvas shortcuts
+      inp.oninput=()=>{ const v=parseInt((inp.value||'').replace(/[^0-9]/g,''),10); setInv(inp.dataset.el, isNaN(v)?0:v); drawTree(); updateCraftSummary(); };
+      inp.onblur=()=>{ inp.value=invCount(inp.dataset.el); }; });
+    const clr=document.getElementById('invClear'); if(clr) clr.onclick=()=>{ craftInv={}; saveInv(); _legendSig=''; buildLegend(); drawTree(); };
+  }
   box.querySelectorAll('.leg-item').forEach(it=>{
     it.onmouseenter=()=>{ const id=it.dataset.el; highlightFn = (viewMode==='analyse') ? (n=>nodeFreeForEl(n,id)) : (n=>nodeHasEl(n,id)); drawTree(); };
     it.onmouseleave=()=>{ if(highlightFn){ highlightFn=null; drawTree(); } }; });
+  if(craft) updateCraftSummary();
 }
 let curPath = new Set();
 
@@ -1289,7 +1369,7 @@ function drawAltEdges(){
       const col = el?el.color:'#888';
       const sx = src.lx + (src.key===''?NW/2:NW), sy = src.ly + (src.key===''?NH:nodeHeight(src))/2;
       const ex = target.lx, ey = target.ly + nodeHeight(target)/2;
-      const elTag = el ? `${el.emoji} ${el.name}` : '?';
+      const elTag = el ? el.name : '?';
       const srcRec = recipeBySeq(o.slice(0,-1));
       const srcName = srcRec ? srcRec.name : (o.length<=1 ? 'Start' : prettySeq(o.slice(0,-1)));
       const edge = {sx,sy,ex,ey,col};
@@ -1392,6 +1472,7 @@ function drawEdge(parent, child) {
     const fo = parent.famOut.find(f=>f.child===child);
     if (fo){ const ry = (parent._famrowY && parent._famrowY[fo.vi]); sy = (ry!=null?ry:parent.ly + 26 + fo.vi*18 + 7); }
   }
+  if (parent._childExit && parent._childExit[child.key]){ const ce=parent._childExit[child.key]; sx=ce.x; sy=ce.y; }
   const ex = child.lx, ey = child.ly + nodeHeight(child)/2, mx = (sx+ex)/2;
 
   ctx.save();
@@ -1414,11 +1495,9 @@ function drawEdge(parent, child) {
 
   if (settings.showBadges && el) {
     const bx = mx, by = (sy+ey)/2;
-    ctx.beginPath(); ctx.arc(bx,by,9,0,Math.PI*2);
-    ctx.fillStyle = el.color + '33'; ctx.fill();
-    ctx.strokeStyle = el.color + '88'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.font = '11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle = TH.text; ctx.fillText(el.emoji, bx, by);
+    ctx.beginPath(); ctx.arc(bx,by,6,0,Math.PI*2);
+    ctx.fillStyle = el.color; ctx.fill();
+    ctx.strokeStyle = '#00000066'; ctx.lineWidth = 1; ctx.stroke();
     edgeBadges.push({ wx:bx, wy:by, r:9, el });
   }
   ctx.restore();
@@ -1443,6 +1522,7 @@ function modOptionRows(r){
 }
 // Per-node height. Modifier nodes grow to fit one labelled row of option buttons per axis.
 function nodeHeight(node){
+  if (isNodeExpanded(node)) return zoneDims(node).h;
   const r = node && node.recipe;                              // identical in Edit & Analyse so the trie never reflows
   if (r && isModifier(r)){
     const rows = modOptionRows(r).reduce((s,rr)=>s+rr.length,0);
@@ -1451,6 +1531,135 @@ function nodeHeight(node){
   }
   if (r && isFamily(r)){ return 26 + r.family.length*18 + (settings.showDots?20:6); }
   return NH;
+}
+
+// ================================================================
+//  COMPOSITE GROUP EXPAND  (chain / family / modifier → titled zone)
+//  Expansion is a pure render/layout change: a composite stays ONE recipe;
+//  expanded, its computed stages/variants/combos are laid out on the trie
+//  grid inside a titled zone, and children's edges leave from the right
+//  internal node (chain → last stage, family → variant tip, modifier → right).
+// ================================================================
+let expandedSet = new Set();
+function expStoreKey(){ const p=palettes[pidx]; return 'paletteExpanded:'+((p&&p.id)||('idx'+pidx)); }
+function loadExpanded(){ try{ expandedSet=new Set(JSON.parse(localStorage.getItem(expStoreKey())||'[]')); }catch(e){ expandedSet=new Set(); } }
+function saveExpanded(){ try{ localStorage.setItem(expStoreKey(), JSON.stringify([...expandedSet])); }catch(e){} }
+function isExpandable(r){ return !!(r && (isGrowth(r)||isFamily(r)||isModifier(r))); }
+function isNodeExpanded(node){ return !!(node && node.key && node.recipe && isExpandable(node.recipe) && expandedSet.has(node.key)); }
+function toggleExpand(node){ if(!node||!isExpandable(node.recipe)) return;
+  if(expandedSet.has(node.key)) expandedSet.delete(node.key); else expandedSet.add(node.key);
+  saveExpanded(); drawTree(); }
+
+const ZHEAD=24, ZGV=14, ZPAD=9;            // zone header height, internal row gap, side padding
+function zoneCols(node){ const r=node.recipe;
+  if(isGrowth(r)) return Math.max(2, r.growth.stages);
+  if(isFamily(r)) return 1 + Math.max(1, ...r.family.map(v=>v.stages));
+  if(isModifier(r)) return 1 + r.modifiers.length;
+  return 1; }
+function zoneRows(node){ const r=node.recipe;
+  if(isFamily(r)) return Math.max(1, r.family.length);
+  if(isModifier(r)) return Math.max(1, modCombos(r).length);
+  return 1; }
+function zoneDims(node){ const sp=SP(); const cols=zoneCols(node), rows=zoneRows(node);
+  return { cols, rows, w:(cols-1)*sp.col+NW+2*ZPAD, h:ZHEAD + rows*NH + (rows-1)*ZGV + 10 }; }
+function nodeColSpan(node){ return isNodeExpanded(node) ? zoneCols(node) : 1; }
+function nodeBoxW(node){ return isNodeExpanded(node) ? zoneDims(node).w : (node.key===''?NW/2:NW); }
+
+// Internal sub-graph (world coords) for an expanded composite.
+function compositeInternals(node){
+  const sp=SP(), COL=sp.col, r=node.recipe, dims=zoneDims(node);
+  const x0=node.lx, y0=node.ly+ZHEAD;
+  const rowY = rw => y0 + rw*(NH+ZGV);
+  const colX = c => x0 + c*COL;
+  const nodes=[], edges=[], childExit={}, famrowY={};
+  if(isGrowth(r)){
+    const S=r.growth.stages, E=r.growth.element;
+    for(let k=1;k<=S;k++) nodes.push({x:colX(k-1),y:rowY(0),name:r.name+' · '+k,seq:growthStageSeq(r,k),kind:k===1?'base':'stage'});
+    for(let k=2;k<=S;k++) edges.push({a:k-2,b:k-1,el:E});
+    const lastX=colX(S-1)+NW, ey=rowY(0)+NH/2;
+    Object.values(node.children).forEach(c=>{ childExit[c.key]={x:lastX,y:ey}; });
+  } else if(isFamily(r)){
+    const rows=r.family.length, baseRow=(rows-1)/2;
+    const bi=nodes.push({x:colX(0),y:rowY(baseRow),name:r.name,seq:r.sequence.slice(),kind:'base'})-1;
+    r.family.forEach((v,vi)=>{ let prev=bi;
+      for(let k=1;k<=v.stages;k++){ const idx=nodes.push({x:colX(k),y:rowY(vi),name:v.name+' · '+k,seq:familyVarSeq(r,vi,k),kind:'stage'})-1;
+        edges.push({a:prev,b:idx,el:v.element}); prev=idx; }
+      famrowY[vi]=rowY(vi)+NH/2;
+      const tipX=colX(v.stages)+NW;
+      (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:tipX,y:rowY(vi)+NH/2}; });
+    });
+  } else if(isModifier(r)){
+    const A=r.modifiers.length, combos=modCombos(r);
+    const bi=nodes.push({x:colX(0),y:0,_row:(combos.length-1)/2,name:r.name,seq:r.sequence.slice(),kind:'base',_leaves:[]})-1;
+    const byPref={'':bi};
+    combos.forEach((combo,li)=>{ let parent=bi, pref='';
+      for(let a=0;a<A;a++){ pref+=(a?'|':'')+combo.opts[a];
+        let idx=byPref[pref];
+        if(idx==null){ const opt=r.modifiers[a].options[combo.opts[a]];
+          const axisLines=[]; for(let b=0;b<=a;b++) axisLines.push([r.modifiers[b].name, r.modifiers[b].options[combo.opts[b]].label]);
+          idx=nodes.push({x:colX(a+1),y:0,_row:null,kind:a===A-1?'leaf':'pivot',axisLines,
+                          seq:a===A-1?combo.seq.slice():null,
+                          el:(opt.elements&&opt.elements.length)?opt.elements[opt.elements.length-1]:null,_leaves:[]})-1;
+          byPref[pref]=idx; edges.push({a:parent,b:idx,el:nodes[idx].el});
+        }
+        nodes[idx]._leaves.push(li); parent=idx;
+      }
+    });
+    nodes.forEach(n=>{ if(n.kind==='leaf') n._row=n._leaves[0]; });
+    nodes.forEach(n=>{ if(n._row==null && n._leaves.length) n._row=(Math.min(...n._leaves)+Math.max(...n._leaves))/2; });
+    nodes.forEach(n=>{ n.y=rowY(n._row||0); });
+    const rx=colX(A)+NW, ry=node.ly+dims.h/2;
+    Object.values(node.children).forEach(c=>{ childExit[c.key]={x:rx,y:ry}; });
+  }
+  return { nodes, edges, childExit, famrowY };
+}
+
+function drawZoneEdge(a,b,el){
+  const col=(elements.find(x=>x.id===el)||{}).color||'#7a7a90';
+  const sx=a.x+NW, sy=a.y+NH/2, ex=b.x, ey=b.y+NH/2, mx=(sx+ex)/2;
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);
+  ctx.lineCap='round'; ctx.strokeStyle='#00000066'; ctx.lineWidth=5.5; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey); ctx.strokeStyle=col; ctx.lineWidth=3; ctx.stroke();
+}
+function drawMiniNode(n,tcol){
+  const x=n.x,y=n.y,pivot=n.kind==='pivot';
+  roundRect(ctx,x,y,NW,NH,8); ctx.fillStyle=pivot?'#14141c':TH.node; ctx.fill();
+  if(pivot) ctx.setLineDash([4,3]);
+  ctx.lineWidth=1; ctx.strokeStyle=pivot?TH.nodeBorder:mix(TH.nodeBorder,tcol,0.4); roundRect(ctx,x,y,NW,NH,8); ctx.stroke(); ctx.setLineDash([]);
+  ctx.textAlign='left'; let ty=y+8;
+  if(n.name){ ctx.fillStyle=TH.text; ctx.font='600 11px sans-serif'; ctx.textBaseline='top';
+    let nm=n.name; const mw=NW-16; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==n.name)nm=nm.slice(0,-1)+'…';
+    ctx.fillText(nm,x+8,ty); ty+=15; }
+  if(n.axisLines){ ctx.font='10px sans-serif'; ctx.textBaseline='top';
+    n.axisLines.forEach(([an,av])=>{ ctx.fillStyle=TH.muted; ctx.fillText(an+': ',x+8,ty); const aw=ctx.measureText(an+': ').width;
+      ctx.fillStyle=TH.text; ctx.fillText(av,x+8+aw,ty); ty+=13; }); }
+  if(n.seq && settings.showDots) drawSeqDots(n.seq, x, y+NH-12);
+}
+function drawExpandedZone(node,isSel){
+  node._pips=null; node._modopts=null; node._fampips=null; node._caret=null;
+  const r=node.recipe, dims=zoneDims(node);
+  const bx=node.lx-ZPAD, by=node.ly, bw=dims.w, bh=dims.h;
+  const tcol=isModifier(r)?settings.accent:'#2fd4a0';
+  const tlabel=isGrowth(r)?'CHAIN':isFamily(r)?'FAMILY':'MODIFIER';
+  ctx.save();
+  roundRect(ctx,bx,by,bw,bh,12); ctx.fillStyle=isSel?tcol+'14':'#ffffff08'; ctx.fill();
+  ctx.setLineDash([6,4]); ctx.lineWidth=1.5; ctx.strokeStyle=isSel?tcol:tcol+'99'; roundRect(ctx,bx,by,bw,bh,12); ctx.stroke(); ctx.setLineDash([]);
+  // header: name + type label + collapse button
+  ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  let nm=r.name; const nmMax=bw-150; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
+  ctx.fillText(nm,bx+11,by+ZHEAD/2+1); const nmW=ctx.measureText(nm).width;
+  ctx.font='700 8px sans-serif'; ctx.fillStyle=tcol; ctx.fillText(tlabel,bx+11+nmW+9,by+ZHEAD/2+1);
+  const cbw=20,cbh=15,cbx=bx+bw-cbw-6,cby=by+5;
+  ctx.fillStyle='#15151d'; ctx.strokeStyle=tcol+'88'; ctx.lineWidth=1; roundRect(ctx,cbx,cby,cbw,cbh,4); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=TH.muted; ctx.font='700 10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('▾',cbx+cbw/2,cby+cbh/2+1);
+  node._collapseBtn={x:cbx,y:cby,w:cbw,h:cbh};
+  ctx.restore();
+  if(zoom<0.4) return;                                    // far zoom: just the titled box
+  const I=node._internals||compositeInternals(node);
+  ctx.save();
+  I.edges.forEach(e=>drawZoneEdge(I.nodes[e.a],I.nodes[e.b],e.el));
+  I.nodes.forEach(n=>drawMiniNode(n,tcol));
+  ctx.restore();
 }
 
 function drawNode(node) {
@@ -1463,6 +1672,8 @@ function drawNode(node) {
 
   ctx.save();
   if (dim) ctx.globalAlpha = 0.25;
+
+  if (!isRoot && !isGap && isNodeExpanded(node)){ drawExpandedZone(node, isSel); ctx.restore(); return; }
 
   if (isRoot) {
     const w = NW/2;
@@ -1489,6 +1700,17 @@ function drawNode(node) {
   const H = nodeHeight(node);
   const SD = settings.showDots && viewMode!=='analyse';   // seq dots are an edit-mode aid; analyse shows slot pips instead
   const fam = familyColor(node.sequence);
+  if (viewMode==='craft'){
+    const need=seqNeeds(node.sequence);
+    const ok = node.sequence.length>0 && Object.keys(need).every(id=>invCount(id)>=need[id]);
+    const frontier = ok && sortedChildren(node).some(c=>{ const cm=seqNeeds(c.sequence); return !(c.sequence.length>0 && Object.keys(cm).every(id=>invCount(id)>=cm[id])); });
+    if(!ok) ctx.globalAlpha *= 0.4;
+    ctx.fillStyle = isSel ? settings.accent+'1f' : (!ok ? TH.node : (frontier ? settings.accent+'22' : '#2fd4a022'));
+    roundRect(ctx,x,y,NW,H,8); ctx.fill();
+    ctx.strokeStyle = isSel ? settings.accent : (!ok ? '#5b5b66' : (frontier ? settings.accent : '#2fd4a0'));
+    ctx.lineWidth = (isSel||frontier)?2:1;
+    roundRect(ctx,x,y,NW,H,8); ctx.stroke();
+  } else {
   if (fam && !isSel){ ctx.fillStyle = mix(TH.node, fam, 0.18); }
   else ctx.fillStyle = isSel ? settings.accent+'1f' : TH.node;
   roundRect(ctx,x,y,NW,H,8); ctx.fill();
@@ -1499,20 +1721,18 @@ function drawNode(node) {
     ctx.save(); ctx.beginPath(); roundRect(ctx,x,y,NW,H,8); ctx.clip();
     ctx.fillStyle = fam; ctx.fillRect(x,y,5,H); ctx.restore();
   }
+  }
   let nameX = x+(fam?11:8);
-  // ── Level-of-detail by zoom: Far = icon-led, Mid = icon + name + elements, Near = full detail below ──
+  // ── Level-of-detail by zoom: Far = big name, Mid = name + element dots, Near = full detail below ──
   if (zoom < 0.6 && node.key!==''){
     node._pips=[]; node._modopts=[]; node._fampips=[];                 // no on-node controls at this zoom
-    const im = recipe.icon ? getIcon(recipe) : null;
-    if (zoom < 0.22){                                                  // VERY FAR: just the icon, oversized (may overflow the node)
-      if (im){ const s=Math.min(176, H*2.2); ctx.imageSmoothingEnabled=false; ctx.drawImage(im, x+NW/2-s/2, y+H/2-s/2, s, s); ctx.imageSmoothingEnabled=true; }
-      else { const fw=Math.min(48, Math.max(18, 16/zoom)); ctx.fillStyle=TH.text; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`700 ${fw}px 'Segoe UI',sans-serif`;
-        let nm=recipe.name; const mw=NW-12; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==recipe.name&&nm.length>1)nm=nm.slice(0,-1)+'…'; ctx.fillText(nm, x+NW/2, y+H/2); }
+    if (zoom < 0.22){                                                  // VERY FAR: large centred name
+      const fw=Math.min(48, Math.max(18, 16/zoom)); ctx.fillStyle=TH.text; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`700 ${fw}px 'Segoe UI',sans-serif`;
+      let nm=recipe.name; const mw=NW-12; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==recipe.name&&nm.length>1)nm=nm.slice(0,-1)+'…'; ctx.fillText(nm, x+NW/2, y+H/2);
       ctx.restore(); return;
     }
     const far = zoom < 0.4;
-    let tx = nameX;
-    if (im){ const s = far ? H-4 : 30; ctx.imageSmoothingEnabled=false; ctx.drawImage(im, tx, y+(H-s)/2, s, s); ctx.imageSmoothingEnabled=true; tx += s + 9; }
+    const tx = nameX;
     const nameWorld = Math.min(far?30:24, Math.max(12, 12/zoom));      // counter-scale so it stays legible on screen
     ctx.fillStyle = TH.text; ctx.textAlign='left'; ctx.textBaseline='middle';
     ctx.font = `${isSel?700:(far?600:500)} ${nameWorld}px 'Segoe UI',sans-serif`;
@@ -1526,14 +1746,19 @@ function drawNode(node) {
     }
     ctx.restore(); return;
   }
-  if (recipe.icon){ const im=getIcon(recipe); if(im){ const s=22; ctx.imageSmoothingEnabled=false; ctx.drawImage(im, nameX, y+7, s, s); ctx.imageSmoothingEnabled=true; nameX += s+5; } }
   ctx.fillStyle = TH.text; ctx.font = `${isSel?700:500} 11px 'Segoe UI',sans-serif`;
   ctx.textAlign='left'; ctx.textBaseline='top';
   let txt = recipe.name; const maxW = (x+NW-8) - nameX - 8;
   while (ctx.measureText(txt).width > maxW && txt.length > 1) txt = txt.slice(0,-1);
   if (txt !== recipe.name) txt = txt.slice(0,-1)+'…';
   ctx.fillText(txt, nameX, y+9);
-  if (recipe.description && viewMode!=='analyse') { ctx.fillStyle = settings.accent+'cc'; ctx.font='9px sans-serif'; ctx.fillText('•', x+NW-12, y+9); }
+  if (recipe.description && viewMode!=='analyse' && !isExpandable(recipe)) { ctx.fillStyle = settings.accent+'cc'; ctx.font='9px sans-serif'; ctx.fillText('•', x+NW-12, y+9); }
+  if (isExpandable(recipe)){                                  // collapsed composite → caret to expand into a zone
+    const cw=15, cxr=x+NW-cw-4, cyr=y+5;
+    ctx.fillStyle='#15151d'; ctx.strokeStyle=TH.nodeBorder; ctx.lineWidth=1; roundRect(ctx,cxr,cyr,cw,cw,4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=TH.muted; ctx.font='700 10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('▸',cxr+cw/2,cyr+cw/2+1);
+    node._caret={x:cxr,y:cyr,w:cw,h:cw};
+  } else node._caret=null;
 
   node._pips = null; node._modopts = null; node._famrows = null; node._fampips = null;
   const key2 = node.sequence.join('\x1f');
@@ -1688,7 +1913,9 @@ function reparentNode(nodeSeq, newParentSeq){
 
 function s2w(sx,sy){ const ch=wrap.clientHeight; return { x:(sx-pan.x)/zoom, y:(sy-pan.y-ch/2)/zoom }; }
 function nodeAt(sx,sy){ const {x:wx,y:wy}=s2w(sx,sy);
-  return layoutNodes.find(n=>{ const w=n.key===''?NW/2:NW; const h=n.key===''?NH:nodeHeight(n); return wx>=n.lx&&wx<=n.lx+w&&wy>=n.ly&&wy<=n.ly+h; })||null; }
+  return layoutNodes.find(n=>{ const exp=isNodeExpanded(n); const left=exp?n.lx-ZPAD:n.lx;
+    const w=exp?zoneDims(n).w:(n.key===''?NW/2:NW); const h=n.key===''?NH:nodeHeight(n);
+    return wx>=left&&wx<=left+w&&wy>=n.ly&&wy<=n.ly+h; })||null; }
 function badgeAt(sx,sy){ const {x:wx,y:wy}=s2w(sx,sy);
   return edgeBadges.find(b=>{ const dx=wx-b.wx,dy=wy-b.wy; return dx*dx+dy*dy <= (b.r+3)*(b.r+3); })||null; }
 
@@ -1696,9 +1923,10 @@ cvs.addEventListener('mousedown', e=>{
   const rect=wrap.getBoundingClientRect(), lx=e.clientX-rect.left, ly=e.clientY-rect.top;
   const n=nodeAt(lx,ly); const {x:wx,y:wy}=s2w(lx,ly);
   const inRects = arr => arr && arr.some(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h);
-  const onControl = n && (inRects(n._pips)||inRects(n._modopts)||inRects(n._fampips));
+  const inRect = p => p && wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h;
+  const onControl = n && (inRects(n._pips)||inRects(n._modopts)||inRects(n._fampips)||inRect(n._caret)||inRect(n._collapseBtn));
   dStart={x:e.clientX,y:e.clientY};
-  if (n && n.key!=='' && !onControl && viewMode!=='analyse'){ dragMaybe=true; dragNode=n; }   // potential drag-to-reparent (or a click)
+  if (n && n.key!=='' && !onControl && viewMode==='edit'){ dragMaybe=true; dragNode=n; }   // potential drag-to-reparent (or a click)
   else { dragging=true; pStart={...pan}; cvs.classList.add('dragging'); }
 });
 cvs.addEventListener('mousemove', e=>{
@@ -1727,7 +1955,7 @@ cvs.addEventListener('mousemove', e=>{
     const origins = (!isGap && r.altOrigins && r.altOrigins.length) ? recipeOrigins(r) : null;
     const tn = document.getElementById('tip-name');
     if (isGap) { tn.textContent = '⚠ Unnamed node'; }
-    else { tn.innerHTML = (r.icon ? `<img class="tip-icon" src="${escAttr(r.icon)}" alt="">` : '') + escHtml(r.name); }
+    else { tn.textContent = r.name; }
     if (origins){
       document.getElementById('tip-seq').innerHTML =
         `<div class="tip-origins-head">${origins.length} ways to make this</div>` +
@@ -1736,7 +1964,7 @@ cvs.addEventListener('mousemove', e=>{
           + `<span>${escHtml(originLabel(o))}</span><span class="tip-cost">cost ${o.length}</span></div>`).join('');
     } else {
       document.getElementById('tip-seq').innerHTML = node.sequence.map(id=>{const el=elements.find(e=>e.id===id);
-        return el?`<span style="background:${el.color}33;color:${el.color}">${el.emoji} ${escHtml(el.name)}</span>`:'';}).join('');
+        return el?`<span style="background:${el.color}33;color:${el.color}">${escHtml(el.name)}</span>`:'';}).join('');
     }
     document.getElementById('tip-desc').textContent = (!isGap && r.description) ? r.description : '';
     document.getElementById('tip-gap').textContent = isGap ? 'Intermediate step with no recipe. Click to name it.' : '';
@@ -1745,8 +1973,8 @@ cvs.addEventListener('mousemove', e=>{
   const badge = badgeAt(lx,ly);
   if (badge){
     document.getElementById('tip-name').innerHTML = badge.name
-      ? `${badge.el?badge.el.emoji+' ':''}${escHtml(badge.name)}`
-      : `${badge.el.emoji} <span style="color:${badge.el.color}">${badge.el.name}</span>`;
+      ? `${escHtml(badge.name)}`
+      : `<span style="color:${badge.el.color}">${badge.el.name}</span>`;
     document.getElementById('tip-seq').innerHTML = '';
     document.getElementById('tip-desc').textContent = badge.alt && !badge.name ? '' : (badge.name?'Hover holds the full connection visible':'Element added at this step');
     document.getElementById('tip-gap').textContent = badge.alt || '';
@@ -1788,6 +2016,8 @@ cvs.addEventListener('mouseup', e=>{
   const node = nodeAt(e.clientX-rect.left, e.clientY-rect.top);
   if (node){
     const {x:wx,y:wy} = s2w(e.clientX-rect.left, e.clientY-rect.top);
+    const inRect = p => p && wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h;
+    if (inRect(node._caret) || inRect(node._collapseBtn)){ toggleExpand(node); return; }
     let hitControl=false;
     // Clicking an on-canvas control (chain stage pip / modifier option / family pip) just toggles it — no pop-up.
     if (node._pips){ const pip = node._pips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h); if (pip){ growthStage[node.key]=pip.stage; hitControl=true; } }
@@ -1795,6 +2025,7 @@ cvs.addEventListener('mouseup', e=>{
     if (node._fampips){ const fp = node._fampips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h); if (fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; hitControl=true; } }
     sel = { seq:[...node.sequence], recipe:node.recipe }; renderBuild(); renderList(); drawTree();
     if (!hitControl && node.sequence && node.sequence.length) focusNode(node.sequence, node.recipe, {open:true});   // click node body → open editor (already in view)
+    if (!hitControl && viewMode==='craft' && node.sequence && node.sequence.length) craftFill(node.sequence);       // craft: load this node's required elements into the inventory
   } else {
     // click empty space → close the edit window and deselect
     if (typeof closeNodeEditor==='function') closeNodeEditor();
@@ -1843,10 +2074,13 @@ cvs.addEventListener('touchend', e=>{
     const rect=wrap.getBoundingClientRect();
     const node=nodeAt(t.clientX-rect.left, t.clientY-rect.top);
     if (node){ const {x:wx,y:wy}=s2w(t.clientX-rect.left,t.clientY-rect.top);
+        const inR=p=>p&&wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h;
+        if(inR(node._caret)||inR(node._collapseBtn)){ toggleExpand(node); if(e.touches.length===0)tStart=null; return; }
         if(node._pips){ const pip=node._pips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(pip) growthStage[node.key]=pip.stage; }
         if(node._modopts){ const mo=node._modopts.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(mo){const v=modSelFor(node.recipe,node.key).slice();v[mo.ax]=mo.opt;modSel[node.key]=v;} }
         if(node._fampips){ const fp=node._fampips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; } }
-      sel={seq:[...node.sequence],recipe:node.recipe}; renderBuild(); renderList(); drawTree(); } }
+      sel={seq:[...node.sequence],recipe:node.recipe}; renderBuild(); renderList(); drawTree();
+      if(viewMode==='craft' && node.sequence && node.sequence.length) craftFill(node.sequence); } }
   if (e.touches.length===0) tStart=null;
 }, {passive:false});
 window.addEventListener('resize', drawTree);
@@ -1880,7 +2114,7 @@ window.addEventListener('resize', drawTree);
     if(!list.length){ res.classList.remove('on'); res.innerHTML=''; return; }
     res.innerHTML=''; list.forEach((r,i)=>{ const d=document.createElement('div');
       d.className='ns-row'+(i===hi?' hi':'');
-      d.innerHTML=`${r.icon?`<img class="ns-thumb" src="${escAttr(r.icon)}" alt="">`:''}<span>${escHtml(r.name)}</span><span class="ns-meta">${r.sequence.length}${isGrowth(r)?' 🌱':''}${isModifier(r)?' ⊞':''}</span>`;
+      d.innerHTML=`<span>${escHtml(r.name)}</span><span class="ns-meta">${r.sequence.length}${isGrowth(r)?' 🌱':''}${isModifier(r)?' ⊞':''}</span>`;
       d.onmousedown=e=>{ e.preventDefault(); inp.value=''; res.classList.remove('on'); panToRecipe(r); };
       res.appendChild(d); });
     res.classList.add('on');
@@ -1925,12 +2159,12 @@ function drawMinimap(){
   if(layoutNodes.length<=1){ mm.style.display='none'; return; } mm.style.display='block';
   const W=mm.width,H=mm.height; mmx.clearRect(0,0,W,H);
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-  layoutNodes.forEach(n=>{ const w=n.key===''?NW/2:NW,h=n.key===''?NH:nodeHeight(n);
+  layoutNodes.forEach(n=>{ const w=nodeBoxW(n),h=n.key===''?NH:nodeHeight(n);
     minX=Math.min(minX,n.lx);minY=Math.min(minY,n.ly);maxX=Math.max(maxX,n.lx+w);maxY=Math.max(maxY,n.ly+h); });
   const pad=8, bw=(maxX-minX)||1, bh=(maxY-minY)||1, sc=Math.min((W-2*pad)/bw,(H-2*pad)/bh);
   const offX=(W-bw*sc)/2, offY=(H-bh*sc)/2; mm._map={minX,minY,sc,offX,offY};
   const cA=cvsVar('--accent'), cA2=cvsVar('--accent2'), cT=cvsVar('--text');
-  layoutNodes.forEach(n=>{ const w=n.key===''?NW/2:NW,h=n.key===''?NH:nodeHeight(n);
+  layoutNodes.forEach(n=>{ const w=nodeBoxW(n),h=n.key===''?NH:nodeHeight(n);
     const fam=familyColor(n.sequence);
     mmx.fillStyle = n.key==='' ? cA2 : (fam ? fam : (n.recipe===null?'#5b5b66':cA));
     mmx.fillRect(offX+(n.lx-minX)*sc, offY+(n.ly-minY)*sc, Math.max(1.5,w*sc), Math.max(1.5,h*sc)); });
@@ -1995,6 +2229,7 @@ function computeSpots(){ plusSpots=[]; const H=n=>nodeHeight(n);
   const rx=n=> n.lx + (n.key===''?NW/2:NW);          // right edge (root is the narrow ▶ Start pill)
   const cy=n=> n.ly + (n.key===''?NH:H(n))/2;        // vertical centre
   layoutNodes.forEach(n=>{
+    if(isNodeExpanded(n)) return;                         // expanded zone manages its own internal layout
     if(n.isFamilyNode){                                   // family: one extend spot per variant, at its row end
       const F=n.recipe;
       F.family.forEach((v,vi)=>{
@@ -2061,7 +2296,7 @@ function focusNode(seq, recipe, opts){
       const ncx = node.lx + (node.key===''?NW/2:NW)/2, ncy = node.ly + (node.key===''?NH:nodeHeight(node))/2;
       pan.x = cw/2 - ncx*zoom; pan.y = -ncy*zoom; }
   }
-  if(opts.open && seq.length && viewMode!=='analyse'){
+  if(opts.open && seq.length && viewMode==='edit'){
     const node = layoutNodes.find(n => (recipe && n.recipe===recipe) || n.key===key) || { sequence:[...seq], recipe };
     openNodeEditor(node);                          // selects + renders
   } else {
@@ -2092,7 +2327,7 @@ let lastMouse=null, mouseInWrap=false;
 // drawTree (so the controls stay glued to their nodes while zooming/panning instead of drifting).
 function refreshDesktopOverlay(){
   if(IS_TOUCH || !mouseInWrap || !lastMouse) return;
-  if(dragging || nodeDragging || wizOpen() || viewMode==='analyse'){ hideOverlay(); return; }
+  if(dragging || nodeDragging || wizOpen() || viewMode!=='edit'){ hideOverlay(); return; }
   const mx=lastMouse.x, my=lastMouse.y;
   const near=[]; plusSpots.forEach(sp=>{ const s=w2s(sp.wx,sp.wy); const d=Math.hypot(s.x-mx,s.y-my); if(d<55) near.push({sp,s,d}); });
   near.sort((a,b)=>a.d-b.d); const show=near.slice(0,8);
@@ -2108,7 +2343,7 @@ wrap.addEventListener('mousemove', e=>{
 });
 if(!IS_TOUCH) wrap.addEventListener('mouseleave', ()=>{ mouseInWrap=false; hideOverlay(); });
 // Touch: keep the create/edit controls for the selected node always visible.
-function showTouchOverlay(){ hideOverlay(); if(viewMode==='analyse'||!sel) return; const selK=(sel.seq||[]).join('\x1f');
+function showTouchOverlay(){ hideOverlay(); if(viewMode!=='edit'||!sel) return; const selK=(sel.seq||[]).join('\x1f');
   const adj=plusSpots.filter(sp=> sp.parentSeq.join('\x1f')===selK);
   adj.forEach((sp,i)=>{ placePlus(getPlus(i), i, sp); });
   const node=layoutNodes.find(n=>n.sequence.join('\x1f')===selK && n.sequence.length);
@@ -2208,7 +2443,7 @@ function renderBuild() { try { renderEditor(); } catch(e) {} }   // Build tab re
 const EL_INI = {};                       // short label per element: unique-enough initials
 function elInitials(){ const seen={}; elements.forEach(e=>{ let s=e.name.slice(0,1).toUpperCase(); if(seen[s]) s=e.name.slice(0,2); seen[e.name.slice(0,1).toUpperCase()]=1; EL_INI[e.id]=s; }); }
 function eTok(el, o){ o=o||{}; if(!el) return `<span class="eltok ${o.sel?'sel':''}" data-el="none" ${o.data||''} style="background:var(--bg);color:var(--muted);border-color:var(--border)" title="None">∅</span>`;
-  return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}">${el.emoji}<span>${EL_INI[el.id]||''}</span></span>`; }
+  return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}"><span>${EL_INI[el.id]||''}</span></span>`; }
 function nameExists(name, except){ return recipes.some(r=>r!==except && r.name.toLowerCase()===name.trim().toLowerCase()); }
 
 // Which last-step elements are free at this path (no sibling recipe already there).
@@ -2271,19 +2506,11 @@ function renderEditor(){
   // Description
   h+=`<div class="ez"><div class="ezh">Note</div><input class="f" id="eDesc" placeholder="Optional description…" value="${escAttr(r.description||'')}" style="margin:0"></div>`;
 
-  // Icon (32×32 pixel art)
-  h+=`<div class="ez"><div class="ezh">Icon</div><div class="icon-row">
-        <div class="icon-prev" id="eIconPrev">${r.icon?`<img src="${escAttr(r.icon)}" alt="">`:'<span>32×32</span>'}</div>
-        <div class="icon-btns"><input type="file" id="eIconFile" accept="image/*" style="display:none">
-          <button class="btn btn-ghost btn-xs" id="eIconUp">${r.icon?'Replace':'Upload'}</button>
-          ${r.icon?'<button class="btn btn-ghost btn-xs" id="eIconRm">Remove</button>':''}</div>
-      </div><div class="ehint">Any image is downscaled to a 32×32 pixel icon.</div></div>`;
-
   // Type-specific
   if(isGrowth(r)){
     const ge=elements.find(e=>e.id===r.growth.element);
     const key=seq.join('\x1f'); const stg=Math.min(r.growth.stages, growthStage[key]||r.growth.stages);
-    h+=`<div class="ez"><div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by <b style="color:var(--text)">${ge?ge.emoji+' '+ge.name:'?'}</b></span>
+    h+=`<div class="ez"><div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by <b style="color:var(--text)">${ge?ge.name:'?'}</b></span>
         <span style="margin-left:auto;font-size:.74rem;color:var(--muted)">Stages</span><span class="estep"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
         <div class="eltoks" id="eStagePips" style="margin-top:8px">${Array.from({length:Math.min(r.growth.stages,12)},(_,i)=>i+1).map(k=>`<span class="eltok ${k===stg?'sel':''}" data-stage="${k}" style="background:var(--bg);border-color:var(--border);color:${k===stg?'var(--accent)':'var(--muted)'}">${k}</span>`).join('')}</div>
         <div class="erow" style="margin-top:8px"><button class="btn btn-ghost btn-xs" id="ePromoteStage">⑂ Promote stage ${stg}</button><button class="btn btn-ghost btn-xs" id="eToBasic">Convert to basic</button></div></div>`;
@@ -2385,14 +2612,6 @@ function wireEditor(S){
     });
     r.growth={element:el,stages:n}; commit(); };
   const eDesc=document.getElementById('eDesc'); if(eDesc) eDesc.onchange=()=>{ pushHistory(); r.description=eDesc.value.trim(); commit(); };
-  const eIconUp=document.getElementById('eIconUp'), eIconFile=document.getElementById('eIconFile'), eIconPrev=document.getElementById('eIconPrev');
-  const setIconFromFile=(f)=>fileToIconURL(f, url=>{ pushHistory(); r.icon=url; delete iconCache[r.id]; commit(); toast('Icon set.','ok'); });
-  if(eIconUp&&eIconFile){ eIconUp.onclick=()=>eIconFile.click(); eIconFile.onchange=()=>setIconFromFile(eIconFile.files&&eIconFile.files[0]); }
-  if(eIconPrev){ eIconPrev.title='Drop an image here';
-    eIconPrev.ondragover=e=>{ e.preventDefault(); eIconPrev.classList.add('drop'); };
-    eIconPrev.ondragleave=()=>eIconPrev.classList.remove('drop');
-    eIconPrev.ondrop=e=>{ e.preventDefault(); eIconPrev.classList.remove('drop'); setIconFromFile(e.dataTransfer.files&&e.dataTransfer.files[0]); }; }
-  const eIconRm=document.getElementById('eIconRm'); if(eIconRm) eIconRm.onclick=()=>{ pushHistory(); delete r.icon; delete iconCache[r.id]; commit(); };
 
   // family variants
   const vars=document.getElementById('eVars');
@@ -2481,13 +2700,13 @@ function renderList() {
     row.className = 'recipe-row' + (sel && recipeBySeq(sel.seq)===r ? ' sel' : '');
     row.onclick = ()=>{ focusNode(r.sequence, r, {pan:true, open:true}); };
     const seqHtml = r.sequence.map(id=>{const e=elements.find(x=>x.id===id);
-      return e?`<span style="background:${e.color}2a;color:${e.color}">${e.emoji} ${e.name}</span>`:'';}).join('');
+      return e?`<span style="background:${e.color}2a;color:${e.color}">${e.name}</span>`:'';}).join('');
     const del = document.createElement('button'); del.className='rdel'+(listArmed===r?' armed':''); del.innerHTML=(listArmed===r?'Confirm?':'🗑'); del.title='Delete';
     del.onclick = e=>{ e.stopPropagation();
       if(listArmed!==r){ listArmed=r; renderList(); setTimeout(()=>{ if(listArmed===r){ listArmed=null; renderList(); } }, 2500); return; }
       listArmed=null; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes;
       if(sel&&recipeBySeq(sel.seq)===r) sel={seq:[],recipe:null}; commit(); };
-    row.innerHTML = `${r.icon?`<div class="rthumb"><img src="${escAttr(r.icon)}" alt=""></div>`:''}<div class="recipe-info"><div class="rname">${escHtml(r.name)}${isGrowth(r)?` <span class="g-badge2">🌱${r.growth.stages}</span>`:''}</div><div class="rseq">${seqHtml}</div>${r.description?`<div class="rdesc">${escHtml(r.description)}</div>`:''}</div>`;
+    row.innerHTML = `<div class="recipe-info"><div class="rname">${escHtml(r.name)}${isGrowth(r)?` <span class="g-badge2">🌱${r.growth.stages}</span>`:''}</div><div class="rseq">${seqHtml}</div>${r.description?`<div class="rdesc">${escHtml(r.description)}</div>`:''}</div>`;
     row.appendChild(del); el.appendChild(row);
   });
 }
@@ -2506,7 +2725,7 @@ function renderValidation() {
   h.textContent=`${gaps.length} unnamed step${gaps.length>1?'s':''} (allowed, but flagged)`; el.appendChild(h);
   gaps.forEach(gap=>{
     const item=document.createElement('div'); item.className='gap-item';
-    const lbl=gap.sequence.map(id=>{const e=elements.find(x=>x.id===id);return e?`${e.emoji} ${e.name}`:id;}).join(' + ');
+    const lbl=gap.sequence.map(id=>{const e=elements.find(x=>x.id===id);return e?e.name:id;}).join(' + ');
     item.innerHTML=`<div class="gap-msg">⚠ ${lbl}</div><div class="gap-sub">Click to name it or remove the step.</div>`;
     item.onclick=()=>{ if(typeof focusNode==='function'){ focusNode([...gap.sequence], null, {pan:true, open:true}); } else { sel={seq:[...gap.sequence],recipe:null}; renderBuild(); drawTree(); } };
     el.appendChild(item);
@@ -2554,7 +2773,7 @@ function renderStats() {
   const isPlainBasic=r=>r && !isGrowth(r)&&!isModifier(r)&&!isFamily(r);
   elements.forEach(e=>{ const row=document.createElement('div'); row.className='bar-row'; row.style.cursor='default';
     row.title=`${e.name}: appears in ${usage[e.id]} recipe step${usage[e.id]===1?'':'s'} across the palette (not ${usage[e.id]} recipes).`;
-    row.innerHTML=`<div class="bar-label" title="${e.name}">${e.emoji} ${e.name}</div>
+    row.innerHTML=`<div class="bar-label" title="${e.name}">${e.name}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${(usage[e.id]/maxU*100).toFixed(1)}%;background:${e.color}"></div></div>
       <div class="bar-num">${usage[e.id]}</div>`;
     statHover(row,(n)=>nodeHasEl(n,e.id));
@@ -2813,11 +3032,11 @@ function openModal(mode){
   } else {
     document.getElementById('mPalName').value = palettes[pidx].name;
     document.getElementById('mPalDesc').value = palettes[pidx].description || '';
-    elements.forEach(e=>addElRow(e.id, e.name, e.color, e.emoji, true));
+    elements.forEach(e=>addElRow(e.id, e.name, e.color, true));
   }
   overlay.classList.add('on'); document.getElementById('mPalName').focus();
 }
-function addElRow(id='', name='', color='#888888', emoji='❓', existing=false){
+function addElRow(id='', name='', color='#888888', existing=false){
   const c=document.getElementById('mElRows'); const row=document.createElement('div'); row.className='el-row';
   const usedCount = existing ? recipes.filter(r=>r.sequence.includes(id)).length : 0;
   row.dataset.orig = existing ? id : '';
@@ -2826,7 +3045,6 @@ function addElRow(id='', name='', color='#888888', emoji='❓', existing=false){
     <input class="id" type="text" placeholder="id" value="${escAttr(id)}" ${existing?'disabled':''} title="${existing?'id is locked for existing elements':'lowercase, no spaces'}">
     <input class="nm" type="text" placeholder="Display name" value="${escAttr(name)}">
     <input class="col" type="color" value="${color}">
-    <input class="em" type="text" placeholder="🌿" value="${escAttr(emoji)}" maxlength="2">
     ${usedCount?`<span class="inuse" title="Used in ${usedCount} recipe(s)">×${usedCount}</span>`:''}
     <button class="rm-el" title="Remove">✕</button>`;
   row.querySelector('.rm-el').onclick=()=>row.remove();
@@ -2848,11 +3066,11 @@ document.getElementById('btnModalSave').onclick=()=>{
   rows.forEach(row=>{
     const ins=row.querySelectorAll('input');
     const id=(row.dataset.orig||ins[0].value.trim().toLowerCase().replace(/\s+/g,'_'));
-    const name=ins[1].value.trim(), color=ins[2].value, emoji=ins[3].value.trim()||'❓';
+    const name=ins[1].value.trim(), color=ins[2].value;
     if(!id||!name){err='Every element needs an id and a name.';return;}
     if(!/^[a-z][a-z0-9_]*$/.test(id)){err=`Invalid id "${id}".`;return;}
     if(elems.find(e=>e.id===id)){err=`Duplicate id "${id}".`;return;}
-    elems.push({id,name,color,emoji});
+    elems.push({id,name,color});
   });
   if(err){toast(err,'err');return;}
   if(!elems.length){toast('Add at least one element.','err');return;}
@@ -2912,7 +3130,7 @@ document.addEventListener('keydown', e=>{
     e.preventDefault(); e.shiftKey ? redo() : undo();
   } else if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='y'){
     if (typing) return; e.preventDefault(); redo();
-  } else if ((e.key==='Delete'||e.key==='Backspace') && !typing && viewMode!=='analyse' && sel && sel.seq && sel.seq.length){
+  } else if ((e.key==='Delete'||e.key==='Backspace') && !typing && viewMode==='edit' && sel && sel.seq && sel.seq.length){
     const r = (sel.recipe && isFamily(sel.recipe)) ? sel.recipe : recipeBySeq(sel.seq);
     e.preventDefault();
     if (r){ const name=r.name; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes;
@@ -2923,6 +3141,20 @@ document.addEventListener('keydown', e=>{
     e.preventDefault(); fitToView();
   }
 });
+
+// ── shortcut cheatsheet ──
+(function(){
+  const ov=document.getElementById('help-overlay'); if(!ov) return;
+  const close=()=>ov.classList.remove('on'), toggle=()=>ov.classList.toggle('on');
+  const hb=document.getElementById('btnHelp'); if(hb) hb.onclick=toggle;
+  const hx=document.getElementById('helpClose'); if(hx) hx.onclick=close;
+  ov.addEventListener('click', e=>{ if(e.target===ov) close(); });
+  document.addEventListener('keydown', e=>{
+    const typing=/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if(e.key==='?' && !typing){ e.preventDefault(); toggle(); }
+    else if(e.key==='Escape' && ov.classList.contains('on')){ e.preventDefault(); e.stopPropagation(); close(); }
+  });
+})();
 
 // ================================================================
 //  SEARCH
@@ -2958,7 +3190,7 @@ function maybeOfferGrowthConvert(){
     const row=document.createElement('div'); row.className='grow-row';
     row.innerHTML = `<input type="checkbox" checked data-i="${i}">
       <span class="gname">${escHtml(c.r.name)}</span>
-      <select data-el="${i}">${elements.map(e=>`<option value="${e.id}"${e.id===c.element?' selected':''}>${e.emoji} ${e.name}</option>`).join('')}</select>
+      <select data-el="${i}">${elements.map(e=>`<option value="${e.id}"${e.id===c.element?' selected':''}>${e.name}</option>`).join('')}</select>
       <input type="number" min="2" max="12" value="${c.stages}" data-st="${i}">`;
     rows.appendChild(row);
   });
