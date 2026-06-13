@@ -648,7 +648,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.46';
+const APP_VERSION = 'v2.50';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1551,67 +1551,77 @@ function toggleExpand(node){ if(!node||!isExpandable(node.recipe)) return;
   saveExpanded(); drawTree(); }
 
 const ZHEAD=24, ZGV=14, ZPAD=9;            // zone header height, internal row gap, side padding
-function zoneCols(node){ const r=node.recipe;
-  if(isGrowth(r)) return Math.max(2, r.growth.stages);
-  if(isFamily(r)) return 1 + Math.max(1, ...r.family.map(v=>v.stages));
-  if(isModifier(r)) return 1 + r.modifiers.length;
-  return 1; }
-function zoneRows(node){ const r=node.recipe;
-  if(isFamily(r)) return Math.max(1, r.family.length);
-  if(isModifier(r)) return Math.max(1, modCombos(r).length);
-  return 1; }
-function zoneDims(node){ const sp=SP(); const cols=zoneCols(node), rows=zoneRows(node);
-  return { cols, rows, w:(cols-1)*sp.col+NW+2*ZPAD, h:ZHEAD + rows*NH + (rows-1)*ZGV + 10 }; }
-function nodeColSpan(node){ return isNodeExpanded(node) ? zoneCols(node) : 1; }
+// Compact ("slim") geometry for every expanded composite. Chains & families now
+// use the same small-node + merged-row-box language as modifiers.
+function slimDims(node){ const r=node.recipe;
+  const MICOL=130, MLH=22, MPW=104, dd=10, dg=4, AXH=15, ZP=ZPAD;
+  const labelSlot=labels=>{ ctx.save(); ctx.font='600 10px sans-serif'; let m=0; labels.forEach(l=>{ const v=ctx.measureText(l||'').width; if(v>m)m=v; }); ctx.restore(); return Math.max(40, Math.min(160, Math.ceil(m)+16)); };
+  if(isGrowth(r)){ const S=r.growth.stages, B=r.sequence.length, maxEls=B+(S-1), LS=28, BW=LS+maxEls*(dd+dg)+18;
+    return {type:'chain', S, B, LS, BW, rows:S, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:BW+2*ZP, h:ZHEAD+AXH+S*MLH+8}; }
+  if(isFamily(r)){ const V=r.family.length, B=r.sequence.length, maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), LS=labelSlot(r.family.map(v=>v.name)), BW=LS+maxEls*(dd+dg)+18;
+    return {type:'family', V, B, LS, BW, rows:V, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:MICOL+BW+2*ZP, h:ZHEAD+AXH+V*MLH+8}; }
+  const A=r.modifiers.length, B=r.sequence.length, combos=modCombos(r), rows=Math.max(1,combos.length);
+  const maxEls=combos.reduce((m,c)=>Math.max(m,c.seq.length), B+1), LS=labelSlot(r.modifiers[A-1].options.map(o=>o.label)), BW=LS+maxEls*(dd+dg)+18;
+  return {type:'modifier', A, B, combos, rows, LS, BW, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:A*MICOL+BW+2*ZP, h:ZHEAD+AXH+rows*MLH+8}; }
+function zoneDims(node){ const d=slimDims(node); return { cols:Math.max(1,Math.ceil(d.w/SP().col)), rows:d.rows, w:d.w, h:d.h, slim:d }; }
+function nodeColSpan(node){ return isNodeExpanded(node) ? zoneDims(node).cols : 1; }
 function nodeBoxW(node){ return isNodeExpanded(node) ? zoneDims(node).w : (node.key===''?NW/2:NW); }
 
-// Internal sub-graph (world coords) for an expanded composite.
+// Internal slim sub-graph (world coords) for an expanded composite.
 function compositeInternals(node){
-  const sp=SP(), COL=sp.col, r=node.recipe, dims=zoneDims(node);
-  const x0=node.lx, y0=node.ly+ZHEAD;
-  const rowY = rw => y0 + rw*(NH+ZGV);
-  const colX = c => x0 + c*COL;
-  const nodes=[], edges=[], childExit={}, famrowY={};
-  if(isGrowth(r)){
-    const S=r.growth.stages, E=r.growth.element;
-    for(let k=1;k<=S;k++) nodes.push({x:colX(k-1),y:rowY(0),name:r.name+' · '+k,seq:growthStageSeq(r,k),kind:k===1?'base':'stage'});
-    for(let k=2;k<=S;k++) edges.push({a:k-2,b:k-1,el:E});
-    const lastX=colX(S-1)+NW, ey=rowY(0)+NH/2;
-    Object.values(node.children).forEach(c=>{ childExit[c.key]={x:lastX,y:ey}; });
-  } else if(isFamily(r)){
-    const rows=r.family.length, baseRow=(rows-1)/2;
-    const bi=nodes.push({x:colX(0),y:rowY(baseRow),name:r.name,seq:r.sequence.slice(),kind:'base'})-1;
-    r.family.forEach((v,vi)=>{ let prev=bi;
-      for(let k=1;k<=v.stages;k++){ const idx=nodes.push({x:colX(k),y:rowY(vi),name:v.name+' · '+k,seq:familyVarSeq(r,vi,k),kind:'stage'})-1;
-        edges.push({a:prev,b:idx,el:v.element}); prev=idx; }
-      famrowY[vi]=rowY(vi)+NH/2;
-      const tipX=colX(v.stages)+NW;
-      (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:tipX,y:rowY(vi)+NH/2}; });
-    });
-  } else if(isModifier(r)){
-    const A=r.modifiers.length, combos=modCombos(r);
-    const bi=nodes.push({x:colX(0),y:0,_row:(combos.length-1)/2,name:r.name,seq:r.sequence.slice(),kind:'base',_leaves:[]})-1;
-    const byPref={'':bi};
-    combos.forEach((combo,li)=>{ let parent=bi, pref='';
-      for(let a=0;a<A;a++){ pref+=(a?'|':'')+combo.opts[a];
-        let idx=byPref[pref];
-        if(idx==null){ const opt=r.modifiers[a].options[combo.opts[a]];
-          const axisLines=[]; for(let b=0;b<=a;b++) axisLines.push([r.modifiers[b].name, r.modifiers[b].options[combo.opts[b]].label]);
-          idx=nodes.push({x:colX(a+1),y:0,_row:null,kind:a===A-1?'leaf':'pivot',axisLines,
-                          seq:a===A-1?combo.seq.slice():null,
-                          el:(opt.elements&&opt.elements.length)?opt.elements[opt.elements.length-1]:null,_leaves:[]})-1;
-          byPref[pref]=idx; edges.push({a:parent,b:idx,el:nodes[idx].el});
-        }
-        nodes[idx]._leaves.push(li); parent=idx;
-      }
-    });
-    nodes.forEach(n=>{ if(n.kind==='leaf') n._row=n._leaves[0]; });
-    nodes.forEach(n=>{ if(n._row==null && n._leaves.length) n._row=(Math.min(...n._leaves)+Math.max(...n._leaves))/2; });
-    nodes.forEach(n=>{ n.y=rowY(n._row||0); });
-    const rx=colX(A)+NW, ry=node.ly+dims.h/2;
-    Object.values(node.children).forEach(c=>{ childExit[c.key]={x:rx,y:ry}; });
+  const r=node.recipe, d=zoneDims(node).slim;
+  const {B,LS,BW,MICOL,MLH,MPW,dd,dg,AXH}=d;
+  const x0=node.lx, top=node.ly+ZHEAD+AXH, headerY=node.ly+ZHEAD+AXH/2;
+  const rowTop=ri=>top+ri*MLH, rowCY=ri=>top+ri*MLH+MLH/2;
+  const nodes=[], edges=[], headers=[], childExit={}, famrowY={};
+  if(d.type==='chain'){
+    const S=d.S, rows=[];
+    for(let k=1;k<=S;k++) rows.push({label:String(k), seq:growthStageSeq(r,k), top:rowTop(k-1), cy:rowCY(k-1)});
+    const box={x:x0, y:top, w:BW, h:S*MLH, rows};
+    headers.push({cx:x0+BW/2, name:'Stage'});
+    const ry=rowCY(S-1);
+    Object.values(node.children).forEach(c=>{ childExit[c.key]={x:x0+BW, y:ry}; });
+    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY };
   }
-  return { nodes, edges, childExit, famrowY };
+  if(d.type==='family'){
+    const V=d.V, boxX=x0+MICOL, baseCY=top+V*MLH/2;
+    const rows=r.family.map((v,vi)=>({label:v.name, seq:familyVarLast(r,vi), top:rowTop(vi), cy:rowCY(vi)}));
+    const box={x:boxX, y:top, w:BW, h:V*MLH, rows};
+    nodes.push({x:x0, cy:baseCY, w:MPW, label:r.name, el:null, pivot:false});
+    r.family.forEach((v,vi)=>{ edges.push({ax:x0+MPW, ay:baseCY, bx:boxX, by:rowCY(vi), el:v.element});
+      famrowY[vi]=rowCY(vi);
+      (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:boxX+BW, y:rowCY(vi)}; }); });
+    headers.push({cx:x0+MPW/2, name:'Recipe'}, {cx:boxX+BW/2, name:'Variants'});
+    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY };
+  }
+  // modifier
+  const A=d.A, combos=d.combos.slice().sort((a,b)=>{ for(let i=0;i<a.opts.length;i++){ if(a.opts[i]!==b.opts[i]) return a.opts[i]-b.opts[i]; } return 0; });
+  const colX=c=>x0+c*MICOL, leafX=x0+A*MICOL;
+  const lastEl=combo=>{ const o=r.modifiers[A-1].options[combo.opts[A-1]]; return (o.elements&&o.elements.length)?o.elements[o.elements.length-1]:(combo.seq.length?combo.seq[combo.seq.length-1]:null); };
+  const rows=combos.map((combo,ri)=>({label:r.modifiers[A-1].options[combo.opts[A-1]].label, seq:combo.seq.slice(), top:rowTop(ri), cy:rowCY(ri)}));
+  const baseCY=top+combos.length*MLH/2;
+  nodes.push({x:x0, cy:baseCY, w:MPW, label:r.name, el:null, pivot:false});
+  const byPref={};
+  if(A===1){ combos.forEach((combo,ri)=>edges.push({ax:x0+MPW,ay:baseCY,bx:leafX,by:rowCY(ri),el:lastEl(combo)})); }
+  else {
+    combos.forEach((combo,ri)=>{ let pref='';
+      for(let a=0;a<A-1;a++){ pref+=(a?'|':'')+combo.opts[a];
+        if(!byPref[pref]){ const opt=r.modifiers[a].options[combo.opts[a]];
+          const p={pref,x:colX(a+1),w:MPW,cy:0,leaves:[],label:opt.label,el:(opt.elements&&opt.elements.length)?opt.elements[opt.elements.length-1]:null,parentPref:a?combo.opts.slice(0,a).join('|'):''};
+          byPref[pref]=p; nodes.push({x:p.x, cy:0, w:MPW, label:p.label, el:p.el, pivot:true, _p:p}); }
+        byPref[pref].leaves.push(ri); }
+    });
+    nodes.forEach(n=>{ if(n._p){ n._p.cy=top+((Math.min(...n._p.leaves)+Math.max(...n._p.leaves))/2)*MLH+MLH/2; n.cy=n._p.cy; } });
+    nodes.forEach(n=>{ if(n._p){ const par=n._p.parentPref===''?{x:x0,w:MPW,cy:baseCY}:byPref[n._p.parentPref]; edges.push({ax:par.x+par.w,ay:par.cy,bx:n._p.x,by:n._p.cy,el:n._p.el}); } });
+    combos.forEach((combo,ri)=>{ const par=byPref[combo.opts.slice(0,A-1).join('|')]; edges.push({ax:par.x+par.w,ay:par.cy,bx:leafX,by:rowCY(ri),el:lastEl(combo)}); });
+  }
+  const box={x:leafX, y:top, w:BW, h:combos.length*MLH, rows};
+  headers.push({cx:x0+MPW/2, name:'Recipe'});
+  for(let a=0;a<A-1;a++) headers.push({cx:colX(a+1)+MPW/2, name:r.modifiers[a].name});
+  headers.push({cx:leafX+BW/2, name:r.modifiers[A-1].name});
+  const rx=leafX+BW, ry=node.ly+d.h/2;
+  Object.values(node.children).forEach(c=>{ childExit[c.key]={x:rx,y:ry}; });
+  return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY };
 }
 
 function drawZoneEdge(a,b,el){
@@ -1621,19 +1631,43 @@ function drawZoneEdge(a,b,el){
   ctx.lineCap='round'; ctx.strokeStyle='#00000066'; ctx.lineWidth=5.5; ctx.stroke();
   ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey); ctx.strokeStyle=col; ctx.lineWidth=3; ctx.stroke();
 }
-function drawMiniNode(n,tcol){
-  const x=n.x,y=n.y,pivot=n.kind==='pivot';
-  roundRect(ctx,x,y,NW,NH,8); ctx.fillStyle=pivot?'#14141c':TH.node; ctx.fill();
-  if(pivot) ctx.setLineDash([4,3]);
-  ctx.lineWidth=1; ctx.strokeStyle=pivot?TH.nodeBorder:mix(TH.nodeBorder,tcol,0.4); roundRect(ctx,x,y,NW,NH,8); ctx.stroke(); ctx.setLineDash([]);
-  ctx.textAlign='left'; let ty=y+8;
-  if(n.name){ ctx.fillStyle=TH.text; ctx.font='600 11px sans-serif'; ctx.textBaseline='top';
-    let nm=n.name; const mw=NW-16; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==n.name)nm=nm.slice(0,-1)+'…';
-    ctx.fillText(nm,x+8,ty); ty+=15; }
-  if(n.axisLines){ ctx.font='10px sans-serif'; ctx.textBaseline='top';
-    n.axisLines.forEach(([an,av])=>{ ctx.fillStyle=TH.muted; ctx.fillText(an+': ',x+8,ty); const aw=ctx.measureText(an+': ').width;
-      ctx.fillStyle=TH.text; ctx.fillText(av,x+8+aw,ty); ty+=13; }); }
-  if(n.seq && settings.showDots) drawSeqDots(n.seq, x, y+NH-12);
+function drawDotRow(seq, x, cy, B, dd, dg){
+  const r=dd/2;
+  if(seq.length>B){ const bx=x + B*(dd+dg) - 3, bw=(seq.length-B)*(dd+dg) - dg + 6;
+    ctx.fillStyle='#08080c'; roundRect(ctx, bx, cy-r-3, bw, dd+6, 5); ctx.fill(); }
+  seq.forEach((id,i)=>{ const el=elements.find(e=>e.id===id); if(!el) return;
+    const cxp=x + i*(dd+dg) + r; ctx.beginPath(); ctx.arc(cxp, cy, r, 0, Math.PI*2); ctx.fillStyle=el.color; ctx.fill(); });
+}
+function drawSmallNode(x,cy,w,label,el,pivot,tcol){ const PH=20, y=cy-PH/2;
+  roundRect(ctx,x,y,w,PH,7); ctx.fillStyle=pivot?'#14141c':TH.node; ctx.fill();
+  if(pivot)ctx.setLineDash([4,3]); ctx.lineWidth=1; ctx.strokeStyle=pivot?TH.nodeBorder:mix(TH.nodeBorder,tcol,0.4); roundRect(ctx,x,y,w,PH,7); ctx.stroke(); ctx.setLineDash([]);
+  ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10.5px sans-serif'; ctx.fillStyle=TH.text;
+  let t=label, mw=w-(el?26:14); while(ctx.measureText(t).width>mw&&t.length>1)t=t.slice(0,-1); if(t!==label)t=t.slice(0,-1)+'…';
+  ctx.fillText(t,x+8,cy+0.5);
+  if(el){ const c=(elements.find(e=>e.id===el)||{}).color||'#888'; ctx.beginPath(); ctx.arc(x+w-11,cy,4,0,Math.PI*2); ctx.fillStyle=c; ctx.fill(); }
+}
+function drawSlimBox(lb,B,LS,dd,dg,tcol){
+  roundRect(ctx,lb.x,lb.y,lb.w,lb.h,8); ctx.fillStyle=TH.node; ctx.fill();
+  ctx.lineWidth=1; ctx.strokeStyle=mix(TH.nodeBorder,tcol,0.4); roundRect(ctx,lb.x,lb.y,lb.w,lb.h,8); ctx.stroke();
+  ctx.save(); roundRect(ctx,lb.x,lb.y,lb.w,lb.h,8); ctx.clip();
+  lb.rows.forEach((row,ri)=>{
+    if(ri>0){ ctx.strokeStyle='#ffffff10'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(lb.x,row.top); ctx.lineTo(lb.x+lb.w,row.top); ctx.stroke(); }
+    ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10px sans-serif'; ctx.fillStyle=TH.text;
+    let t=row.label, mw=LS-4; while(ctx.measureText(t).width>mw&&t.length>1)t=t.slice(0,-1); if(t!==row.label)t=t.slice(0,-1)+'…';
+    ctx.fillText(t, lb.x+8, row.cy+0.5);
+    drawDotRow(row.seq, lb.x+8+LS, row.cy, B, dd, dg);
+  });
+  ctx.restore();
+}
+function drawSlimZone(node, I, tcol){
+  if(I.headers){ ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='700 8px sans-serif'; ctx.fillStyle=TH.muted;
+    I.headers.forEach(h=>ctx.fillText((h.name||'').toUpperCase(), h.cx, I.headerY)); }
+  (I.edges||[]).forEach(e=>{ const mx=(e.ax+e.bx)/2, col=(elements.find(x=>x.id===e.el)||{}).color||'#7a7a90';
+    ctx.beginPath(); ctx.moveTo(e.ax,e.ay); ctx.bezierCurveTo(mx,e.ay,mx,e.by,e.bx,e.by);
+    ctx.lineCap='round'; ctx.strokeStyle='#00000066'; ctx.lineWidth=4.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(e.ax,e.ay); ctx.bezierCurveTo(mx,e.ay,mx,e.by,e.bx,e.by); ctx.strokeStyle=col; ctx.lineWidth=2.4; ctx.stroke(); });
+  (I.nodes||[]).forEach(n=>drawSmallNode(n.x,n.cy,n.w,n.label,n.el,n.pivot,tcol));
+  if(I.box) drawSlimBox(I.box, I.B, I.LS, I.dd, I.dg, tcol);
 }
 function drawExpandedZone(node,isSel){
   node._pips=null; node._modopts=null; node._fampips=null; node._caret=null;
@@ -1644,12 +1678,13 @@ function drawExpandedZone(node,isSel){
   ctx.save();
   roundRect(ctx,bx,by,bw,bh,12); ctx.fillStyle=isSel?tcol+'14':'#ffffff08'; ctx.fill();
   ctx.setLineDash([6,4]); ctx.lineWidth=1.5; ctx.strokeStyle=isSel?tcol:tcol+'99'; roundRect(ctx,bx,by,bw,bh,12); ctx.stroke(); ctx.setLineDash([]);
-  // header: name + type label + collapse button
-  ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-  let nm=r.name; const nmMax=bw-150; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
-  ctx.fillText(nm,bx+11,by+ZHEAD/2+1); const nmW=ctx.measureText(nm).width;
-  ctx.font='700 8px sans-serif'; ctx.fillStyle=tcol; ctx.fillText(tlabel,bx+11+nmW+9,by+ZHEAD/2+1);
+  // header: name (truncated) + collapse button; type label only if it fits
   const cbw=20,cbh=15,cbx=bx+bw-cbw-6,cby=by+5;
+  ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  let nm=r.name; const nmMax=bw-22-cbw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
+  ctx.fillText(nm,bx+11,by+ZHEAD/2+1); const nmW=ctx.measureText(nm).width;
+  ctx.font='700 8px sans-serif';
+  if(bx+11+nmW+9+ctx.measureText(tlabel).width <= cbx-6){ ctx.fillStyle=tcol; ctx.fillText(tlabel,bx+11+nmW+9,by+ZHEAD/2+1); }
   ctx.fillStyle='#15151d'; ctx.strokeStyle=tcol+'88'; ctx.lineWidth=1; roundRect(ctx,cbx,cby,cbw,cbh,4); ctx.fill(); ctx.stroke();
   ctx.fillStyle=TH.muted; ctx.font='700 10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('▾',cbx+cbw/2,cby+cbh/2+1);
   node._collapseBtn={x:cbx,y:cby,w:cbw,h:cbh};
@@ -1657,8 +1692,7 @@ function drawExpandedZone(node,isSel){
   if(zoom<0.4) return;                                    // far zoom: just the titled box
   const I=node._internals||compositeInternals(node);
   ctx.save();
-  I.edges.forEach(e=>drawZoneEdge(I.nodes[e.a],I.nodes[e.b],e.el));
-  I.nodes.forEach(n=>drawMiniNode(n,tcol));
+  drawSlimZone(node, I, tcol);
   ctx.restore();
 }
 
@@ -1764,7 +1798,7 @@ function drawNode(node) {
   const key2 = node.sequence.join('\x1f');
   if (isFamily(recipe)) {
     ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
-    ctx.fillStyle = settings.accent2||'#2fd4a0'; ctx.fillText('FAMILY', x+NW-10, y+10);
+    ctx.fillStyle = settings.accent2||'#2fd4a0'; ctx.fillText('FAMILY', x+NW-23, y+10);
     node._famrows = []; node._fampips = []; node._famrowY = {};
     const act = famActive[node.key] || { vi:0, k:recipe.family[0].stages };
     let ry = y+26;
@@ -1795,7 +1829,7 @@ function drawNode(node) {
       drawSeqDots(seqAt, x, y+H-12, false, boundaryIndices(recipe.sequence)); }
   } else if (hasModifiers(recipe)) {
     ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
-    ctx.fillStyle = settings.accent; ctx.fillText('MOD', x+NW-10, y+10);
+    ctx.fillStyle = settings.accent; ctx.fillText('MOD', x+NW-23, y+10);
     if (isModifier(recipe)) {
       // appearance: every option of every axis as a button; one axis per row-group
       const selv = modSelFor(recipe, key2);
@@ -1835,7 +1869,7 @@ function drawNode(node) {
   } else if (isGrowth(recipe)) {
     // CHAIN tag
     ctx.font='700 8px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='top';
-    ctx.fillStyle = settings.accent2 || '#2fd4a0'; ctx.fillText('CHAIN', x+NW-10, y+10);
+    ctx.fillStyle = settings.accent2 || '#2fd4a0'; ctx.fillText('CHAIN', x+NW-23, y+10);
     // No corner element badge: the advance element is shown by the incoming edge.
     const st = Math.min(recipe.growth.stages, growthStage[key2] || 1);
     const pw=15, ph=14, gap=3, py=y+26, x0=x+8;
