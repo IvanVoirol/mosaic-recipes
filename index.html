@@ -652,7 +652,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.59';
+const APP_VERSION = 'v2.61';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -699,7 +699,9 @@ function normalise(list) {
           r.modifiers = r.modifiers.filter(ax=>ax && typeof ax.name==='string' && Array.isArray(ax.options));
           r.modifiers.forEach(ax=>{ ax.options = ax.options
             .filter(o=>o && typeof o.label==='string')
-            .map(o=>({label:o.label, elements:Array.isArray(o.elements)?o.elements:[]})); });
+            .map(o=>({label:o.label, elements:Array.isArray(o.elements)?o.elements:[]}));
+            ax.options.sort((a,b)=>a.label.localeCompare(b.label, undefined, {numeric:true, sensitivity:'base'})); });
+          r.modifiers.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
           if (!r.modifiers.length) delete r.modifiers;
         }
       }
@@ -709,6 +711,7 @@ function normalise(list) {
         else {
           r.family = r.family.filter(v=>v && typeof v.name==='string' && v.element)
             .map(v=>({name:v.name, element:v.element, stages:Math.max(1, Math.min(12, v.stages||4))}));
+          r.family.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
           if (!r.family.length) delete r.family;
         }
       }
@@ -1528,7 +1531,7 @@ function modOptionRows(r){
   const out = r.modifiers.map(ax=>{
     const rows=[]; let row=[]; let w=0;
     ax.options.forEach((o,oi)=>{
-      const bw = ctx.measureText(o.label).width + 14;
+      const bw = ctx.measureText(o.label).width + 18;
       if (w+bw>maxW && row.length){ rows.push(row); row=[]; w=0; }
       row.push(oi); w += bw+3;
     });
@@ -1617,7 +1620,7 @@ function compositeInternals(node){
   const A=d.A, combos=d.combos.slice().sort((a,b)=>{ for(let i=0;i<a.opts.length;i++){ if(a.opts[i]!==b.opts[i]) return a.opts[i]-b.opts[i]; } return 0; });
   const colX=c=>x0+c*MICOL, leafX=x0+A*MICOL;
   const lastEl=combo=>{ const o=r.modifiers[A-1].options[combo.opts[A-1]]; return (o.elements&&o.elements.length)?o.elements[o.elements.length-1]:(combo.seq.length?combo.seq[combo.seq.length-1]:null); };
-  const rows=combos.map((combo,ri)=>({label:r.modifiers[A-1].options[combo.opts[A-1]].label, seq:combo.seq.slice(), top:rowTop(ri), cy:rowCY(ri)}));
+  const rows=combos.map((combo,ri)=>{ const lo=r.modifiers[A-1].options[combo.opts[A-1]]; return {label:lo.label, seq:combo.seq.slice(), top:rowTop(ri), cy:rowCY(ri), optEls:(lo.elements||[]).slice()}; });
   const baseCY=top+combos.length*MLH/2;
   nodes.push({x:x0, cy:baseCY, w:MPW, label:r.name, el:null, pivot:false, seq:r.sequence.slice(), B:r.sequence.length});
   const byPref={};
@@ -1626,8 +1629,8 @@ function compositeInternals(node){
     combos.forEach((combo,ri)=>{ let pref='';
       for(let a=0;a<A-1;a++){ pref+=(a?'|':'')+combo.opts[a];
         if(!byPref[pref]){ const opt=r.modifiers[a].options[combo.opts[a]];
-          const p={pref,x:colX(a+1),w:MPW,cy:0,leaves:[],label:opt.label,el:(opt.elements&&opt.elements.length)?opt.elements[opt.elements.length-1]:null,parentPref:a?combo.opts.slice(0,a).join('|'):''};
-          byPref[pref]=p; nodes.push({x:p.x, cy:0, w:MPW, label:p.label, el:p.el, pivot:true, _p:p}); }
+          const p={pref,x:colX(a+1),w:MPW,cy:0,leaves:[],label:opt.label,el:(opt.elements&&opt.elements.length)?opt.elements[opt.elements.length-1]:null,els:(opt.elements||[]).slice(),parentPref:a?combo.opts.slice(0,a).join('|'):''};
+          byPref[pref]=p; nodes.push({x:p.x, cy:0, w:MPW, label:p.label, el:p.el, els:p.els, pivot:true, _p:p}); }
         byPref[pref].leaves.push(ri); }
     });
     nodes.forEach(n=>{ if(n._p){ n._p.cy=top+((Math.min(...n._p.leaves)+Math.max(...n._p.leaves))/2)*MLH+MLH/2; n.cy=n._p.cy; } });
@@ -1662,10 +1665,21 @@ function drawDotRow(seq, x, cy, B, dd, dg, bnds){
       ctx.beginPath(); ctx.moveTo(dx, cy-r-2); ctx.lineTo(dx, cy+r+2); ctx.stroke(); } });
     ctx.setLineDash([]); }
 }
-function drawSmallNode(x,cy,w,label,el,pivot,tcol,seq,B){
+function hexA(c,a){ const h=Math.round(a*255).toString(16).padStart(2,'0'); return (/^#[0-9a-fA-F]{6}$/.test(c)?c:'#6a6a78')+h; }
+function tintColors(ids){ const cs=(ids||[]).map(id=>(elements.find(e=>e.id===id)||{}).color).filter(Boolean); return cs.length?cs:['#6a6a78']; }
+function paintTint(x,y,w,h,rad,ids,alpha){ const cs=tintColors(ids); ctx.save(); roundRect(ctx,x,y,w,h,rad); ctx.clip();
+  if(cs.length===1){ ctx.fillStyle=hexA(cs[0],alpha); ctx.fillRect(x,y,w,h); }
+  else { const g=ctx.createLinearGradient(x,0,x+w,0); cs.forEach((c,i)=>g.addColorStop(i/(cs.length-1), hexA(c,alpha))); ctx.fillStyle=g; ctx.fillRect(x,y,w,h); }
+  ctx.restore(); }
+function drawSwatch(x,y,w,h,ids,rad){ const cs=tintColors(ids); ctx.save(); roundRect(ctx,x,y,w,h,rad||2); ctx.clip();
+  if(cs.length===1){ ctx.fillStyle=cs[0]; ctx.fillRect(x,y,w,h); }
+  else { const g=ctx.createLinearGradient(x,y,x,y+h); cs.forEach((c,i)=>g.addColorStop(i/(cs.length-1), c)); ctx.fillStyle=g; ctx.fillRect(x,y,w,h); }
+  ctx.restore(); }
+function drawSmallNode(x,cy,w,label,el,pivot,tcol,seq,B,tintEls){
   const hasDots = !!(seq && seq.length);
   const PH = hasDots ? 36 : 20, y=cy-PH/2;
   roundRect(ctx,x,y,w,PH,7); ctx.fillStyle=pivot?'#14141c':TH.node; ctx.fill();
+  if(pivot) paintTint(x,y,w,PH,7,tintEls,0.32);                          // option's implied element(s)
   if(pivot)ctx.setLineDash([4,3]); ctx.lineWidth=1; ctx.strokeStyle=pivot?TH.nodeBorder:mix(TH.nodeBorder,tcol,0.4); roundRect(ctx,x,y,w,PH,7); ctx.stroke(); ctx.setLineDash([]);
   ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10.5px sans-serif'; ctx.fillStyle=TH.text;
   let t=label, mw=w-(el?26:14); while(ctx.measureText(t).width>mw&&t.length>1)t=t.slice(0,-1); if(t!==label)t=t.slice(0,-1)+'…';
@@ -1685,6 +1699,7 @@ function drawSlimBox(lb,B,LS,dd,dg,tcol){
   const anyAlt = recipes.some(r=>r.altOrigins && r.altOrigins.length);
   lb.rows.forEach((row,ri)=>{
     if(ri>0){ ctx.strokeStyle='#ffffff10'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(lb.x,row.top); ctx.lineTo(lb.x+lb.w,row.top); ctx.stroke(); }
+    if(row.optEls) paintTint(lb.x, row.top+1, LS+6, (row.cy-row.top)*2-2, 4, row.optEls, 0.26);   // last-axis option's implied element(s)
     ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10px sans-serif'; ctx.fillStyle=TH.text;
     let t=row.label, mw=LS-4; while(ctx.measureText(t).width>mw&&t.length>1)t=t.slice(0,-1); if(t!==row.label)t=t.slice(0,-1)+'…';
     ctx.fillText(t, lb.x+8, row.cy+0.5);
@@ -1699,7 +1714,7 @@ function drawSlimZone(node, I, tcol){
     ctx.beginPath(); ctx.moveTo(e.ax,e.ay); ctx.bezierCurveTo(mx,e.ay,mx,e.by,e.bx,e.by);
     ctx.lineCap='round'; ctx.strokeStyle='#00000066'; ctx.lineWidth=4.5; ctx.stroke();
     ctx.beginPath(); ctx.moveTo(e.ax,e.ay); ctx.bezierCurveTo(mx,e.ay,mx,e.by,e.bx,e.by); ctx.strokeStyle=col; ctx.lineWidth=2.4; ctx.stroke(); });
-  (I.nodes||[]).forEach(n=>drawSmallNode(n.x,n.cy,n.w,n.label,n.el,n.pivot,tcol,n.seq,n.B));
+  (I.nodes||[]).forEach(n=>drawSmallNode(n.x,n.cy,n.w,n.label,n.el,n.pivot,tcol,n.seq,n.B,n.els));
   if(I.box) drawSlimBox(I.box, I.B, I.LS, I.dd, I.dg, tcol);
 }
 function drawExpandedZone(node,isSel){
@@ -1880,12 +1895,13 @@ function drawNode(node) {
           row.forEach(oi=>{
             const opt = ax.options[oi]; const on = selv[ai]===oi;
             ctx.font='9px sans-serif';
-            const tw = ctx.measureText(opt.label).width + 12;
+            const tw = ctx.measureText(opt.label).width + 18;
             ctx.beginPath(); roundRect(ctx, bx, by, tw, bh, 4);
             ctx.fillStyle = on ? settings.accent : (TH.bg||'#0c0c10'); ctx.fill();
             ctx.strokeStyle = on ? settings.accent : TH.nodeBorder; ctx.lineWidth=1; ctx.stroke();
+            drawSwatch(bx+3, by+3, 4, bh-6, opt.elements, 2);                       // implied element(s); grey if none
             ctx.fillStyle = on ? '#0c0c10' : TH.muted; ctx.textAlign='left'; ctx.textBaseline='middle';
-            ctx.fillText(opt.label, bx+6, by+bh/2+0.5);
+            ctx.fillText(opt.label, bx+11, by+bh/2+0.5);
             node._modopts.push({ ax:ai, opt:oi, x:bx, y:by, w:tw, h:bh });
             bx += tw + 3;
           });
