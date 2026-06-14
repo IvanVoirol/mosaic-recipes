@@ -652,7 +652,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.56';
+const APP_VERSION = 'v2.57';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1246,10 +1246,9 @@ function drawSeqDots(seq, x, yBottom, emoji, boundary){
     if (maxB && i < maxB){ ctx.fillStyle=el.color+'44'; ctx.fill(); ctx.lineWidth=1; ctx.strokeStyle=el.color+'aa'; ctx.stroke(); }
     else { ctx.fillStyle = el.color+'cc'; ctx.fill(); }
   });
-  if(bset.length){ const acc=cvsVar('--accent');
-    bset.forEach(b=>{ if(b>0&&b<n){ const dx = x + 8 + b*step - step*0.18;
-      ctx.strokeStyle = acc; ctx.lineWidth=2; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(dx, yBottom-r-3); ctx.lineTo(dx, yBottom+r+3); ctx.stroke(); ctx.lineCap='butt'; } }); }
+  bset.forEach(b=>{ if(b>0&&b<n){ const dx = x + 8 + b*step - step*0.18;
+    ctx.strokeStyle = TH.muted; ctx.lineWidth=1; ctx.setLineDash([2,2]);
+    ctx.beginPath(); ctx.moveTo(dx, yBottom-r-2); ctx.lineTo(dx, yBottom+r+2); ctx.stroke(); ctx.setLineDash([]); } });
 }
 
 function drawTree() {
@@ -1651,12 +1650,16 @@ function drawZoneEdge(a,b,el){
   ctx.lineCap='round'; ctx.strokeStyle='#00000066'; ctx.lineWidth=5.5; ctx.stroke();
   ctx.beginPath(); ctx.moveTo(sx,sy); ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey); ctx.strokeStyle=col; ctx.lineWidth=3; ctx.stroke();
 }
-function drawDotRow(seq, x, cy, B, dd, dg){
+function drawDotRow(seq, x, cy, B, dd, dg, bnds){
   const r=dd/2;
   if(seq.length>B){ const bx=x + B*(dd+dg) - 3, bw=(seq.length-B)*(dd+dg) - dg + 6;
     ctx.fillStyle='#000'; roundRect(ctx, bx, cy-r-3, bw, dd+6, 5); ctx.fill(); }
   seq.forEach((id,i)=>{ const el=elements.find(e=>e.id===id); if(!el) return;
     const cxp=x + i*(dd+dg) + r; ctx.beginPath(); ctx.arc(cxp, cy, r, 0, Math.PI*2); ctx.fillStyle=el.color; ctx.fill(); });
+  if(bnds && bnds.length){ ctx.strokeStyle=TH.muted; ctx.lineWidth=1; ctx.setLineDash([2,2]);
+    bnds.forEach(b=>{ if(b>0&&b<seq.length){ const dx=x + b*(dd+dg) - dg/2;
+      ctx.beginPath(); ctx.moveTo(dx, cy-r-2); ctx.lineTo(dx, cy+r+2); ctx.stroke(); } });
+    ctx.setLineDash([]); }
 }
 function drawSmallNode(x,cy,w,label,el,pivot,tcol){ const PH=20, y=cy-PH/2;
   roundRect(ctx,x,y,w,PH,7); ctx.fillStyle=pivot?'#14141c':TH.node; ctx.fill();
@@ -1670,12 +1673,13 @@ function drawSlimBox(lb,B,LS,dd,dg,tcol){
   roundRect(ctx,lb.x,lb.y,lb.w,lb.h,8); ctx.fillStyle=TH.node; ctx.fill();
   ctx.lineWidth=1; ctx.strokeStyle=mix(TH.nodeBorder,tcol,0.4); roundRect(ctx,lb.x,lb.y,lb.w,lb.h,8); ctx.stroke();
   ctx.save(); roundRect(ctx,lb.x,lb.y,lb.w,lb.h,8); ctx.clip();
+  const anyAlt = recipes.some(r=>r.altOrigins && r.altOrigins.length);
   lb.rows.forEach((row,ri)=>{
     if(ri>0){ ctx.strokeStyle='#ffffff10'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(lb.x,row.top); ctx.lineTo(lb.x+lb.w,row.top); ctx.stroke(); }
     ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10px sans-serif'; ctx.fillStyle=TH.text;
     let t=row.label, mw=LS-4; while(ctx.measureText(t).width>mw&&t.length>1)t=t.slice(0,-1); if(t!==row.label)t=t.slice(0,-1)+'…';
     ctx.fillText(t, lb.x+8, row.cy+0.5);
-    drawDotRow(row.seq, lb.x+8+LS, row.cy, B, dd, dg);
+    drawDotRow(row.seq, lb.x+8+LS, row.cy, B, dd, dg, anyAlt?boundaryIndices(row.seq):null);
   });
   ctx.restore();
 }
