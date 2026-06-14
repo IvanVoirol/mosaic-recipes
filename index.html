@@ -536,7 +536,11 @@ canvas.dragging{cursor:grabbing;}
         <div class="am-div"></div>
         <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶ Undo</button><button class="btn btn-ghost btn-sm" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button></div>
         <div class="am-div"></div>
-        <button class="btn btn-ghost btn-sm" id="btnExport" title="Export palettes">⤓ Export</button>
+        <div class="am-sec">
+          <label>Export</label>
+          <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnExpJson" title="Recipes as JSON (round-trips back into the editor)">JSON</button><button class="btn btn-ghost btn-sm" id="btnExpFlat" title="Composites resolved to concrete element sequences (game-ready)">Flat JSON</button></div>
+          <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnExpGd" title="Godot script: elements + flattened recipes">Godot .gd</button><button class="btn btn-ghost btn-sm" id="btnExpPng" title="Current tree as a PNG image">PNG</button></div>
+        </div>
       </div>
       <button id="sidebar-show" title="Show panel">»</button>
       <div id="node-search">
@@ -648,7 +652,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.50';
+const APP_VERSION = 'v2.54';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -913,7 +917,7 @@ if (menuToggle && appMenu){
   appMenu.addEventListener('click', e => e.stopPropagation());
   document.addEventListener('click', e => { if (appMenu.classList.contains('on') && e.target!==menuToggle && !appMenu.contains(e.target)) setMenu(false); });
   document.addEventListener('keydown', e => { if (e.key==='Escape' && appMenu.classList.contains('on')) setMenu(false); });
-  ['btnExport','btnNew','btnEdit'].forEach(id => { const b=document.getElementById(id); if(b) b.addEventListener('click', ()=>setMenu(false)); });
+  ['btnExpJson','btnExpFlat','btnExpGd','btnExpPng','btnNew','btnEdit'].forEach(id => { const b=document.getElementById(id); if(b) b.addEventListener('click', ()=>setMenu(false)); });
 }
 
 function loadPalette(idx) {
@@ -1247,7 +1251,7 @@ function drawTree() {
   layoutNodes = trieFlatten(root);
   edgeBadges = [];
   curPath = pathKeySet();
-  layoutNodes.forEach(n=>{ if(isNodeExpanded(n)){ const I=compositeInternals(n); n._internals=I; n._childExit=I.childExit; n._famrowY=I.famrowY; } else { n._childExit=null; } });
+  layoutNodes.forEach(n=>{ if(isNodeExpanded(n)){ const I=compositeInternals(n); n._internals=I; n._childExit=I.childExit; n._famrowY=I.famrowY; n._entryY=I.entryY; } else { n._childExit=null; n._entryY=null; } });
 
   ctx.save();
   ctx.translate(pan.x, pan.y + ch/2);
@@ -1473,7 +1477,7 @@ function drawEdge(parent, child) {
     if (fo){ const ry = (parent._famrowY && parent._famrowY[fo.vi]); sy = (ry!=null?ry:parent.ly + 26 + fo.vi*18 + 7); }
   }
   if (parent._childExit && parent._childExit[child.key]){ const ce=parent._childExit[child.key]; sx=ce.x; sy=ce.y; }
-  const ex = child.lx, ey = child.ly + nodeHeight(child)/2, mx = (sx+ex)/2;
+  const ex = child.lx, ey = (isNodeExpanded(child) && child._entryY!=null) ? child._entryY : child.ly + nodeHeight(child)/2, mx = (sx+ex)/2;
 
   ctx.save();
   const onPath = curPath.has(child.key);
@@ -1573,6 +1577,7 @@ function compositeInternals(node){
   const {B,LS,BW,MICOL,MLH,MPW,dd,dg,AXH}=d;
   const x0=node.lx, top=node.ly+ZHEAD+AXH, headerY=node.ly+ZHEAD+AXH/2;
   const rowTop=ri=>top+ri*MLH, rowCY=ri=>top+ri*MLH+MLH/2;
+  const entryY=top+d.rows*MLH/2;   // where an incoming edge should meet the zone
   const nodes=[], edges=[], headers=[], childExit={}, famrowY={};
   if(d.type==='chain'){
     const S=d.S, rows=[];
@@ -1581,7 +1586,7 @@ function compositeInternals(node){
     headers.push({cx:x0+BW/2, name:'Stage'});
     const ry=rowCY(S-1);
     Object.values(node.children).forEach(c=>{ childExit[c.key]={x:x0+BW, y:ry}; });
-    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY };
+    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY, entryY };
   }
   if(d.type==='family'){
     const V=d.V, boxX=x0+MICOL, baseCY=top+V*MLH/2;
@@ -1592,7 +1597,7 @@ function compositeInternals(node){
       famrowY[vi]=rowCY(vi);
       (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:boxX+BW, y:rowCY(vi)}; }); });
     headers.push({cx:x0+MPW/2, name:'Recipe'}, {cx:boxX+BW/2, name:'Variants'});
-    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY };
+    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY, entryY };
   }
   // modifier
   const A=d.A, combos=d.combos.slice().sort((a,b)=>{ for(let i=0;i<a.opts.length;i++){ if(a.opts[i]!==b.opts[i]) return a.opts[i]-b.opts[i]; } return 0; });
@@ -1621,7 +1626,7 @@ function compositeInternals(node){
   headers.push({cx:leafX+BW/2, name:r.modifiers[A-1].name});
   const rx=leafX+BW, ry=node.ly+d.h/2;
   Object.values(node.children).forEach(c=>{ childExit[c.key]={x:rx,y:ry}; });
-  return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY };
+  return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY, entryY };
 }
 
 function drawZoneEdge(a,b,el){
@@ -1634,7 +1639,7 @@ function drawZoneEdge(a,b,el){
 function drawDotRow(seq, x, cy, B, dd, dg){
   const r=dd/2;
   if(seq.length>B){ const bx=x + B*(dd+dg) - 3, bw=(seq.length-B)*(dd+dg) - dg + 6;
-    ctx.fillStyle='#08080c'; roundRect(ctx, bx, cy-r-3, bw, dd+6, 5); ctx.fill(); }
+    ctx.fillStyle='#000'; roundRect(ctx, bx, cy-r-3, bw, dd+6, 5); ctx.fill(); }
   seq.forEach((id,i)=>{ const el=elements.find(e=>e.id===id); if(!el) return;
     const cxp=x + i*(dd+dg) + r; ctx.beginPath(); ctx.arc(cxp, cy, r, 0, Math.PI*2); ctx.fillStyle=el.color; ctx.fill(); });
 }
@@ -1676,7 +1681,7 @@ function drawExpandedZone(node,isSel){
   const tcol=isModifier(r)?settings.accent:'#2fd4a0';
   const tlabel=isGrowth(r)?'CHAIN':isFamily(r)?'FAMILY':'MODIFIER';
   ctx.save();
-  roundRect(ctx,bx,by,bw,bh,12); ctx.fillStyle=isSel?tcol+'14':'#ffffff08'; ctx.fill();
+  const zbg=TH.bg||'#0c0c10'; roundRect(ctx,bx,by,bw,bh,12); ctx.fillStyle=isSel?mix(zbg,tcol,0.13):zbg; ctx.fill();
   ctx.setLineDash([6,4]); ctx.lineWidth=1.5; ctx.strokeStyle=isSel?tcol:tcol+'99'; roundRect(ctx,bx,by,bw,bh,12); ctx.stroke(); ctx.setLineDash([]);
   // header: name (truncated) + collapse button; type label only if it fits
   const cbw=20,cbh=15,cbx=bx+bw-cbw-6,cby=by+5;
@@ -2748,13 +2753,63 @@ function renderList() {
 // ================================================================
 //  GAPS
 // ================================================================
+// Detect problems that break export or in-game lookup.
+function collectIssues(){
+  const elset=new Set(elements.map(e=>e.id));
+  const elName=id=>{ const e=elements.find(x=>x.id===id); return e?e.name:id; };
+  const issues=[];
+  // exact duplicate base sequences (two definitions resolving to the same node)
+  const byKey={}; recipes.forEach(r=>{ const k=r.sequence.join('\x1f'); (byKey[k]=byKey[k]||[]).push(r); });
+  const dupKeys=new Set();
+  Object.entries(byKey).forEach(([k,grp])=>{ if(grp.length>1){ dupKeys.add(k); const seqLbl=grp[0].sequence.map(elName).join(' + ')||'(empty)';
+    grp.forEach(r=>issues.push({sev:'err',recipe:r,msg:`Duplicate sequence — ${grp.length} recipes share "${seqLbl}"`})); } });
+  // per-recipe validity
+  recipes.forEach(r=>{
+    if(!r.sequence.length) issues.push({sev:'err',recipe:r,msg:'Empty sequence'});
+    const bad=[...new Set(r.sequence.filter(id=>!elset.has(id)))];
+    if(bad.length) issues.push({sev:'err',recipe:r,msg:`Uses unknown element${bad.length>1?'s':''} ${bad.map(b=>'"'+b+'"').join(', ')}`});
+    if(isGrowth(r)){ if(!elset.has(r.growth.element)) issues.push({sev:'err',recipe:r,msg:`Chain grows by unknown element "${r.growth.element}"`}); if(r.growth.stages<2) issues.push({sev:'warn',recipe:r,msg:'Chain has fewer than 2 stages'}); }
+    if(isFamily(r)){ if(!r.family.length) issues.push({sev:'warn',recipe:r,msg:'Family has no variants'});
+      r.family.forEach(v=>{ if(!elset.has(v.element)) issues.push({sev:'err',recipe:r,msg:`Variant "${v.name}" grows by unknown element "${v.element}"`}); if(v.stages<1) issues.push({sev:'warn',recipe:r,msg:`Variant "${v.name}" has no stages`}); }); }
+    if(isModifier(r)){ if(!r.modifiers.length) issues.push({sev:'warn',recipe:r,msg:'Modifier has no axes'});
+      r.modifiers.forEach(m=>{ if(!m.options||!m.options.length){ issues.push({sev:'warn',recipe:r,msg:`Axis "${m.name}" has no options`}); return; }
+        m.options.forEach(o=>{ if(!o.elements||!o.elements.length) issues.push({sev:'warn',recipe:r,msg:`Axis "${m.name}" option "${o.label}" adds nothing`});
+          (o.elements||[]).forEach(id=>{ if(!elset.has(id)) issues.push({sev:'err',recipe:r,msg:`Axis "${m.name}" option "${o.label}" uses unknown element "${id}"`}); }); }); }); }
+  });
+  // expansion collisions across distinct recipes (export footgun), excluding exact base-dups already flagged
+  const src={}; recipes.forEach(r=>{ expandedSequences(r).forEach(seq=>{ const k=seq.join('\x1f'); (src[k]=src[k]||new Set()).add(r); }); });
+  Object.entries(src).forEach(([k,set])=>{ if(set.size>1 && !dupKeys.has(k)){ const arr=[...set];
+    arr.forEach(r=>issues.push({sev:'warn',recipe:r,msg:`Expanded sequence collides with ${arr.filter(x=>x!==r).map(x=>'"'+(x.name||'?')+'"').join(', ')}`})); } });
+  // de-dupe identical (recipe,msg)
+  const seen=new Set(); return issues.filter(it=>{ const id=recipes.indexOf(it.recipe)+'|'+it.msg; if(seen.has(id))return false; seen.add(id); return true; });
+}
 function renderValidation() {
-  const el = document.getElementById('validatePanel'); el.innerHTML='';
+  const el = document.getElementById('validatePanel'); el.innerHTML=''; el.style.marginBottom='8px';
+  // ── Issues (errors / warnings) ──
+  const issues=collectIssues();
+  const errs=issues.filter(i=>i.sev==='err').length, warns=issues.length-errs;
+  const ih=document.createElement('div'); ih.className='set-section'; ih.style.marginTop='6px';
+  ih.textContent='Issues'; ih.title='Problems that can break export or in-game lookup: duplicate sequences, references to deleted elements, sequence collisions, and degenerate composites.'; el.appendChild(ih);
+  if(!issues.length){ const ok=document.createElement('div'); ok.style.cssText='color:var(--accent2);font-size:.8rem;padding:4px 2px'; ok.textContent='✓ No issues found'; el.appendChild(ok); }
+  else {
+    const h=document.createElement('div'); h.className='section-head';
+    h.textContent=`${errs} error${errs!==1?'s':''}, ${warns} warning${warns!==1?'s':''}`; el.appendChild(h);
+    issues.forEach(it=>{ const item=document.createElement('div'); item.className='gap-item';
+      const col=it.sev==='err'?'var(--danger)':'#f0b040', icon=it.sev==='err'?'✕':'⚠';
+      item.innerHTML=`<div class="gap-msg" style="color:${col}">${icon} ${escHtml(it.recipe.name||'(unnamed)')}</div><div class="gap-sub">${escHtml(it.msg)}</div>`;
+      item.onclick=()=>focusNode([...it.recipe.sequence], it.recipe, {pan:true, open:true});
+      el.appendChild(item); });
+  }
+  // tab badge
+  const tab=document.querySelector('[data-tab="stats"]');
+  if(tab){ let b=tab.querySelector('.tab-badge'); if(errs||warns){ if(!b){ b=document.createElement('span'); b.className='tab-badge'; tab.appendChild(b); }
+      b.textContent=errs||warns; b.style.cssText=`margin-left:5px;font-size:.62rem;font-weight:800;padding:0 5px;border-radius:8px;color:#0c0c10;background:${errs?'var(--danger)':'#f0b040'};`; }
+    else if(b){ b.remove(); } }
+  // ── Gaps (unnamed intermediate steps) ──
   const gaps = getGaps(buildTrie());
-  el.style.marginBottom = '8px';
-  const head=document.createElement('div'); head.className='set-section'; head.style.marginTop='6px';
+  const head=document.createElement('div'); head.className='set-section'; head.style.marginTop='12px';
   head.textContent='Gaps'; head.title='Unnamed intermediate steps. They are allowed, but flagged so you can name or remove them.'; el.appendChild(head);
-  if (!gaps.length){ const ok=document.createElement('div'); ok.style.cssText='color:var(--accent2);font-size:.8rem;padding:4px 2px'; ok.textContent='✓ No gaps — every step is named'; el.appendChild(ok); return; }
+  if (!gaps.length){ const ok=document.createElement('div'); ok.style.cssText='color:var(--accent2);font-size:.8rem;padding:4px 2px'; ok.textContent='✓ No gaps — every step is named'; el.appendChild(ok); styleTips(el); return; }
   const h=document.createElement('div'); h.className='section-head';
   h.textContent=`${gaps.length} unnamed step${gaps.length>1?'s':''} (allowed, but flagged)`; el.appendChild(h);
   gaps.forEach(gap=>{
@@ -3000,11 +3055,49 @@ document.querySelectorAll('.stabs button').forEach(btn=>btn.addEventListener('cl
 // ================================================================
 //  EXPORT / IMPORT
 // ================================================================
-document.getElementById('btnExport').addEventListener('click', ()=>{
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(recipes,null,2)],{type:'application/json'}));
-  a.download=`recipes-${palettes[pidx].name.replace(/\s+/g,'_')}.json`; a.click();
-});
+// ── Export: flatten composites to concrete element sequences, then emit ──
+function flattenRecipes(){
+  const out=[];
+  recipes.forEach(r=>{
+    const base={name:r.name, description:r.description||''};
+    if(isGrowth(r)){
+      for(let k=1;k<=r.growth.stages;k++) out.push({...base, seq:growthStageSeq(r,k), kind:'chain', stage:k, of:r.growth.stages, element:r.growth.element});
+    } else if(isFamily(r)){
+      out.push({...base, seq:r.sequence.slice(), kind:'family-base'});
+      r.family.forEach((v,vi)=>{ for(let k=1;k<=v.stages;k++) out.push({name:v.name, description:'', seq:familyVarSeq(r,vi,k), kind:'family', variant:v.name, of:r.name, stage:k, stages:v.stages, element:v.element}); });
+    } else if(isModifier(r)){
+      out.push({...base, seq:r.sequence.slice(), kind:'modifier-base'});
+      modCombos(r).forEach(c=>out.push({...base, seq:c.seq.slice(), kind:'modifier', options:c.labels.slice()}));
+    } else {
+      out.push({...base, seq:r.sequence.slice(), kind:'basic', altOrigins:(r.altOrigins||[]).map(a=>a.slice())});
+    }
+  });
+  // de-dupe identical sequences (last wins), keep order of first sight
+  const seen={}, dedup=[];
+  out.forEach(e=>{ const k=e.seq.join('\x1f'); if(seen[k]==null){ seen[k]=dedup.length; dedup.push(e); } else dedup[seen[k]]=e; });
+  return dedup;
+}
+function dl(name, text, mime){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:mime||'text/plain'})); a.download=name; a.click(); }
+function palSlug(){ return (palettes[pidx].name||'palette').replace(/[^\w-]+/g,'_'); }
+function toGodot(){
+  const p=palettes[pidx], flat=flattenRecipes(), q=JSON.stringify;
+  const head=[`# Auto-generated by Palette Editor — ${q(p.name)} — ${new Date().toISOString().slice(0,10)}`,
+    `# Usage: const P = preload("res://${palSlug()}.gd")`,
+    `#   P.ELEMENTS["id"].name / .color`,
+    `#   P.RECIPES -> Array of { seq, name, kind, ... }; seq is an Array[String] of element ids`, ``];
+  const elLines=elements.map(e=>`\t${q(e.id)}: {"name": ${q(e.name)}, "color": ${q(e.color)}}`);
+  const recLines=flat.map(e=>{ const parts=[`"seq": [${e.seq.map(q).join(', ')}]`, `"name": ${q(e.name)}`, `"kind": ${q(e.kind)}`];
+    if(e.element) parts.push(`"element": ${q(e.element)}`);
+    if(e.stage!=null) parts.push(`"stage": ${e.stage}`);
+    if(e.variant) parts.push(`"variant": ${q(e.variant)}`);
+    if(e.options) parts.push(`"options": [${e.options.map(q).join(', ')}]`);
+    return `\t{${parts.join(', ')}}`; });
+  return head.concat([`const ELEMENTS := {`, elLines.join(',\n'), `}`, ``, `const RECIPES := [`, recLines.join(',\n'), `]`, ``]).join('\n');
+}
+document.getElementById('btnExpJson').addEventListener('click', ()=>{ dl(`recipes-${palSlug()}.json`, JSON.stringify(recipes,null,2), 'application/json'); toast(`Exported ${recipes.length} recipe(s).`,'ok'); });
+document.getElementById('btnExpFlat').addEventListener('click', ()=>{ const f=flattenRecipes(); dl(`recipes-flat-${palSlug()}.json`, JSON.stringify(f,null,2), 'application/json'); toast(`Exported ${f.length} concrete sequence(s).`,'ok'); });
+document.getElementById('btnExpGd').addEventListener('click', ()=>{ dl(`${palSlug()}.gd`, toGodot(), 'text/plain'); toast('Exported Godot script.','ok'); });
+document.getElementById('btnExpPng').addEventListener('click', ()=>{ try{ cvs.toBlob(b=>{ if(!b){toast('PNG export not supported here.','err');return;} const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`tree-${palSlug()}.png`; a.click(); toast('Exported PNG.','ok'); }); }catch(e){ toast('PNG export failed.','err'); } });
 function doImport(replace){
   const txt=document.getElementById('importTxt').value.trim(); const st=document.getElementById('importSt');
   try{ const data=JSON.parse(txt); if(!Array.isArray(data))throw new Error('Expected a JSON array');
@@ -3014,7 +3107,11 @@ function doImport(replace){
       if(it.sequence.length<1)return;
       if(!it.sequence.every(id=>elements.find(e=>e.id===id)))return;
       const k=it.sequence.join('\x1f'); const i=recipes.findIndex(r=>r.sequence.join('\x1f')===k);
+      const elOk=id=>elements.find(e=>e.id===id);
       const entry={name:it.name,sequence:it.sequence,description:it.description||'',altOrigins:Array.isArray(it.altOrigins)?it.altOrigins:[]};
+      if(it.growth && elOk(it.growth.element) && it.growth.stages>=2) entry.growth={element:it.growth.element, stages:it.growth.stages|0};
+      if(Array.isArray(it.family)){ const fam=it.family.filter(v=>v&&elOk(v.element)&&v.stages>=1).map(v=>({name:v.name||'Variant', element:v.element, stages:v.stages|0})); if(fam.length) entry.family=fam; }
+      if(Array.isArray(it.modifiers)){ const mods=it.modifiers.filter(m=>m&&Array.isArray(m.options)).map(m=>({name:m.name||'Axis', options:m.options.filter(o=>o&&Array.isArray(o.elements)).map(o=>({label:o.label||'opt', elements:o.elements.filter(elOk)}))})).filter(m=>m.options.length); if(mods.length) entry.modifiers=mods; }
       if(i>=0)recipes[i]=entry; else recipes.push(entry); n++; });
     palettes[pidx].recipes=recipes; commit();
     st.textContent=`✓ ${n} recipe${n!==1?'s':''} loaded.`; st.className='io-status ok';
