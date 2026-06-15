@@ -661,7 +661,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.69';
+const APP_VERSION = 'v2.70';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1625,8 +1625,9 @@ function slimDims(node){ const r=node.recipe;
   if(isFamily(r)){ const key=node.key, V=r.family.length, B=r.sequence.length;
     const vstages=r.family.map((v,vi)=> (famVarSet.has(key+'\x1f'+vi) && v.stages>=2) ? v.stages : 1);
     const totalRows=Math.max(1, vstages.reduce((a,b)=>a+b,0));
-    const maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), CW=16, LS=labelSlot(r.family.map(v=>v.name)), BW=LS+maxEls*(dd+dg)+CW+16;
-    return {type:'family', V, vstages, totalRows, B, CW, LS, BW, rows:totalRows, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:BW+ZP+4, h:ZHEAD+totalRows*MLH+8}; }
+    const maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), CW=16, LPAD=11, LS=labelSlot(r.family.map(v=>v.name));
+    const BW=Math.max(NW, LPAD+LS+maxEls*(dd+dg)+8+CW+4);
+    return {type:'family', V, vstages, totalRows, B, CW, LPAD, LS, BW, rows:totalRows, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:BW, h:ZHEAD+totalRows*MLH+8}; }
   const A=r.modifiers.length, B=r.sequence.length, combos=modCombos(r), rows=Math.max(1,combos.length);
   const maxEls=combos.reduce((m,c)=>Math.max(m,c.seq.length), B+1), LS=labelSlot(r.modifiers[A-1].options.map(o=>o.label)), BW=LS+maxEls*(dd+dg)+18;
   return {type:'modifier', A, B, combos, rows, LS, BW, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:A*MICOL+BW+2*ZP, h:ZHEAD+AXH+rows*MLH+8}; }
@@ -1788,18 +1789,18 @@ function drawFamilyBox(node,isSel){
   ctx.save(); roundRect(ctx,bx,by,bw,bh,9); ctx.clip(); ctx.fillStyle=tcol; ctx.fillRect(bx,by,4,bh); ctx.restore();   // family bar
   ctx.font='700 8px sans-serif'; const tlabel='FAMILY', tlw=ctx.measureText(tlabel).width;
   ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-  let nm=r.name; const nmMax=bw-16-tlw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
-  ctx.fillText(nm,bx+9,by+ZHEAD/2+1);
+  let nm=r.name; const nmMax=bw-20-tlw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
+  ctx.fillText(nm,bx+11,by+ZHEAD/2+1);
   ctx.font='700 8px sans-serif'; ctx.fillStyle=tcol; ctx.textAlign='right'; ctx.fillText(tlabel, bx+bw-8, by+ZHEAD/2+1);   // FAMILY hint top-right
   if(zoom<0.4) return;
-  const anyAlt=recipes.some(rr=>rr.altOrigins&&rr.altOrigins.length);
+  const anyAlt=recipes.some(rr=>rr.altOrigins&&rr.altOrigins.length), LPAD=zoneDims(node).slim.LPAD;
   ctx.save(); roundRect(ctx,bx,by,bw,bh,9); ctx.clip();
   I.box.rows.forEach(row=>{
     ctx.strokeStyle='#ffffff10'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(bx,row.top); ctx.lineTo(bx+bw,row.top); ctx.stroke();
     if(row.label){ ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10px sans-serif'; ctx.fillStyle=TH.text;
       let t=row.label, mw=I.LS-2; while(ctx.measureText(t).width>mw&&t.length>1)t=t.slice(0,-1); if(t!==row.label)t=t.slice(0,-1)+'…';
-      ctx.fillText(t, I.box.x+2, row.cy+0.5); }
-    drawDotRow(row.seq, I.box.x+2+I.LS, row.cy, I.B, I.dd, I.dg, anyAlt?boundaryIndices(row.seq):null);
+      ctx.fillText(t, I.box.x+LPAD, row.cy+0.5); }
+    drawDotRow(row.seq, I.box.x+LPAD+I.LS, row.cy, I.B, I.dd, I.dg, anyAlt?boundaryIndices(row.seq):null);
   });
   ctx.restore();
   if(I.carets&&I.carets.length){ node._famVarCarets=[];
