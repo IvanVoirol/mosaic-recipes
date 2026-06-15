@@ -661,7 +661,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.70';
+const APP_VERSION = 'v2.72';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -724,7 +724,8 @@ function normalise(list) {
         else {
           r.family = r.family.filter(v=>v && typeof v.name==='string' && v.element)
             .map(v=>({name:v.name, element:v.element, stages:Math.max(1, Math.min(12, v.stages||4))}));
-          r.family.sort((a,b)=>a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
+          const vidx = id => { const i=(p.elements||[]).findIndex(e=>e.id===id); return i<0?9999:i; };
+          r.family.sort((a,b)=> (vidx(a.element)-vidx(b.element)) || a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
           if (!r.family.length) delete r.family;
         }
       }
@@ -1782,19 +1783,45 @@ function drawSlimZone(node, I, tcol){
 function drawFamilyBox(node,isSel){
   node._pips=null; node._modopts=null; node._fampips=null; node._caret=null; node._collapseBtn=null; node._famVarCarets=null;
   const r=node.recipe, dims=zoneDims(node), I=node._internals||compositeInternals(node);
-  const bx=node.lx, by=node.ly, bw=dims.w, bh=dims.h, tcol='#2fd4a0';
-  const onPath=curPath.has(node.key)&&!isSel;
-  roundRect(ctx,bx,by,bw,bh,9); ctx.fillStyle=isSel?mix(TH.node,tcol,0.16):TH.node; ctx.fill();
-  ctx.lineWidth=(isSel||onPath)?2:1.2; ctx.strokeStyle=isSel?tcol:(onPath?settings.accent:mix(TH.nodeBorder,tcol,0.5)); roundRect(ctx,bx,by,bw,bh,9); ctx.stroke();
-  ctx.save(); roundRect(ctx,bx,by,bw,bh,9); ctx.clip(); ctx.fillStyle=tcol; ctx.fillRect(bx,by,4,bh); ctx.restore();   // family bar
+  const bx=node.lx, by=node.ly, bw=dims.w, bh=dims.h;
+  const onPath=curPath.has(node.key)&&!isSel, fam=familyColor(node.sequence), accent=settings.accent;
+  if (viewMode==='craft'){
+    const need=seqNeeds(node.sequence);
+    const ok = node.sequence.length>0 && Object.keys(need).every(id=>invCount(id)>=need[id]);
+    const frontier = ok && sortedChildren(node).some(c=>{ const cm=seqNeeds(c.sequence); return !(c.sequence.length>0 && Object.keys(cm).every(id=>invCount(id)>=cm[id])); });
+    if(!ok) ctx.globalAlpha *= 0.4;
+    ctx.fillStyle = isSel ? accent+'1f' : (!ok ? TH.node : (frontier ? accent+'22' : '#2fd4a022'));
+    roundRect(ctx,bx,by,bw,bh,8); ctx.fill();
+    ctx.strokeStyle = isSel ? accent : (!ok ? '#5b5b66' : (frontier ? accent : '#2fd4a0'));
+    ctx.lineWidth = (isSel||frontier)?2:1; roundRect(ctx,bx,by,bw,bh,8); ctx.stroke();
+  } else {
+    if (fam && !isSel) ctx.fillStyle = mix(TH.node, fam, 0.18); else ctx.fillStyle = isSel ? accent+'1f' : TH.node;
+    roundRect(ctx,bx,by,bw,bh,8); ctx.fill();
+    ctx.strokeStyle = isSel ? accent : (onPath ? accent+'aa' : (fam ? mix(TH.nodeBorder, fam, 0.5) : TH.nodeBorder));
+    ctx.lineWidth = (isSel||onPath)?2:1; roundRect(ctx,bx,by,bw,bh,8); ctx.stroke();
+    if (fam){ ctx.save(); ctx.beginPath(); roundRect(ctx,bx,by,bw,bh,8); ctx.clip(); ctx.fillStyle=fam; ctx.fillRect(bx,by,5,bh); ctx.restore(); }
+  }
+  const accF = fam || accent;
+  // ── Level-of-detail by zoom, matching normal nodes ──
+  if (zoom < 0.22){                                            // VERY FAR: large centred name only
+    const fw=Math.min(48, Math.max(18, 16/zoom)); ctx.fillStyle=TH.text; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`700 ${fw}px 'Segoe UI',sans-serif`;
+    let nm=r.name; const mw=bw-14; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name&&nm.length>1)nm=nm.slice(0,-1)+'…';
+    ctx.fillText(nm, bx+bw/2, by+bh/2); return;
+  }
+  if (zoom < 0.6){                                             // FAR/MID: counter-scaled name, no rows
+    const far=zoom<0.4, nameWorld=Math.min(far?30:24, Math.max(12, 12/zoom));
+    ctx.fillStyle=TH.text; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font=`${isSel?700:(far?600:500)} ${nameWorld}px 'Segoe UI',sans-serif`;
+    let nm=r.name; const mw=bw-16; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name&&nm.length>1)nm=nm.slice(0,-1)+'…';
+    ctx.fillText(nm, bx+11, by+bh/2); return;
+  }
+  // NEAR (zoom >= 0.6): full title + variant rows + carets
   ctx.font='700 8px sans-serif'; const tlabel='FAMILY', tlw=ctx.measureText(tlabel).width;
   ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
   let nm=r.name; const nmMax=bw-20-tlw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
   ctx.fillText(nm,bx+11,by+ZHEAD/2+1);
-  ctx.font='700 8px sans-serif'; ctx.fillStyle=tcol; ctx.textAlign='right'; ctx.fillText(tlabel, bx+bw-8, by+ZHEAD/2+1);   // FAMILY hint top-right
-  if(zoom<0.4) return;
+  ctx.font='700 8px sans-serif'; ctx.fillStyle=mix(TH.muted,accF,0.45); ctx.textAlign='right'; ctx.fillText(tlabel, bx+bw-8, by+ZHEAD/2+1);   // FAMILY hint top-right
   const anyAlt=recipes.some(rr=>rr.altOrigins&&rr.altOrigins.length), LPAD=zoneDims(node).slim.LPAD;
-  ctx.save(); roundRect(ctx,bx,by,bw,bh,9); ctx.clip();
+  ctx.save(); roundRect(ctx,bx,by,bw,bh,8); ctx.clip();
   I.box.rows.forEach(row=>{
     ctx.strokeStyle='#ffffff10'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(bx,row.top); ctx.lineTo(bx+bw,row.top); ctx.stroke();
     if(row.label){ ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10px sans-serif'; ctx.fillStyle=TH.text;
@@ -1805,7 +1832,7 @@ function drawFamilyBox(node,isSel){
   ctx.restore();
   if(I.carets&&I.carets.length){ node._famVarCarets=[];
     I.carets.forEach(c=>{
-      ctx.fillStyle='#15151d'; ctx.strokeStyle=tcol+'88'; ctx.lineWidth=1; roundRect(ctx,c.x,c.y,c.w,c.h,4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#15151d'; ctx.strokeStyle=mix(TH.nodeBorder,accF,0.5); ctx.lineWidth=1; roundRect(ctx,c.x,c.y,c.w,c.h,4); ctx.fill(); ctx.stroke();
       ctx.fillStyle=TH.muted; ctx.font='700 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(c.expanded?'▾':'▸', c.x+c.w/2, c.y+c.h/2+0.5);
       node._famVarCarets.push(c);
     }); }
