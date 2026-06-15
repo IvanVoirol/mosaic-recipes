@@ -393,6 +393,35 @@ canvas.dragging{cursor:grabbing;}
 #empty-hint b{color:var(--text);}
 #minimap{position:absolute;right:10px;top:50px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:rgba(20,20,28,.86);backdrop-filter:blur(6px);cursor:crosshair;box-shadow:0 6px 20px #0006;}
 #mm-zoom{position:absolute;right:10px;top:160px;z-index:6;width:158px;text-align:center;color:var(--text);opacity:.72;font-size:.66rem;font-variant-numeric:tabular-nums;pointer-events:none;text-shadow:0 1px 2px #000a;}
+#persp-panel{position:absolute;right:10px;top:185px;z-index:6;width:216px;max-height:min(300px, calc(100% - 240px));display:flex;flex-direction:column;background:rgba(20,20,28,.92);backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px #0006;overflow:hidden;}
+#persp-head{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border);flex:0 0 auto;}
+#persp-title{font-weight:700;color:var(--text);font-size:.7rem;letter-spacing:.02em;}
+#persp-count{color:var(--muted);font-size:.62rem;flex:1;}
+#persp-add,#persp-toggle{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:1px 5px;border-radius:5px;}
+#persp-add:hover,#persp-toggle:hover{background:#ffffff14;color:var(--text);}
+#persp-body{overflow-y:auto;padding:4px;display:flex;flex-direction:column;gap:3px;}
+#persp-panel.collapsed #persp-body{display:none;}
+.persp-item{border:1px solid var(--border);border-radius:6px;padding:4px 6px;cursor:pointer;}
+.persp-item:hover{border-color:#ffffff2b;}
+.pi-top{display:flex;align-items:center;gap:6px;}
+.persp-gauge{flex:0 0 auto;display:flex;}
+.persp-timer{flex:0 0 auto;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.6rem;color:var(--muted);min-width:52px;}
+.persp-q{flex:1;color:var(--text);line-height:1.28;font-size:.69rem;}
+.persp-desc{color:var(--muted);font-size:.61rem;line-height:1.3;margin-top:2px;margin-left:58px;}
+.pi-acts{display:flex;gap:1px;flex:0 0 auto;align-items:center;}
+.pi-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.7rem;padding:1px 3px;border-radius:4px;}
+.pi-btn:hover{background:#ffffff14;color:var(--text);}
+.pi-btn.on{color:var(--accent);}
+.pi-del.confirm{color:#ff7a7a;font-weight:700;}
+.persp-edit{width:100%;background:#0e0e14;border:1px solid var(--border);border-radius:5px;color:var(--text);font:inherit;padding:4px;box-sizing:border-box;}
+.persp-edit:focus{outline:none;border-color:var(--accent);}
+.persp-titleinput{flex:1;font-weight:600;font-size:.69rem;}
+.persp-descinput{margin-top:5px;font-size:.64rem;}
+.persp-notes{width:100%;margin-top:5px;background:#0e0e14;border:1px solid var(--border);border-radius:5px;color:var(--text);font:inherit;font-size:.66rem;line-height:1.32;padding:4px;resize:vertical;min-height:44px;box-sizing:border-box;}
+.persp-notes:focus{outline:none;border-color:var(--accent);}
+.persp-input{width:100%;background:#0e0e14;border:1px solid var(--accent);border-radius:5px;color:var(--text);font:inherit;font-size:.69rem;padding:5px;box-sizing:border-box;}
+.persp-input:focus{outline:none;}
+.persp-empty{color:var(--muted);font-size:.63rem;padding:7px 5px;text-align:center;line-height:1.4;}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -566,6 +595,10 @@ canvas.dragging{cursor:grabbing;}
       <div id="empty-hint" style="display:none">Hover <b>▶ Start</b> and click the <b>＋</b> to add your first recipe.</div>
       <canvas id="minimap" width="158" height="106" title="Overview — click or drag to navigate"></canvas>
       <div id="mm-zoom" title="Current zoom">100%</div>
+      <div id="persp-panel">
+        <div id="persp-head"><span id="persp-title">Design Lenses</span><span id="persp-count"></span><button id="persp-add" title="Add a design lens">＋</button><button id="persp-toggle" title="Collapse / expand">▾</button></div>
+        <div id="persp-body"></div>
+      </div>
       <div id="help-overlay" class="help-overlay">
         <div class="help-card">
           <div class="help-head"><span class="help-title">Shortcuts &amp; gestures</span><button class="help-x" id="helpClose" title="Close (Esc)">✕</button></div>
@@ -661,7 +694,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.72';
+const APP_VERSION = 'v2.76';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -3507,6 +3540,78 @@ document.getElementById('btnUndo').onclick = undo;
 document.getElementById('btnRedo').onclick = redo;
 document.getElementById('btnUndoCv').onclick = undo;
 document.getElementById('btnRedoCv').onclick = redo;
+
+// ── Perspectives: reusable analytical lenses for examining the trie (global, persisted) ──
+let perspectives=[]; const perspExpanded=new Set(); let perspCollapsed=false;
+function perspLoad(){ try{ perspectives=JSON.parse(localStorage.getItem('mosaicPerspectives')||'[]'); if(!Array.isArray(perspectives)) perspectives=[]; }catch(e){ perspectives=[]; }
+  try{ perspCollapsed=localStorage.getItem('mosaicPerspCollapsed')==='1'; }catch(e){ perspCollapsed=false; } }
+function perspSave(){ try{ localStorage.setItem('mosaicPerspectives', JSON.stringify(perspectives)); }catch(e){} }
+function perspRelTime(ts){ if(!ts) return 'not yet revisited'; const d=Date.now()-ts, day=864e5;
+  if(d<6e4) return 'revisited just now'; if(d<36e5) return 'revisited '+Math.floor(d/6e4)+'m ago';
+  if(d<day) return 'revisited '+Math.floor(d/36e5)+'h ago'; if(d<30*day) return 'revisited '+Math.floor(d/day)+'d ago';
+  return 'revisited '+new Date(ts).toLocaleDateString(); }
+function perspTimer(p){ const base=p.revisited||p.created||Date.now(); let s=Math.max(0, Math.floor((Date.now()-base)/1000));
+  const d=Math.floor(s/86400); s-=d*86400; const h=Math.floor(s/3600); s-=h*3600; const m=Math.floor(s/60); s-=m*60;
+  const z=n=>String(n).padStart(2,'0');
+  return (d>0?d+'d ':'')+z(h)+':'+z(m)+':'+z(s); }
+let perspTimerEls=[];
+function perspTick(){ if(perspCollapsed) return; perspTimerEls.forEach(t=>{ if(t.el.isConnected) t.el.textContent=perspTimer(t.p); }); }
+function renderPersp(){
+  const body=document.getElementById('persp-body'), panel=document.getElementById('persp-panel'); if(!body||!panel) return;
+  panel.classList.toggle('collapsed', perspCollapsed);
+  document.getElementById('persp-toggle').textContent = perspCollapsed?'▸':'▾';
+  document.getElementById('persp-count').textContent = perspectives.length?('('+perspectives.length+')'):'';
+  body.innerHTML='';
+  if(!perspectives.length){ const e=document.createElement('div'); e.className='persp-empty'; e.textContent='No lenses yet. Add a question you use to examine the trie — e.g. “Can the player build coherent electric machines?”'; body.appendChild(e); return; }
+  const now=Date.now();
+  const byRecent=[...perspectives].sort((a,b)=>(b.revisited||b.created||0)-(a.revisited||a.created||0));
+  const rankOf=new Map(byRecent.map((p,i)=>[p.id,i])), N=perspectives.length;
+  const ordered=[...perspectives].sort((a,b)=>a.title.localeCompare(b.title, undefined, {numeric:true, sensitivity:'base'}));   // alphabetical for easy tracking
+  perspTimerEls=[];
+  ordered.forEach(p=>{
+    const open=perspExpanded.has(p.id);
+    const item=document.createElement('div'); item.className='persp-item';
+    const rk=rankOf.get(p.id)||0, alpha=(0.03+(N>1?rk/(N-1):0)*0.10).toFixed(3);   // recent darker, oldest lighter
+    item.style.background=`rgba(255,255,255,${alpha})`;
+    const top=document.createElement('div'); top.className='pi-top';
+    const tm=document.createElement('span'); tm.className='persp-timer'; tm.textContent=perspTimer(p); tm.title='Time since last revisit'; perspTimerEls.push({el:tm,p}); top.appendChild(tm);
+    if(open){ const ti=document.createElement('input'); ti.className='persp-edit persp-titleinput'; ti.value=p.title; ti.placeholder='Title';
+      ti.onclick=e=>e.stopPropagation(); ti.oninput=()=>{ p.title=ti.value; perspSave(); }; top.appendChild(ti); }
+    else { const q=document.createElement('div'); q.className='persp-q'; q.textContent=p.title; top.appendChild(q); }
+    const acts=document.createElement('div'); acts.className='pi-acts';
+    const ed=document.createElement('button'); ed.className='pi-btn'+(open?' on':''); ed.textContent='✎'; ed.title=open?'Done editing':'Edit';
+    ed.onclick=e=>{ e.stopPropagation(); if(open) perspExpanded.delete(p.id); else perspExpanded.add(p.id); renderPersp(); };
+    const del=document.createElement('button'); del.className='pi-btn pi-del'; del.textContent='🗑'; del.title='Delete';
+    del.onclick=e=>{ e.stopPropagation(); if(del.classList.contains('confirm')){ perspectives=perspectives.filter(x=>x!==p); perspExpanded.delete(p.id); perspSave(); renderPersp(); }
+      else { del.classList.add('confirm'); del.textContent='Delete?'; setTimeout(()=>{ del.classList.remove('confirm'); del.textContent='🗑'; },2500); } };
+    acts.appendChild(ed); acts.appendChild(del); top.appendChild(acts); item.appendChild(top);
+    if(open){
+      const di=document.createElement('input'); di.className='persp-edit persp-descinput'; di.value=p.desc||''; di.placeholder='Quick description (optional)';
+      di.onclick=e=>e.stopPropagation(); di.oninput=()=>{ p.desc=di.value; perspSave(); }; item.appendChild(di);
+      const ta=document.createElement('textarea'); ta.className='persp-notes'; ta.placeholder='Notes / findings…'; ta.value=p.notes||'';
+      ta.onclick=e=>e.stopPropagation(); ta.oninput=()=>{ p.notes=ta.value; perspSave(); }; item.appendChild(ta);
+    } else if(p.desc){ const d=document.createElement('div'); d.className='persp-desc'; d.textContent=p.desc; item.appendChild(d); }
+    if(!open){ item.title='Click to mark revisited (reset gauge)'; item.onclick=()=>{ p.revisited=Date.now(); perspSave(); renderPersp(); }; }
+    body.appendChild(item);
+  });
+}
+function perspAdd(){
+  if(perspCollapsed){ perspCollapsed=false; try{ localStorage.setItem('mosaicPerspCollapsed','0'); }catch(e){} }
+  renderPersp();
+  const body=document.getElementById('persp-body'); if(body.querySelector('.persp-empty')) body.innerHTML='';
+  const wrap=document.createElement('div'); wrap.className='persp-item';
+  const inp=document.createElement('input'); inp.className='persp-input'; inp.placeholder='New design lens… (Enter to save)'; wrap.appendChild(inp);
+  body.insertBefore(wrap, body.firstChild); inp.focus();
+  let done=false;
+  const commit=()=>{ if(done) return; done=true; const t=inp.value.trim();
+    if(t){ perspectives.unshift({id:'p'+Date.now()+Math.random().toString(36).slice(2,6), title:t, desc:'', notes:'', created:Date.now(), revisited:Date.now()}); perspSave(); }
+    renderPersp(); };
+  inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); commit(); } else if(e.key==='Escape'){ done=true; renderPersp(); } };
+  inp.onblur=commit;
+}
+document.getElementById('persp-add').onclick=perspAdd;
+document.getElementById('persp-toggle').onclick=()=>{ perspCollapsed=!perspCollapsed; try{ localStorage.setItem('mosaicPerspCollapsed', perspCollapsed?'1':'0'); }catch(e){} renderPersp(); };
+perspLoad(); renderPersp(); setInterval(perspTick, 1000);
 
 document.addEventListener('keydown', e=>{
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
