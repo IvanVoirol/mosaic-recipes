@@ -392,7 +392,7 @@ canvas.dragging{cursor:grabbing;}
   background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--muted);font-size:.86rem;backdrop-filter:blur(4px);}
 #empty-hint b{color:var(--text);}
 #minimap{position:absolute;right:10px;top:50px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:rgba(20,20,28,.86);backdrop-filter:blur(6px);cursor:crosshair;box-shadow:0 6px 20px #0006;}
-#mm-zoom{position:absolute;right:10px;top:160px;z-index:6;width:158px;text-align:center;color:var(--muted);font-size:.66rem;font-variant-numeric:tabular-nums;pointer-events:none;}
+#mm-zoom{position:absolute;right:10px;top:160px;z-index:6;width:158px;text-align:center;color:var(--text);opacity:.72;font-size:.66rem;font-variant-numeric:tabular-nums;pointer-events:none;text-shadow:0 1px 2px #000a;}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -407,7 +407,7 @@ canvas.dragging{cursor:grabbing;}
   color:var(--text);margin:0 0 14px;}
 .set-box{margin-bottom:34px;}
 .set-box:first-child{margin-top:2px;}
-#cvs-hint{position:absolute;bottom:10px;right:10px;color:var(--muted);font-size:.68rem;pointer-events:none;}
+#cvs-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:.68rem;pointer-events:none;white-space:nowrap;}
 #cvs-hud{position:absolute;bottom:10px;right:12px;z-index:6;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem;pointer-events:auto;}
 #cvs-controls{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:6px;}
 #cvs-controls .btn-icon{background:var(--surface);}
@@ -661,7 +661,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.67';
+const APP_VERSION = 'v2.69';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1499,7 +1499,27 @@ function drawGrid(cw, ch) {
   ctx.restore();
 }
 
+function drawFamilyEdges(parent, fam){
+  const I=fam._internals||compositeInternals(fam);
+  let sx=parent.lx+(parent.key===''?NW/2:NW), sy=parent.ly+(parent.key===''?NH:nodeHeight(parent))/2;
+  if(parent._childExit && parent._childExit[fam.key]){ const ce=parent._childExit[fam.key]; sx=ce.x; sy=ce.y; }
+  const onPath=curPath.has(fam.key), alpha=(settings.linkOpacity==null?80:settings.linkOpacity)/100;
+  (I.varIn||[]).forEach(v=>{ const ex=v.x, ey=v.y, mx=(sx+ex)/2, col=(elements.find(e=>e.id===v.el)||{}).color||'#7a7a90';
+    const path=()=>{ ctx.beginPath();
+      if(settings.edgeStyle==='straight'){ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);}
+      else if(settings.edgeStyle==='stepped'){ctx.moveTo(sx,sy);ctx.lineTo(mx,sy);ctx.lineTo(mx,ey);ctx.lineTo(ex,ey);}
+      else {ctx.moveTo(sx,sy);ctx.bezierCurveTo(mx,sy,mx,ey,ex,ey);} };
+    ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+    path(); ctx.strokeStyle='#00000066'; ctx.lineWidth=(onPath?5.2:4.6); ctx.stroke();
+    path(); ctx.strokeStyle=onPath?settings.accent:col; ctx.lineWidth=onPath?3:2.5; ctx.globalAlpha=onPath?1:alpha; ctx.stroke();
+    ctx.restore();
+    if(settings.showBadges){ const el=elements.find(e=>e.id===v.el); if(el){ const bx=mx, by=(sy+ey)/2;
+      ctx.beginPath(); ctx.arc(bx,by,6,0,Math.PI*2); ctx.fillStyle=el.color; ctx.fill(); ctx.strokeStyle='#00000066'; ctx.lineWidth=1; ctx.stroke();
+      edgeBadges.push({wx:bx,wy:by,r:9,el}); } }
+  });
+}
 function drawEdge(parent, child) {
+  if(child.isFamilyNode){ drawFamilyEdges(parent, child); return; }
   const el = elements.find(e => e.id === child.edgeEl);
   const color = el ? el.color : '#606080';
   const isGap = child.recipe === null;
@@ -1605,8 +1625,8 @@ function slimDims(node){ const r=node.recipe;
   if(isFamily(r)){ const key=node.key, V=r.family.length, B=r.sequence.length;
     const vstages=r.family.map((v,vi)=> (famVarSet.has(key+'\x1f'+vi) && v.stages>=2) ? v.stages : 1);
     const totalRows=Math.max(1, vstages.reduce((a,b)=>a+b,0));
-    const maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), LS=labelSlot(r.family.map(v=>v.name)), BW=LS+maxEls*(dd+dg)+18;
-    return {type:'family', V, vstages, totalRows, B, LS, BW, rows:totalRows, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:MICOL+BW+2*ZP, h:ZHEAD+AXH+totalRows*MLH+8}; }
+    const maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), CW=16, LS=labelSlot(r.family.map(v=>v.name)), BW=LS+maxEls*(dd+dg)+CW+16;
+    return {type:'family', V, vstages, totalRows, B, CW, LS, BW, rows:totalRows, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:BW+ZP+4, h:ZHEAD+totalRows*MLH+8}; }
   const A=r.modifiers.length, B=r.sequence.length, combos=modCombos(r), rows=Math.max(1,combos.length);
   const maxEls=combos.reduce((m,c)=>Math.max(m,c.seq.length), B+1), LS=labelSlot(r.modifiers[A-1].options.map(o=>o.label)), BW=LS+maxEls*(dd+dg)+18;
   return {type:'modifier', A, B, combos, rows, LS, BW, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:A*MICOL+BW+2*ZP, h:ZHEAD+AXH+rows*MLH+8}; }
@@ -1634,22 +1654,22 @@ function compositeInternals(node){
     return { slim:true, nodes, edges, box, headers, headerY, childExit, B:chainB, LS, dd, dg, famrowY, entryY };
   }
   if(d.type==='family'){
-    const boxX=x0+MICOL, vstages=d.vstages, totalRows=d.totalRows, baseCY=top+totalRows*MLH/2;
-    const rows=[], carets=[]; let ri=0;
+    const boxX=x0, CW=d.CW, vstages=d.vstages, totalRows=d.totalRows;
+    const ftop=node.ly+ZHEAD;                                   // rows sit under a node-style title bar
+    const fRowTop=ri=>ftop+ri*MLH, fRowCY=ri=>ftop+ri*MLH+MLH/2;
+    const rows=[], carets=[], varIn=[]; let ri=0;
     r.family.forEach((v,vi)=>{
       const exp = vstages[vi]>1, startRi=ri;
-      if(exp){ for(let k=1;k<=v.stages;k++){ rows.push({label:k===1?v.name:'', seq:familyVarSeq(r,vi,k), top:rowTop(ri), cy:rowCY(ri)}); ri++; } }
-      else { rows.push({label:v.name, seq:familyVarLast(r,vi), top:rowTop(ri), cy:rowCY(ri)}); ri++; }
-      const firstCY=rowCY(startRi), tipCY=rowCY(ri-1);
-      edges.push({ax:x0+MPW, ay:baseCY, bx:boxX, by:firstCY, el:v.element});
+      if(exp){ for(let k=1;k<=v.stages;k++){ rows.push({label:k===1?v.name:'', seq:familyVarSeq(r,vi,k), top:fRowTop(ri), cy:fRowCY(ri)}); ri++; } }
+      else { rows.push({label:v.name, seq:familyVarLast(r,vi), top:fRowTop(ri), cy:fRowCY(ri)}); ri++; }
+      const firstCY=fRowCY(startRi), tipCY=fRowCY(ri-1);
+      varIn.push({vi, x:boxX, y:firstCY, el:v.element});         // parent links straight to the variant's first row (left edge)
       famrowY[vi]=tipCY;
       (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:boxX+BW, y:tipCY}; });
-      if(v.stages>=2) carets.push({vi, x:boxX-13, y:firstCY-6, w:12, h:12, expanded:exp});
+      if(v.stages>=2) carets.push({vi, x:boxX+BW-CW-3, y:firstCY-6.5, w:CW-2, h:13, expanded:exp});   // caret button on the RIGHT
     });
-    const box={x:boxX, y:top, w:BW, h:totalRows*MLH, rows};
-    nodes.push({x:x0, cy:baseCY, w:MPW, label:r.name, el:null, pivot:false});
-    headers.push({cx:x0+MPW/2, name:'Recipe'}, {cx:boxX+BW/2, name:'Variants'});
-    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY, entryY, carets };
+    const box={x:boxX, y:ftop, w:BW, h:totalRows*MLH, rows};
+    return { slim:true, family:true, box, carets, varIn, headerY:node.ly+ZHEAD/2, childExit, B, LS, dd, dg, famrowY, entryY:ftop+totalRows*MLH/2 };
   }
   // modifier
   const A=d.A, combos=d.combos.slice().sort((a,b)=>{ for(let i=0;i<a.opts.length;i++){ if(a.opts[i]!==b.opts[i]) return a.opts[i]-b.opts[i]; } return 0; });
@@ -1758,7 +1778,39 @@ function drawSlimZone(node, I, tcol){
     I.carets.forEach(c=>{ ctx.fillStyle=mix(TH.muted,tcol,0.4); ctx.fillText(c.expanded?'▾':'▸', c.x+c.w/2, c.y+c.h/2+0.5); node._famVarCarets.push(c); });
   }
 }
+function drawFamilyBox(node,isSel){
+  node._pips=null; node._modopts=null; node._fampips=null; node._caret=null; node._collapseBtn=null; node._famVarCarets=null;
+  const r=node.recipe, dims=zoneDims(node), I=node._internals||compositeInternals(node);
+  const bx=node.lx, by=node.ly, bw=dims.w, bh=dims.h, tcol='#2fd4a0';
+  const onPath=curPath.has(node.key)&&!isSel;
+  roundRect(ctx,bx,by,bw,bh,9); ctx.fillStyle=isSel?mix(TH.node,tcol,0.16):TH.node; ctx.fill();
+  ctx.lineWidth=(isSel||onPath)?2:1.2; ctx.strokeStyle=isSel?tcol:(onPath?settings.accent:mix(TH.nodeBorder,tcol,0.5)); roundRect(ctx,bx,by,bw,bh,9); ctx.stroke();
+  ctx.save(); roundRect(ctx,bx,by,bw,bh,9); ctx.clip(); ctx.fillStyle=tcol; ctx.fillRect(bx,by,4,bh); ctx.restore();   // family bar
+  ctx.font='700 8px sans-serif'; const tlabel='FAMILY', tlw=ctx.measureText(tlabel).width;
+  ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  let nm=r.name; const nmMax=bw-16-tlw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
+  ctx.fillText(nm,bx+9,by+ZHEAD/2+1);
+  ctx.font='700 8px sans-serif'; ctx.fillStyle=tcol; ctx.textAlign='right'; ctx.fillText(tlabel, bx+bw-8, by+ZHEAD/2+1);   // FAMILY hint top-right
+  if(zoom<0.4) return;
+  const anyAlt=recipes.some(rr=>rr.altOrigins&&rr.altOrigins.length);
+  ctx.save(); roundRect(ctx,bx,by,bw,bh,9); ctx.clip();
+  I.box.rows.forEach(row=>{
+    ctx.strokeStyle='#ffffff10'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(bx,row.top); ctx.lineTo(bx+bw,row.top); ctx.stroke();
+    if(row.label){ ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font='600 10px sans-serif'; ctx.fillStyle=TH.text;
+      let t=row.label, mw=I.LS-2; while(ctx.measureText(t).width>mw&&t.length>1)t=t.slice(0,-1); if(t!==row.label)t=t.slice(0,-1)+'…';
+      ctx.fillText(t, I.box.x+2, row.cy+0.5); }
+    drawDotRow(row.seq, I.box.x+2+I.LS, row.cy, I.B, I.dd, I.dg, anyAlt?boundaryIndices(row.seq):null);
+  });
+  ctx.restore();
+  if(I.carets&&I.carets.length){ node._famVarCarets=[];
+    I.carets.forEach(c=>{
+      ctx.fillStyle='#15151d'; ctx.strokeStyle=tcol+'88'; ctx.lineWidth=1; roundRect(ctx,c.x,c.y,c.w,c.h,4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle=TH.muted; ctx.font='700 9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(c.expanded?'▾':'▸', c.x+c.w/2, c.y+c.h/2+0.5);
+      node._famVarCarets.push(c);
+    }); }
+}
 function drawExpandedZone(node,isSel){
+  if(node.isFamilyNode){ drawFamilyBox(node,isSel); return; }
   node._pips=null; node._modopts=null; node._fampips=null; node._caret=null; node._famVarCarets=null;
   const r=node.recipe, dims=zoneDims(node);
   const bx=node.lx-ZPAD, by=node.ly, bw=dims.w, bh=dims.h;
@@ -2291,7 +2343,7 @@ function fitToView() {
   const cw=wrap.clientWidth, ch=wrap.clientHeight, pad=60;
   const zw=(cw-pad*2)/(maxX-minX||1), zh=(ch-pad*2)/(maxY-minY||1);
   zoom = Math.min(3, Math.max(0.2, Math.min(zw, zh)));
-  pan.x = pad - minX*zoom;
+  pan.x = (cw-(maxX-minX)*zoom)/2 - minX*zoom;   // horizontal centre
   pan.y = -((minY+maxY)/2)*zoom;   // vertical center (translate already adds ch/2)
   drawTree();
 }
@@ -2391,7 +2443,7 @@ function computeSpots(){ plusSpots=[]; const H=n=>nodeHeight(n);
   const cy=n=> n.ly + (n.key===''?NH:H(n))/2;        // vertical centre
   layoutNodes.forEach(n=>{
     if(n.isFamilyNode){                                   // family (always a zone): one extend spot per variant, at its tip row
-      const F=n.recipe, sd=zoneDims(n).slim, tipX=n.lx+sd.MICOL+sd.BW;
+      const F=n.recipe, sd=zoneDims(n).slim, tipX=n.lx+sd.BW;
       F.family.forEach((v,vi)=>{
         const last=familyVarLast(F,vi);
         const ry=(n._famrowY && n._famrowY[vi]!=null)? n._famrowY[vi] : (n.ly+H(n)/2);
@@ -2452,13 +2504,13 @@ function focusNode(seq, recipe, opts){
   const key = seq.join('\x1f');
   if(opts.pan){
     drawTree();                                   // ensure layoutNodes reflect current data
-    const node = layoutNodes.find(n => (recipe && n.recipe===recipe) || n.key===key);
+    const node = layoutNodes.find(n => recipe && n.recipe===recipe) || layoutNodes.find(n => n.key===key);
     if(node){ const cw=wrap.clientWidth;
       const ncx = node.lx + (node.key===''?NW/2:NW)/2, ncy = node.ly + (node.key===''?NH:nodeHeight(node))/2;
       pan.x = cw/2 - ncx*zoom; pan.y = -ncy*zoom; }
   }
   if(opts.open && seq.length && viewMode==='edit'){
-    const node = layoutNodes.find(n => (recipe && n.recipe===recipe) || n.key===key) || { sequence:[...seq], recipe };
+    const node = layoutNodes.find(n => recipe && n.recipe===recipe) || layoutNodes.find(n => n.key===key) || { sequence:[...seq], recipe };
     openNodeEditor(node);                          // selects + renders
   } else {
     sel = { seq:[...seq], recipe };
