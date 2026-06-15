@@ -348,6 +348,9 @@ canvas.dragging{cursor:grabbing;}
 .cwh{font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:6px;display:flex;justify-content:space-between;}
 .cws{color:var(--accent);}
 .cwtypes{display:flex;flex-wrap:wrap;gap:5px;}
+.cwmode{display:flex;gap:5px;margin-bottom:8px;}
+.cwmode button{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--muted);cursor:pointer;font:inherit;font-size:.68rem;padding:5px 4px;}
+.cwmode button.on{background:var(--accent);border-color:var(--accent);color:#0c0c10;font-weight:700;}
 .cwt{position:relative;flex:1 1 30%;min-width:60px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;font:inherit;font-size:.7rem;padding:6px 3px;text-align:center;}
 .cwt span{display:block;} .cwt.on{background:var(--accent);color:#0c0c10;border-color:var(--accent);font-weight:700;}
 .cwt .cwtip{position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);width:150px;background:#000e;border:1px solid var(--border);border-radius:7px;padding:6px 8px;font-size:.66rem;color:var(--text);opacity:0;pointer-events:none;transition:.12s;z-index:40;}
@@ -389,6 +392,7 @@ canvas.dragging{cursor:grabbing;}
   background:#14141cdd;border:1px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--muted);font-size:.86rem;backdrop-filter:blur(4px);}
 #empty-hint b{color:var(--text);}
 #minimap{position:absolute;right:10px;top:50px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:rgba(20,20,28,.86);backdrop-filter:blur(6px);cursor:crosshair;box-shadow:0 6px 20px #0006;}
+#mm-zoom{position:absolute;right:10px;top:160px;z-index:6;width:158px;text-align:center;color:var(--muted);font-size:.66rem;font-variant-numeric:tabular-nums;pointer-events:none;}
 .gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .gate-box{width:300px;max-width:86vw;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;text-align:center;box-shadow:0 20px 60px #00000066;}
 .gate-title{font-size:1.1rem;font-weight:700;margin-bottom:6px;}
@@ -404,7 +408,7 @@ canvas.dragging{cursor:grabbing;}
 .set-box{margin-bottom:34px;}
 .set-box:first-child{margin-top:2px;}
 #cvs-hint{position:absolute;bottom:10px;right:10px;color:var(--muted);font-size:.68rem;pointer-events:none;}
-#cvs-hud{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem;margin-right:4px;pointer-events:auto;}
+#cvs-hud{position:absolute;bottom:10px;right:12px;z-index:6;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem;pointer-events:auto;}
 #cvs-controls{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:6px;}
 #cvs-controls .btn-icon{background:var(--surface);}
 #btnHelp{font-weight:700;width:30px;text-align:center;}
@@ -550,15 +554,18 @@ canvas.dragging{cursor:grabbing;}
         <div id="nodeSearchResults"></div>
       </div>
       <div id="cvs-controls">
-        <span id="cvs-hud"><span class="appver" id="appVer"></span><span id="syncStatus" class="sync" title="Storage status"></span></span>
+        <button class="btn-icon" id="btnUndoCv" title="Undo (Ctrl+Z)">↶</button>
+        <button class="btn-icon" id="btnRedoCv" title="Redo (Ctrl+Shift+Z)">↷</button>
         <button class="btn-icon" id="btnFit" title="Fit tree to view">⤢</button>
         <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
         <button class="btn-icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
       </div>
+      <span id="cvs-hud"><span class="appver" id="appVer"></span><span id="syncStatus" class="sync" title="Storage status"></span></span>
       <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select · ✎ to edit</div>
       <div id="el-legend"></div>
       <div id="empty-hint" style="display:none">Hover <b>▶ Start</b> and click the <b>＋</b> to add your first recipe.</div>
       <canvas id="minimap" width="158" height="106" title="Overview — click or drag to navigate"></canvas>
+      <div id="mm-zoom" title="Current zoom">100%</div>
       <div id="help-overlay" class="help-overlay">
         <div class="help-card">
           <div class="help-head"><span class="help-title">Shortcuts &amp; gestures</span><button class="help-x" id="helpClose" title="Close (Esc)">✕</button></div>
@@ -654,7 +661,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.63';
+const APP_VERSION = 'v2.67';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1570,12 +1577,20 @@ function nodeHeight(node){
 //  internal node (chain → last stage, family → variant tip, modifier → right).
 // ================================================================
 let expandedSet = new Set();
+let famVarSet = new Set();          // which family variants are expanded into their stage chain (key: nodeKey\x1fvi)
 function expStoreKey(){ const p=palettes[pidx]; return 'paletteExpanded:'+((p&&p.id)||('idx'+pidx)); }
-function loadExpanded(){ try{ expandedSet=new Set(JSON.parse(localStorage.getItem(expStoreKey())||'[]')); }catch(e){ expandedSet=new Set(); } }
+function famVarStoreKey(){ const p=palettes[pidx]; return 'paletteFamVar:'+((p&&p.id)||('idx'+pidx)); }
+function loadExpanded(){ try{ expandedSet=new Set(JSON.parse(localStorage.getItem(expStoreKey())||'[]')); }catch(e){ expandedSet=new Set(); }
+  try{ famVarSet=new Set(JSON.parse(localStorage.getItem(famVarStoreKey())||'[]')); }catch(e){ famVarSet=new Set(); } }
 function saveExpanded(){ try{ localStorage.setItem(expStoreKey(), JSON.stringify([...expandedSet])); }catch(e){} }
+function saveFamVar(){ try{ localStorage.setItem(famVarStoreKey(), JSON.stringify([...famVarSet])); }catch(e){} }
+function famVarKey(node,vi){ return node.key+'\x1f'+vi; }
+function isVarExpanded(node,vi){ return famVarSet.has(famVarKey(node,vi)); }
+function toggleVar(node,vi){ const k=famVarKey(node,vi); if(famVarSet.has(k))famVarSet.delete(k); else famVarSet.add(k); saveFamVar(); drawTree(); }
 function isExpandable(r){ return !!(r && (isGrowth(r)||isFamily(r)||isModifier(r))); }
-function isNodeExpanded(node){ return !!(node && node.key && node.recipe && isExpandable(node.recipe) && expandedSet.has(node.key)); }
-function toggleExpand(node){ if(!node||!isExpandable(node.recipe)) return;
+function isNodeExpanded(node){ if(node && node.isFamilyNode) return true;   // families always show their variant zone
+  return !!(node && node.key && node.recipe && isExpandable(node.recipe) && expandedSet.has(node.key)); }
+function toggleExpand(node){ if(!node||!isExpandable(node.recipe)||node.isFamilyNode) return;
   if(expandedSet.has(node.key)) expandedSet.delete(node.key); else expandedSet.add(node.key);
   saveExpanded(); drawTree(); }
 
@@ -1587,8 +1602,11 @@ function slimDims(node){ const r=node.recipe;
   const labelSlot=labels=>{ ctx.save(); ctx.font='600 10px sans-serif'; let m=0; labels.forEach(l=>{ const v=ctx.measureText(l||'').width; if(v>m)m=v; }); ctx.restore(); return Math.max(40, Math.min(160, Math.ceil(m)+16)); };
   if(isGrowth(r)){ const S=r.growth.stages, B=r.sequence.length, maxEls=B+(S-1), LS=28, BW=LS+maxEls*(dd+dg)+18;
     return {type:'chain', S, B, LS, BW, rows:S, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:BW+2*ZP, h:ZHEAD+AXH+S*MLH+8}; }
-  if(isFamily(r)){ const V=r.family.length, B=r.sequence.length, maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), LS=labelSlot(r.family.map(v=>v.name)), BW=LS+maxEls*(dd+dg)+18;
-    return {type:'family', V, B, LS, BW, rows:V, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:MICOL+BW+2*ZP, h:ZHEAD+AXH+V*MLH+8}; }
+  if(isFamily(r)){ const key=node.key, V=r.family.length, B=r.sequence.length;
+    const vstages=r.family.map((v,vi)=> (famVarSet.has(key+'\x1f'+vi) && v.stages>=2) ? v.stages : 1);
+    const totalRows=Math.max(1, vstages.reduce((a,b)=>a+b,0));
+    const maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), LS=labelSlot(r.family.map(v=>v.name)), BW=LS+maxEls*(dd+dg)+18;
+    return {type:'family', V, vstages, totalRows, B, LS, BW, rows:totalRows, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:MICOL+BW+2*ZP, h:ZHEAD+AXH+totalRows*MLH+8}; }
   const A=r.modifiers.length, B=r.sequence.length, combos=modCombos(r), rows=Math.max(1,combos.length);
   const maxEls=combos.reduce((m,c)=>Math.max(m,c.seq.length), B+1), LS=labelSlot(r.modifiers[A-1].options.map(o=>o.label)), BW=LS+maxEls*(dd+dg)+18;
   return {type:'modifier', A, B, combos, rows, LS, BW, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:A*MICOL+BW+2*ZP, h:ZHEAD+AXH+rows*MLH+8}; }
@@ -1616,15 +1634,22 @@ function compositeInternals(node){
     return { slim:true, nodes, edges, box, headers, headerY, childExit, B:chainB, LS, dd, dg, famrowY, entryY };
   }
   if(d.type==='family'){
-    const V=d.V, boxX=x0+MICOL, baseCY=top+V*MLH/2;
-    const rows=r.family.map((v,vi)=>({label:v.name, seq:familyVarLast(r,vi), top:rowTop(vi), cy:rowCY(vi)}));
-    const box={x:boxX, y:top, w:BW, h:V*MLH, rows};
+    const boxX=x0+MICOL, vstages=d.vstages, totalRows=d.totalRows, baseCY=top+totalRows*MLH/2;
+    const rows=[], carets=[]; let ri=0;
+    r.family.forEach((v,vi)=>{
+      const exp = vstages[vi]>1, startRi=ri;
+      if(exp){ for(let k=1;k<=v.stages;k++){ rows.push({label:k===1?v.name:'', seq:familyVarSeq(r,vi,k), top:rowTop(ri), cy:rowCY(ri)}); ri++; } }
+      else { rows.push({label:v.name, seq:familyVarLast(r,vi), top:rowTop(ri), cy:rowCY(ri)}); ri++; }
+      const firstCY=rowCY(startRi), tipCY=rowCY(ri-1);
+      edges.push({ax:x0+MPW, ay:baseCY, bx:boxX, by:firstCY, el:v.element});
+      famrowY[vi]=tipCY;
+      (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:boxX+BW, y:tipCY}; });
+      if(v.stages>=2) carets.push({vi, x:boxX-13, y:firstCY-6, w:12, h:12, expanded:exp});
+    });
+    const box={x:boxX, y:top, w:BW, h:totalRows*MLH, rows};
     nodes.push({x:x0, cy:baseCY, w:MPW, label:r.name, el:null, pivot:false});
-    r.family.forEach((v,vi)=>{ edges.push({ax:x0+MPW, ay:baseCY, bx:boxX, by:rowCY(vi), el:v.element});
-      famrowY[vi]=rowCY(vi);
-      (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:boxX+BW, y:rowCY(vi)}; }); });
     headers.push({cx:x0+MPW/2, name:'Recipe'}, {cx:boxX+BW/2, name:'Variants'});
-    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY, entryY };
+    return { slim:true, nodes, edges, box, headers, headerY, childExit, B, LS, dd, dg, famrowY, entryY, carets };
   }
   // modifier
   const A=d.A, combos=d.combos.slice().sort((a,b)=>{ for(let i=0;i<a.opts.length;i++){ if(a.opts[i]!==b.opts[i]) return a.opts[i]-b.opts[i]; } return 0; });
@@ -1727,9 +1752,14 @@ function drawSlimZone(node, I, tcol){
     ctx.beginPath(); ctx.moveTo(e.ax,e.ay); ctx.bezierCurveTo(mx,e.ay,mx,e.by,e.bx,e.by); ctx.strokeStyle=col; ctx.lineWidth=2.4; ctx.stroke(); });
   (I.nodes||[]).forEach(n=>drawSmallNode(n.x,n.cy,n.w,n.label,n.el,n.pivot,tcol,n.seq,n.B,n.els));
   if(I.box) drawSlimBox(I.box, I.B, I.LS, I.dd, I.dg, tcol);
+  node._famVarCarets = null;
+  if(I.carets && I.carets.length){ node._famVarCarets=[];
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='700 9px sans-serif';
+    I.carets.forEach(c=>{ ctx.fillStyle=mix(TH.muted,tcol,0.4); ctx.fillText(c.expanded?'▾':'▸', c.x+c.w/2, c.y+c.h/2+0.5); node._famVarCarets.push(c); });
+  }
 }
 function drawExpandedZone(node,isSel){
-  node._pips=null; node._modopts=null; node._fampips=null; node._caret=null;
+  node._pips=null; node._modopts=null; node._fampips=null; node._caret=null; node._famVarCarets=null;
   const r=node.recipe, dims=zoneDims(node);
   const bx=node.lx-ZPAD, by=node.ly, bw=dims.w, bh=dims.h;
   const tcol=isModifier(r)?settings.accent:'#2fd4a0';
@@ -1737,16 +1767,20 @@ function drawExpandedZone(node,isSel){
   ctx.save();
   const zbg=TH.bg||'#0c0c10'; roundRect(ctx,bx,by,bw,bh,12); ctx.fillStyle=isSel?mix(zbg,tcol,0.13):zbg; ctx.fill();
   ctx.setLineDash([6,4]); ctx.lineWidth=1.5; ctx.strokeStyle=isSel?tcol:tcol+'99'; roundRect(ctx,bx,by,bw,bh,12); ctx.stroke(); ctx.setLineDash([]);
-  // header: name (truncated) + collapse button; type label only if it fits
+  // header: name (truncated) + collapse button (composites only — families are always open); type label only if it fits
+  const fam=node.isFamilyNode;
   const cbw=20,cbh=15,cbx=bx+bw-cbw-6,cby=by+5;
   ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-  let nm=r.name; const nmMax=bw-22-cbw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
+  let nm=r.name; const nmMax=bw-22-(fam?0:cbw+8); while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
   ctx.fillText(nm,bx+11,by+ZHEAD/2+1); const nmW=ctx.measureText(nm).width;
   ctx.font='700 8px sans-serif';
-  if(bx+11+nmW+9+ctx.measureText(tlabel).width <= cbx-6){ ctx.fillStyle=tcol; ctx.fillText(tlabel,bx+11+nmW+9,by+ZHEAD/2+1); }
-  ctx.fillStyle='#15151d'; ctx.strokeStyle=tcol+'88'; ctx.lineWidth=1; roundRect(ctx,cbx,cby,cbw,cbh,4); ctx.fill(); ctx.stroke();
-  ctx.fillStyle=TH.muted; ctx.font='700 10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('▾',cbx+cbw/2,cby+cbh/2+1);
-  node._collapseBtn={x:cbx,y:cby,w:cbw,h:cbh};
+  const tlimit = fam ? bx+bw-6 : cbx-6;
+  if(bx+11+nmW+9+ctx.measureText(tlabel).width <= tlimit){ ctx.fillStyle=tcol; ctx.fillText(tlabel,bx+11+nmW+9,by+ZHEAD/2+1); }
+  if(!fam){
+    ctx.fillStyle='#15151d'; ctx.strokeStyle=tcol+'88'; ctx.lineWidth=1; roundRect(ctx,cbx,cby,cbw,cbh,4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle=TH.muted; ctx.font='700 10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('▾',cbx+cbw/2,cby+cbh/2+1);
+    node._collapseBtn={x:cbx,y:cby,w:cbw,h:cbh};
+  } else node._collapseBtn=null;
   ctx.restore();
   if(zoom<0.4) return;                                    // far zoom: just the titled box
   const I=node._internals||compositeInternals(node);
@@ -2117,8 +2151,8 @@ function showTip(e){ tip.style.display='block'; tip.style.left=(e.clientX+14)+'p
 cvs.addEventListener('mouseup', e=>{
   if (nodeDragging){
     const rect=wrap.getBoundingClientRect(); const t=nodeAt(e.clientX-rect.left, e.clientY-rect.top);
-    if (t && t!==dragNode){ const plan=reparentPlan([...dragNode.sequence], [...t.sequence]); const err=reparentNode([...dragNode.sequence], [...t.sequence]);
-      if (err) toast(err,'err'); else { sel={seq:t.sequence.concat([dragNode.sequence[dragNode.sequence.length-1]]), recipe:null}; sel.recipe=recipeBySeq(sel.seq); toast(plan.inBetween?'Inserted in-between.':'Moved.','ok'); commit(); } }
+    if (t && t!==dragNode && dropValidKeys && dropValidKeys.has(t.key)){ const plan=reparentPlan([...dragNode.sequence], [...t.sequence]); const err=reparentNode([...dragNode.sequence], [...t.sequence]);
+      if (!err){ sel={seq:t.sequence.concat([dragNode.sequence[dragNode.sequence.length-1]]), recipe:null}; sel.recipe=recipeBySeq(sel.seq); toast(plan.inBetween?'Inserted in-between.':'Moved.','ok'); commit(); } }
     nodeDragging=false; dragMaybe=false; dragNode=null; reparentTarget=null; dropValidKeys=null; cvs.classList.remove('dragging'); cvs.style.cursor='grab'; drawTree(); return;
   }
   const moved = Math.abs(e.clientX-dStart.x)+Math.abs(e.clientY-dStart.y) > 3;
@@ -2132,6 +2166,7 @@ cvs.addEventListener('mouseup', e=>{
     const {x:wx,y:wy} = s2w(e.clientX-rect.left, e.clientY-rect.top);
     const inRect = p => p && wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h;
     if (inRect(node._caret) || inRect(node._collapseBtn)){ toggleExpand(node); return; }
+    if (node._famVarCarets){ const c=node._famVarCarets.find(inRect); if(c){ toggleVar(node, c.vi); return; } }
     let hitControl=false;
     // Clicking an on-canvas control (chain stage pip / modifier option / family pip) just toggles it — no pop-up.
     if (node._pips){ const pip = node._pips.find(p => wx>=p.x && wx<=p.x+p.w && wy>=p.y && wy<=p.y+p.h); if (pip){ growthStage[node.key]=pip.stage; hitControl=true; } }
@@ -2190,6 +2225,7 @@ cvs.addEventListener('touchend', e=>{
     if (node){ const {x:wx,y:wy}=s2w(t.clientX-rect.left,t.clientY-rect.top);
         const inR=p=>p&&wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h;
         if(inR(node._caret)||inR(node._collapseBtn)){ toggleExpand(node); if(e.touches.length===0)tStart=null; return; }
+        if(node._famVarCarets){ const c=node._famVarCarets.find(inR); if(c){ toggleVar(node,c.vi); if(e.touches.length===0)tStart=null; return; } }
         if(node._pips){ const pip=node._pips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(pip) growthStage[node.key]=pip.stage; }
         if(node._modopts){ const mo=node._modopts.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(mo){const v=modSelFor(node.recipe,node.key).slice();v[mo.ax]=mo.opt;modSel[node.key]=v;} }
         if(node._fampips){ const fp=node._fampips.find(p=>wx>=p.x&&wx<=p.x+p.w&&wy>=p.y&&wy<=p.y+p.h); if(fp){ famActive[node.key]={vi:fp.vi,k:fp.k}; } }
@@ -2259,7 +2295,16 @@ function fitToView() {
   pan.y = -((minY+maxY)/2)*zoom;   // vertical center (translate already adds ch/2)
   drawTree();
 }
-function resetView(){ zoom=1; pan={x:40,y:0}; drawTree(); }
+function resetView(){ zoom=1;
+  const root = buildTrie(); layoutTrie(root); const ns = trieFlatten(root);
+  if(!ns.length){ pan={x:40,y:0}; drawTree(); return; }
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  ns.forEach(n=>{ minX=Math.min(minX,n.lx); minY=Math.min(minY,n.ly); maxX=Math.max(maxX,n.lx+nodeBoxW(n)); maxY=Math.max(maxY,n.ly+nodeHeight(n)); });
+  const cw=wrap.clientWidth, contentW=(maxX-minX)||1;
+  pan.x = Math.max(20, (cw-contentW)/2) - minX;        // centre horizontally (left-align if wider than view)
+  pan.y = -((minY+maxY)/2);                            // centre vertically (translate adds ch/2)
+  drawTree();
+}
 
 // ================================================================
 //  CANVAS ＋ ADD-WIZARD + ✎ EDIT  (overlay over the canvas)
@@ -2270,7 +2315,9 @@ const mm=document.getElementById('minimap'); const mmx=mm?mm.getContext('2d'):nu
 function cvsVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888'; }
 function drawMinimap(){
   if(!mm||!mmx) return;
-  if(layoutNodes.length<=1){ mm.style.display='none'; return; } mm.style.display='block';
+  const mz=document.getElementById('mm-zoom');
+  if(layoutNodes.length<=1){ mm.style.display='none'; if(mz)mz.style.display='none'; return; } mm.style.display='block';
+  if(mz){ mz.style.display='block'; mz.textContent=Math.round(zoom*100)+'%'; }
   const W=mm.width,H=mm.height; mmx.clearRect(0,0,W,H);
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   layoutNodes.forEach(n=>{ const w=nodeBoxW(n),h=n.key===''?NH:nodeHeight(n);
@@ -2343,18 +2390,18 @@ function computeSpots(){ plusSpots=[]; const H=n=>nodeHeight(n);
   const rx=n=> n.lx + (n.key===''?NW/2:NW);          // right edge (root is the narrow ▶ Start pill)
   const cy=n=> n.ly + (n.key===''?NH:H(n))/2;        // vertical centre
   layoutNodes.forEach(n=>{
-    if(isNodeExpanded(n)) return;                         // expanded zone manages its own internal layout
-    if(n.isFamilyNode){                                   // family: one extend spot per variant, at its row end
-      const F=n.recipe;
+    if(n.isFamilyNode){                                   // family (always a zone): one extend spot per variant, at its tip row
+      const F=n.recipe, sd=zoneDims(n).slim, tipX=n.lx+sd.MICOL+sd.BW;
       F.family.forEach((v,vi)=>{
         const last=familyVarLast(F,vi);
         const ry=(n._famrowY && n._famrowY[vi]!=null)? n._famrowY[vi] : (n.ly+H(n)/2);
         (n.famOut||[]).filter(o=>o.vi===vi).forEach(o=>{ const c=o.child;
-          plusSpots.push({kind:'between', parentSeq:last, childSeq:c.sequence.slice(), wx:(n.lx+NW + c.lx)/2, wy:(ry+(c.ly+H(c)/2))/2}); });
-        plusSpots.push({kind:'after', parentSeq:last, wx:n.lx+NW+22, wy:ry, leaf:true, lx:n.lx+NW, ly:ry});
+          plusSpots.push({kind:'between', parentSeq:last, childSeq:c.sequence.slice(), wx:(tipX + c.lx)/2, wy:(ry+(c.ly+H(c)/2))/2}); });
+        plusSpots.push({kind:'after', parentSeq:last, wx:tipX+22, wy:ry, leaf:true, lx:tipX, ly:ry});
       });
       return;
     }
+    if(isNodeExpanded(n)) return;                         // expanded zone manages its own internal layout
     const kids=Object.values(n.children||{});
     kids.forEach(c=>{ plusSpots.push({kind:'between', parentSeq:n.sequence.slice(), childSeq:c.sequence.slice(),
       wx:(rx(n) + c.lx)/2, wy:(cy(n)+(c.ly+H(c)/2))/2}); });
@@ -2471,21 +2518,27 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeWizard(); })
 document.addEventListener('mousedown', e=>{ if(_wiz && !_wiz.contains(e.target) && !e.target.classList.contains('cplus')) closeWizard(); });
 const WTYPES=[['basic','◆','Basic','A single fixed recipe.'],['chain','🌱','Chain','A growth series; stages set after.'],['modifier','⊞','Modifier','Option axes; configure after.'],['family','🌿','Family','Plant variants under this node.'],['connect','🔗','Connect','Link this path to an EXISTING recipe.']];
 function openWizard(anchor, spot){ closeWizard();
-  const st={el:null,type:'basic',name:'',link:null,step:1};
+  const st={el:null,type:'basic',name:'',link:null,step:1,mode:'between'};
   const pop=document.createElement('div'); pop.className='cwiz'; _wiz=pop; cvsOverlay.appendChild(pop);
   const ar=anchor.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
   pop.style.left=Math.min(ar.left-wr.left+26, wrap.clientWidth-250)+'px';
   pop.style.top=Math.min(ar.top-wr.top, wrap.clientHeight-280)+'px';
   pop.onmousedown=e=>e.stopPropagation();
-  const where = spot.kind==='between' ? 'Insert between' : 'Add after';
+  function clampPop(){ const ph=pop.offsetHeight||280, pw=pop.offsetWidth||240;
+    let top=parseFloat(pop.style.top)||0, left=parseFloat(pop.style.left)||0;
+    top=Math.max(8, Math.min(top, wrap.clientHeight-ph-8));
+    left=Math.max(8, Math.min(left, wrap.clientWidth-pw-8));
+    pop.style.top=top+'px'; pop.style.left=left+'px'; }
   function illegalEl(elId){
     const p=spot.parentSeq;
-    if(spot.kind==='between'){ const childLast=spot.childSeq[p.length]; if(elId===childLast) return false; }
+    if(spot.kind==='between' && st.mode!=='branch'){ const childLast=spot.childSeq[p.length]; if(elId===childLast) return false; }
     const occ=recipeOccupying(p.concat([elId]));
     return !!occ;
   }
   function draw(){
+    const where = spot.kind==='between' ? (st.mode==='branch'?'New branch':'Insert between') : 'Add after';
     let h=`<div class="cwh"><span>${where}</span><span class="cws">step ${st.step}/3</span></div>`;
+    if(spot.kind==='between') h+=`<div class="cwmode"><button data-wm="between" class="${st.mode!=='branch'?'on':''}">Insert between</button><button data-wm="branch" class="${st.mode==='branch'?'on':''}">New branch</button></div>`;
     const anyFree = elements.some(e=>!illegalEl(e.id));
     h+=`<div class="eltoks" style="gap:5px">${elements.map(e=>{ const bad=illegalEl(e.id); return eTok(e,{sel:st.el===e.id, dim:bad, data:`data-wel="${e.id}"${bad?' data-bad="1"':''}`}); }).join('')}</div>`;
     if(!anyFree) h+=`<div class="ehint err" style="margin-top:5px">Every element already leads to an existing recipe here.</div>`;
@@ -2496,6 +2549,7 @@ function openWizard(anchor, spot){ closeWizard();
     }
     h+=`<div class="erow" style="margin-top:9px"><button class="btn btn-accent btn-sm" id="wok">${st.step<3?'Next':(st.type==='connect'?'Link':'Add '+st.type)}</button><button class="btn btn-ghost btn-sm" id="wcancel">Cancel</button></div>`;
     pop.innerHTML=h;
+    pop.querySelectorAll('[data-wm]').forEach(b=>b.onclick=()=>{ st.mode=b.dataset.wm; st.el=null; st.step=1; draw(); });
     pop.querySelectorAll('[data-wel]').forEach(p=>p.onclick=()=>{ if(p.dataset.bad){ toast('That element already leads to an existing recipe here.','err'); return; } st.el=p.dataset.wel; st.step=Math.max(st.step,2); draw();});
     pop.querySelectorAll('[data-wt]').forEach(b=>b.onclick=()=>{st.type=b.dataset.wt; st.step=3; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0);});
     const wn=pop.querySelector('#wn'); if(wn) wn.oninput=()=>{ st.name=wn.value; const clash=recipes.find(r=>r.name.toLowerCase()===wn.value.trim().toLowerCase()); const hh=pop.querySelector('#wnh'); if(hh){hh.textContent=clash?'Name already exists.':''; hh.className='ehint err';} };
@@ -2503,15 +2557,17 @@ function openWizard(anchor, spot){ closeWizard();
       wq.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); const items=recipes.filter(r=>r.name.toLowerCase().includes((wq.value||'').toLowerCase())); if(items.length){ st.link=items[0]; fillWList(wq.value); } } }; }
     pop.querySelector('#wcancel').onclick=closeWizard;
     pop.querySelector('#wok').onclick=()=>{ if(st.step<3){ if(st.step===1&&!st.el){return;} st.step++; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0); return; }
-      const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link); if(err){ toast(err); return; } closeWizard(); };
+      const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link, st.mode); if(err){ toast(err); return; } closeWizard(); };
+    clampPop();
   }
   function fillWList(q){ const list=pop.querySelector('#wlist'); if(!list)return; const items=recipes.filter(r=>r.name.toLowerCase().includes((q||'').toLowerCase())).slice(0,40);
     list.innerHTML=items.map(r=>`<div data-wr="${escAttr(r.name)}" class="${st.link&&st.link===r?'sel':''}">${escHtml(r.name)}<span class="cwseq">${escHtml(prettySeq(r.sequence))}</span></div>`).join('')||'<div class="ehint" style="padding:4px 8px">no match</div>';
     list.querySelectorAll('[data-wr]').forEach(d=>d.onclick=()=>{ st.link=recipes.find(r=>r.name===d.dataset.wr)||null; const wq=pop.querySelector('#wq'); if(wq&&st.link) wq.value=st.link.name; fillWList(q); }); }
   draw();
 }
-function wizCreate(spot, elId, type, name, link){
+function wizCreate(spot, elId, type, name, link, mode){
   const parentSeq=spot.parentSeq;
+  const asBetween = spot.kind==='between' && mode!=='branch';
   if(type==='connect'){ if(!link) return 'Pick a recipe to link.';
     const origin=parentSeq.concat([elId]);
     if(recipeByAnyOrigin(origin)) return 'That path already produces a recipe.';
@@ -2519,7 +2575,7 @@ function wizCreate(spot, elId, type, name, link){
     pushHistory(); link.altOrigins=link.altOrigins||[]; link.altOrigins.push(origin); palettes[pidx].recipes=recipes; sel={seq:[...link.sequence],recipe:link}; commit(); return null; }
   if(name && recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())) return 'Name already exists.';
   if(!name) return 'Enter a name.';
-  if(spot.kind==='after'){
+  if(!asBetween){
     const newSeq=parentSeq.concat([elId]);
     if(type!=='family' && recipeByAnyOrigin(newSeq)) return 'This exact path already produces a recipe.';
     if(type==='chain'){ for(let k=2;k<=4;k++){ const occ=recipeOccupying(growthStageSeq({sequence:newSeq,growth:{element:elId,stages:4}},k)); if(occ) return `Stage ${k} collides with “${occ.name}”.`; } }
@@ -2534,7 +2590,8 @@ function wizCreate(spot, elId, type, name, link){
     }
     else if(type==='chain') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],growth:{element:elId,stages:4}});
     else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Option',options:[{label:'None',elements:[]}]}]});
-    else if(type==='family'){ const F={name,sequence:parentSeq.slice(),description:'',altOrigins:[],id:'fam'+Date.now(),family:[{name:'Variant 1',element:elId,stages:4}]}; recipes.push(F); palettes[pidx].recipes=recipes; sel={seq:[...parentSeq],recipe:F}; commit(); return null; }
+    else if(type==='family'){ const F={name,sequence:parentSeq.slice(),description:'',altOrigins:[],id:'fam'+Date.now(),family:[{name:'Variant 1',element:elId,stages:4}]}; recipes.push(F); palettes[pidx].recipes=recipes; sel={seq:[...parentSeq],recipe:F}; commit();
+      const fn=layoutNodes.find(n=>n.isFamilyNode && n.recipe===F); if(fn) openNodeEditor(fn); return null; }
     palettes[pidx].recipes=recipes; sel={seq:newSeq,recipe:recipeBySeq(newSeq)}; commit(); return null;
   } else { // between → insert on the child edge
     const newSeq=parentSeq.concat([elId]);
@@ -2812,7 +2869,7 @@ function renderList() {
   }
   shown.forEach(r=>{
     const row = document.createElement('div');
-    row.className = 'recipe-row' + (sel && recipeBySeq(sel.seq)===r ? ' sel' : '');
+    row.className = 'recipe-row' + (sel && (sel.recipe===r || recipeBySeq(sel.seq)===r) ? ' sel' : '');
     row.onclick = ()=>{ focusNode(r.sequence, r, {pan:true, open:true}); };
     const seqHtml = r.sequence.map(id=>{const e=elements.find(x=>x.id===id);
       return e?`<span style="background:${e.color}2a;color:${e.color}">${e.name}</span>`:'';}).join('');
@@ -2835,7 +2892,7 @@ function collectIssues(){
   const elName=id=>{ const e=elements.find(x=>x.id===id); return e?e.name:id; };
   const issues=[];
   // exact duplicate base sequences (two definitions resolving to the same node)
-  const byKey={}; recipes.forEach(r=>{ const k=r.sequence.join('\x1f'); (byKey[k]=byKey[k]||[]).push(r); });
+  const byKey={}; recipes.forEach(r=>{ if(isFamily(r)) return; const k=r.sequence.join('\x1f'); (byKey[k]=byKey[k]||[]).push(r); });
   const dupKeys=new Set();
   Object.entries(byKey).forEach(([k,grp])=>{ if(grp.length>1){ dupKeys.add(k); const seqLbl=grp[0].sequence.map(elName).join(' + ')||'(empty)';
     grp.forEach(r=>issues.push({sev:'err',recipe:r,msg:`Duplicate sequence — ${grp.length} recipes share "${seqLbl}"`})); } });
@@ -2849,8 +2906,7 @@ function collectIssues(){
       r.family.forEach(v=>{ if(!elset.has(v.element)) issues.push({sev:'err',recipe:r,msg:`Variant "${v.name}" grows by unknown element "${v.element}"`}); if(v.stages<1) issues.push({sev:'warn',recipe:r,msg:`Variant "${v.name}" has no stages`}); }); }
     if(isModifier(r)){ if(!r.modifiers.length) issues.push({sev:'warn',recipe:r,msg:'Modifier has no axes'});
       r.modifiers.forEach(m=>{ if(!m.options||!m.options.length){ issues.push({sev:'warn',recipe:r,msg:`Axis "${m.name}" has no options`}); return; }
-        m.options.forEach(o=>{ if(!o.elements||!o.elements.length) issues.push({sev:'warn',recipe:r,msg:`Axis "${m.name}" option "${o.label}" adds nothing`});
-          (o.elements||[]).forEach(id=>{ if(!elset.has(id)) issues.push({sev:'err',recipe:r,msg:`Axis "${m.name}" option "${o.label}" uses unknown element "${id}"`}); }); }); }); }
+        m.options.forEach(o=>{ (o.elements||[]).forEach(id=>{ if(!elset.has(id)) issues.push({sev:'err',recipe:r,msg:`Axis "${m.name}" option "${o.label}" uses unknown element "${id}"`}); }); }); }); }
   });
   // expansion collisions across distinct recipes (export footgun), excluding exact base-dups already flagged
   const src={}; recipes.forEach(r=>{ expandedSequences(r).forEach(seq=>{ const k=seq.join('\x1f'); (src[k]=src[k]||new Set()).add(r); }); });
@@ -3173,7 +3229,43 @@ function toGodot(){
 document.getElementById('btnExpJson').addEventListener('click', ()=>{ dl(`recipes-${palSlug()}.json`, JSON.stringify(recipes,null,2), 'application/json'); toast(`Exported ${recipes.length} recipe(s).`,'ok'); });
 document.getElementById('btnExpFlat').addEventListener('click', ()=>{ const f=flattenRecipes(); dl(`recipes-flat-${palSlug()}.json`, JSON.stringify(f,null,2), 'application/json'); toast(`Exported ${f.length} concrete sequence(s).`,'ok'); });
 document.getElementById('btnExpGd').addEventListener('click', ()=>{ dl(`${palSlug()}.gd`, toGodot(), 'text/plain'); toast('Exported Godot script.','ok'); });
-document.getElementById('btnExpPng').addEventListener('click', ()=>{ try{ cvs.toBlob(b=>{ if(!b){toast('PNG export not supported here.','err');return;} const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`tree-${palSlug()}.png`; a.click(); toast('Exported PNG.','ok'); }); }catch(e){ toast('PNG export failed.','err'); } });
+function exportTreePng(){
+  const root=buildTrie(); layoutTrie(root); const ns=trieFlatten(root);
+  if(!ns.length){ toast('Nothing to export yet.','err'); return; }
+  layoutNodes=ns; curPath=pathKeySet(); edgeBadges=[];
+  ns.forEach(n=>{ if(isNodeExpanded(n)){ const I=compositeInternals(n); n._internals=I; n._childExit=I.childExit; n._famrowY=I.famrowY; n._entryY=I.entryY; } else { n._childExit=null; n._entryY=null; } });
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  ns.forEach(n=>{ minX=Math.min(minX,n.lx); minY=Math.min(minY,n.ly); maxX=Math.max(maxX,n.lx+nodeBoxW(n)); maxY=Math.max(maxY,n.ly+nodeHeight(n)); });
+  const pad=48, cwld=(maxX-minX)+pad*2, chld=(maxY-minY)+pad*2;
+  let scale=2; const MAXPX=8000;                                   // crisp, but cap so the canvas stays sane
+  scale=Math.max(0.5, Math.min(scale, MAXPX/Math.max(cwld,chld)));
+  const W=Math.max(1,Math.round(cwld*scale)), H=Math.max(1,Math.round(chld*scale));
+  const savedW=cvs.width, savedH=cvs.height, savedSW=cvs.style.width, savedSH=cvs.style.height;
+  const savedZoom=zoom, savedHL=highlightFn, savedDrag=nodeDragging, savedSel=sel;
+  zoom=1; highlightFn=null; nodeDragging=false; sel=null;            // full detail, no dimming/selection chrome
+  try{
+    cvs.width=W; cvs.height=H;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle=cvsVar('--bg')||'#0c0c10'; ctx.fillRect(0,0,W,H);
+    ctx.setTransform(scale,0,0,scale,(pad-minX)*scale,(pad-minY)*scale);
+    layoutNodes.forEach(n=>Object.values(n.children).forEach(c=>drawEdge(n,c)));
+    drawAltEdges();
+    layoutNodes.forEach(n=>{ ctx.globalAlpha=1; drawNode(n); });
+    ctx.globalAlpha=1;
+  }catch(e){
+    zoom=savedZoom; highlightFn=savedHL; nodeDragging=savedDrag; sel=savedSel;
+    cvs.width=savedW; cvs.height=savedH; cvs.style.width=savedSW; cvs.style.height=savedSH; drawTree();
+    toast('PNG export failed.','err'); return;
+  }
+  const restore=()=>{ zoom=savedZoom; highlightFn=savedHL; nodeDragging=savedDrag; sel=savedSel;
+    cvs.width=savedW; cvs.height=savedH; cvs.style.width=savedSW; cvs.style.height=savedSH; drawTree(); };
+  try{
+    cvs.toBlob(b=>{ if(!b){ restore(); toast('PNG export not supported here.','err'); return; }
+      const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=`map-${palSlug()}.png`; a.click();
+      restore(); toast(`Exported full map (${W}×${H}).`,'ok'); });
+  }catch(e){ restore(); toast('PNG export failed.','err'); }
+}
+document.getElementById('btnExpPng').addEventListener('click', exportTreePng);
 function doImport(replace){
   const txt=document.getElementById('importTxt').value.trim(); const st=document.getElementById('importSt');
   try{ const data=JSON.parse(txt); if(!Array.isArray(data))throw new Error('Expected a JSON array');
@@ -3324,11 +3416,17 @@ function undo(){ if(!undoStack.length)return; redoStack.push(snapshot()); restor
 function redo(){ if(!redoStack.length)return; undoStack.push(snapshot()); restoreSnapshot(redoStack.pop());
   savePalettes({force:true}); syncPalSelect(); rebuildAll(); updateUndoButtons(); }
 function updateUndoButtons(){
-  document.getElementById('btnUndo').disabled = !undoStack.length;
-  document.getElementById('btnRedo').disabled = !redoStack.length;
+  const u=!undoStack.length, r=!redoStack.length;
+  document.getElementById('btnUndo').disabled = u;
+  document.getElementById('btnRedo').disabled = r;
+  const uc=document.getElementById('btnUndoCv'), rc=document.getElementById('btnRedoCv');
+  if(uc){ uc.disabled=u; uc.style.opacity=u?0.4:1; }
+  if(rc){ rc.disabled=r; rc.style.opacity=r?0.4:1; }
 }
 document.getElementById('btnUndo').onclick = undo;
 document.getElementById('btnRedo').onclick = redo;
+document.getElementById('btnUndoCv').onclick = undo;
+document.getElementById('btnRedoCv').onclick = redo;
 
 document.addEventListener('keydown', e=>{
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
