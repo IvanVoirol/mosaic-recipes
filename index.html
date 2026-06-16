@@ -393,23 +393,31 @@ canvas.dragging{cursor:grabbing;}
 #empty-hint b{color:var(--text);}
 #minimap{position:absolute;right:10px;top:50px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:rgba(20,20,28,.86);backdrop-filter:blur(6px);cursor:crosshair;box-shadow:0 6px 20px #0006;}
 #mm-zoom{position:absolute;right:10px;top:160px;z-index:6;width:158px;text-align:center;color:var(--text);opacity:.72;font-size:.66rem;font-variant-numeric:tabular-nums;pointer-events:none;text-shadow:0 1px 2px #000a;}
-#persp-panel{position:absolute;right:10px;top:185px;z-index:6;width:216px;max-height:min(300px, calc(100% - 240px));display:flex;flex-direction:column;background:rgba(20,20,28,.92);backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px #0006;overflow:hidden;}
-#persp-head{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--border);flex:0 0 auto;}
+#persp-panel{position:absolute;right:10px;top:185px;z-index:6;width:216px;max-height:calc(100% - 195px);display:flex;flex-direction:column;background:rgba(20,20,28,.92);backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px #0006;overflow:hidden;}
+#persp-panel.collapsed{height:auto !important;}
+#persp-head{display:flex;align-items:center;gap:6px;padding:3px 8px;border-bottom:1px solid var(--border);flex:0 0 auto;}
 #persp-title{font-weight:700;color:var(--text);font-size:.7rem;letter-spacing:.02em;}
 #persp-count{color:var(--muted);font-size:.62rem;flex:1;}
 #persp-add,#persp-toggle{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:1px 5px;border-radius:5px;}
 #persp-add:hover,#persp-toggle:hover{background:#ffffff14;color:var(--text);}
-#persp-body{overflow-y:auto;padding:4px;display:flex;flex-direction:column;gap:3px;}
-#persp-panel.collapsed #persp-body{display:none;}
-.persp-item{border:1px solid var(--border);border-radius:6px;padding:4px 6px;cursor:pointer;}
+#persp-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:3px;display:flex;flex-direction:column;gap:1px;}
+#persp-panel.collapsed #persp-body,#persp-panel.collapsed #persp-resize{display:none;}
+#persp-resize{flex:0 0 auto;height:8px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;border-top:1px solid var(--border);touch-action:none;}
+#persp-resize::before{content:"";width:26px;height:3px;border-radius:2px;background:#ffffff24;}
+#persp-resize:hover::before{background:#ffffff45;}
+.persp-item{border:1px solid var(--border);border-radius:6px;padding:1px 6px;cursor:pointer;}
 .persp-item:hover{border-color:#ffffff2b;}
-.pi-top{display:flex;align-items:center;gap:6px;}
+.pi-top{display:flex;align-items:center;gap:4px;}
+.persp-dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;border:1.5px solid #ffffff33;box-sizing:border-box;}
+.persp-swatches{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.persp-sw{width:15px;height:15px;border-radius:4px;border:1px solid #00000040;cursor:pointer;padding:0;}
+.persp-sw.sel{outline:2px solid var(--text);outline-offset:1px;}
 .persp-gauge{flex:0 0 auto;display:flex;}
-.persp-timer{flex:0 0 auto;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.6rem;color:var(--muted);min-width:52px;}
-.persp-q{flex:1;color:var(--text);line-height:1.28;font-size:.69rem;}
-.persp-desc{color:var(--muted);font-size:.61rem;line-height:1.3;margin-top:2px;margin-left:58px;}
-.pi-acts{display:flex;gap:1px;flex:0 0 auto;align-items:center;}
-.pi-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.7rem;padding:1px 3px;border-radius:4px;}
+.persp-timer{flex:0 0 auto;font-variant-numeric:tabular-nums;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.56rem;color:var(--muted);min-width:45px;}
+.persp-q{flex:1;color:var(--text);line-height:1.1;font-size:.67rem;padding:1px 0;}
+.persp-desc{color:var(--muted);font-size:.57rem;line-height:1.12;margin-top:0;margin-bottom:1px;margin-left:62px;}
+.pi-acts{display:flex;gap:0;flex:0 0 auto;align-items:center;}
+.pi-btn{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.66rem;line-height:1;padding:1px 2px;border-radius:4px;}
 .pi-btn:hover{background:#ffffff14;color:var(--text);}
 .pi-btn.on{color:var(--accent);}
 .pi-del.confirm{color:#ff7a7a;font-weight:700;}
@@ -598,6 +606,7 @@ canvas.dragging{cursor:grabbing;}
       <div id="persp-panel">
         <div id="persp-head"><span id="persp-title">Design Lenses</span><span id="persp-count"></span><button id="persp-add" title="Add a design lens">＋</button><button id="persp-toggle" title="Collapse / expand">▾</button></div>
         <div id="persp-body"></div>
+        <div id="persp-resize" title="Drag to resize"></div>
       </div>
       <div id="help-overlay" class="help-overlay">
         <div class="help-card">
@@ -694,7 +703,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.78';
+const APP_VERSION = 'v2.81';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -3567,6 +3576,7 @@ function perspTimer(p){ const base=p.revisited||p.created||Date.now(); let s=Mat
   const z=n=>String(n).padStart(2,'0');
   return (d>0?d+'d ':'')+z(h)+':'+z(m)+':'+z(s); }
 let perspTimerEls=[];
+const LENS_COLORS=['#e6574c','#e8843c','#e3b53f','#bcc442','#7ac24a','#48c08a','#3fbcbf','#4aa3e2','#5f78e0','#8a63e0','#bf5fd0','#e05fa8','#e07a8a','#9b8b76','#b6b6c2','#6f7686'];
 function perspTick(){ if(perspCollapsed) return; perspTimerEls.forEach(t=>{ if(t.el.isConnected) t.el.textContent=perspTimer(t.p); }); }
 function renderPersp(){
   const body=document.getElementById('persp-body'), panel=document.getElementById('persp-panel'); if(!body||!panel) return;
@@ -3586,6 +3596,7 @@ function renderPersp(){
     const rk=rankOf.get(p.id)||0, alpha=(0.03+(N>1?rk/(N-1):0)*0.10).toFixed(3);   // recent darker, oldest lighter
     item.style.background=`rgba(255,255,255,${alpha})`;
     const top=document.createElement('div'); top.className='pi-top';
+    const dot=document.createElement('span'); dot.className='persp-dot'; if(p.color){ dot.style.background=p.color; dot.style.borderColor=p.color; } top.appendChild(dot);
     const tm=document.createElement('span'); tm.className='persp-timer'; tm.textContent=perspTimer(p); tm.title='Time since last revisit'; perspTimerEls.push({el:tm,p}); top.appendChild(tm);
     if(open){ const ti=document.createElement('input'); ti.className='persp-edit persp-titleinput'; ti.value=p.title; ti.placeholder='Title';
       ti.onclick=e=>e.stopPropagation(); ti.oninput=()=>{ p.title=ti.value; perspSave(); }; top.appendChild(ti); }
@@ -3600,6 +3611,10 @@ function renderPersp(){
     if(open){
       const di=document.createElement('input'); di.className='persp-edit persp-descinput'; di.value=p.desc||''; di.placeholder='Quick description (optional)';
       di.onclick=e=>e.stopPropagation(); di.oninput=()=>{ p.desc=di.value; perspSave(); }; item.appendChild(di);
+      const sw=document.createElement('div'); sw.className='persp-swatches';
+      LENS_COLORS.forEach(c=>{ const b=document.createElement('button'); b.className='persp-sw'+(p.color===c?' sel':''); b.style.background=c; b.title=c;
+        b.onclick=e=>{ e.stopPropagation(); p.color=(p.color===c?null:c); perspSave(); renderPersp(); }; sw.appendChild(b); });
+      item.appendChild(sw);
       const ta=document.createElement('textarea'); ta.className='persp-notes'; ta.placeholder='Notes / findings…'; ta.value=p.notes||'';
       ta.onclick=e=>e.stopPropagation(); ta.oninput=()=>{ p.notes=ta.value; perspSave(); }; item.appendChild(ta);
     } else if(p.desc){ const d=document.createElement('div'); d.className='persp-desc'; d.textContent=p.desc; item.appendChild(d); }
@@ -3623,6 +3638,15 @@ function perspAdd(){
 }
 document.getElementById('persp-add').onclick=perspAdd;
 document.getElementById('persp-toggle').onclick=()=>{ perspCollapsed=!perspCollapsed; try{ localStorage.setItem('mosaicPerspCollapsed', perspCollapsed?'1':'0'); }catch(e){} renderPersp(); };
+(function(){ const panel=document.getElementById('persp-panel'), h=document.getElementById('persp-resize'); if(!panel||!h) return;
+  try{ const v=parseInt(localStorage.getItem('mosaicPerspH'),10); if(v) panel.style.height=v+'px'; }catch(e){}
+  let rz=false, sy=0, sh=0;
+  h.addEventListener('pointerdown', e=>{ rz=true; sy=e.clientY; sh=panel.offsetHeight; try{ h.setPointerCapture(e.pointerId); }catch(_){ } e.preventDefault(); });
+  h.addEventListener('pointermove', e=>{ if(!rz) return; const max=Math.max(120, wrap.clientHeight-195);
+    let nh=Math.max(90, Math.min(sh+(e.clientY-sy), max)); panel.style.height=nh+'px'; });
+  const end=()=>{ if(!rz) return; rz=false; try{ localStorage.setItem('mosaicPerspH', String(panel.offsetHeight)); }catch(_){ } };
+  h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
+})();
 perspLoad(); renderPersp(); setInterval(perspTick, 1000);
 
 document.addEventListener('keydown', e=>{
