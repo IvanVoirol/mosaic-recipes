@@ -694,7 +694,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.77';
+const APP_VERSION = 'v2.78';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1320,9 +1320,15 @@ function paintCanvas(){
   ctx.save();
   ctx.translate(pan.x, pan.y + ch/2);
   ctx.scale(zoom, zoom);
-  layoutNodes.forEach(n => Object.values(n.children).forEach(c => drawEdge(n, c)));
+  // visible world rect (with margin) so big tries only paint what's on (or near) screen
+  const m = 120/zoom;
+  const vx0=(-pan.x)/zoom - m, vx1=(cw-pan.x)/zoom + m, vy0=(-pan.y-ch/2)/zoom - m, vy1=(ch-pan.y-ch/2)/zoom + m;
+  const vis = n => { const w = n.key===''?NW/2:nodeBoxW(n), h = n.key===''?NH:nodeHeight(n);
+    return n.lx < vx1 && n.lx+w > vx0 && n.ly < vy1 && n.ly+h > vy0; };
+  layoutNodes.forEach(n => { const nv=vis(n); Object.values(n.children).forEach(c => { if(nv || vis(c)) drawEdge(n, c); }); });
   drawAltEdges();
   layoutNodes.forEach(n => {
+    if(!vis(n)) return;
     let a = highlightFn ? (highlightFn(n) ? 1 : 0.12) : 1;
     if(nodeDragging && dropValidKeys && n!==dragNode && !dropValidKeys.has(n.key)) a = Math.min(a, 0.16);  // can't receive the dragged node
     ctx.globalAlpha = a; drawNode(n);
@@ -1334,9 +1340,11 @@ function paintCanvas(){
     const eh=document.getElementById('empty-hint'); if(eh) eh.style.display = recipes.length ? 'none' : 'block'; } catch(e) {}
 }
 // Full update (data/layout changed). Most callers use this.
-function drawTree() { computeLayout(); paintCanvas(); }
-// Cheap update for pan/zoom/drag where only the view transform changed — reuses the cached layout.
-function repaint() { paintCanvas(); }
+let _rafId=0, _rafPending=false;
+function drawTree() { if(_rafPending){ cancelAnimationFrame(_rafId); _rafPending=false; } computeLayout(); paintCanvas(); }
+// Cheap update for pan/zoom/drag where only the view transform changed — reuses the
+// cached layout and is coalesced to at most one paint per animation frame.
+function repaint() { if(_rafPending) return; _rafPending=true; _rafId=requestAnimationFrame(()=>{ _rafPending=false; paintCanvas(); }); }
 let highlightFn = null;
 function nodeHasEl(n, el){ try{ if(n.recipe){ return expandedSequences(n.recipe).some(s=>s.includes(el)); } return (n.sequence||[]).includes(el); }catch(e){ return false; } }
 // ── view mode: 'edit' (author) vs 'analyse' (read-only saturation view) ──
