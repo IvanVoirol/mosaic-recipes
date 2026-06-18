@@ -314,8 +314,10 @@ canvas.dragging{cursor:grabbing;}
 .set-val{float:right;color:var(--accent);font-weight:600;}
 .set-range{width:100%;accent-color:var(--accent);cursor:pointer;}
 /* contextual Edit inspector */
-.ez{padding:11px 12px;border-bottom:1px solid var(--border);} .ez:last-child{border-bottom:none;}
-.ezh{font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:7px;}
+.ez{padding:17px 13px;border-bottom:1px solid var(--border);} .ez:last-child{border-bottom:none;}
+.ezh{font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:5px;}
+.ezi{font-size:.64rem;color:var(--muted);cursor:help;opacity:.6;font-weight:400;letter-spacing:0;text-transform:none;} .ezi:hover{opacity:1;color:var(--text);}
+.etype{font-size:.52rem;text-transform:uppercase;letter-spacing:.09em;font-weight:700;opacity:.9;margin-bottom:6px;}
 .eidrow{display:flex;align-items:center;gap:8px;}
 .ebadge{font-size:.54rem;text-transform:uppercase;letter-spacing:.05em;border-radius:99px;padding:2px 8px;font-weight:700;white-space:nowrap;}
 .ename{flex:1;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:inherit;font-size:1rem;font-weight:600;padding:2px 0;}
@@ -326,11 +328,11 @@ canvas.dragging{cursor:grabbing;}
 .erow{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
 .estep{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
 .estep button{width:24px;height:26px;border:none;background:transparent;color:var(--muted);font-size:1rem;cursor:pointer;} .estep button:hover{background:var(--accent);color:#0c0c10;} .estep b{min-width:24px;text-align:center;font-size:.82rem;}
-.ehint{font-size:.7rem;color:var(--muted);margin-top:5px;line-height:1.4;} .ehint.err{color:var(--danger);} .ehint.ok{color:var(--accent2);}
+.ehint{font-size:.7rem;color:var(--muted);margin-top:3px;line-height:1.4;} .ehint.err{color:var(--danger);} .ehint.ok{color:var(--accent2);}
 .evar{background:#ffffff08;border-radius:8px;padding:7px 8px;margin-bottom:7px;}
 .eax{border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;}
 .eopt{background:#ffffff08;border-radius:7px;padding:6px 7px;margin-bottom:5px;}
-.eorigin{display:flex;align-items:center;gap:7px;font-size:.76rem;padding:3px 0;}
+.eorigin{display:flex;align-items:center;gap:7px;font-size:.76rem;padding:2px 0;}
 /* canvas + overlay */
 #cvs-overlay{position:absolute;inset:0;pointer-events:none;z-index:5;}
 #cvs-overlay>*{pointer-events:auto;position:absolute;}
@@ -344,7 +346,8 @@ canvas.dragging{cursor:grabbing;}
 .cstub .cstub-dot{border-top:1.5px dashed var(--muted);opacity:.55;}
 .cnedit{width:21px;height:21px;border-radius:6px;background:var(--panel);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:.74rem;display:none;align-items:center;justify-content:center;}
 .cnedit:hover{color:var(--accent);border-color:var(--accent);background:#9d7fea1a;}
-.cplus.conn{background:#5b86d6;} .cplus.conn:hover{background:#7aa2ff;}
+.cplus.conn{background:#5b86d6;width:17px;height:17px;} .cplus.conn:hover{background:#7aa2ff;}
+.cplus.conn::before{width:8px;left:4.5px;top:7.5px;} .cplus.conn::after{height:8px;left:7.5px;top:4.5px;}
 .conn-label{position:absolute;transform:translate(-50%,-50%);z-index:11;background:rgba(16,16,24,.96);border:1px solid #7aa2ff66;color:#dfe6ff;font-size:9.5px;font-weight:600;padding:1px 5px;border-radius:5px;pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px #0007;}
 .conn-leader{position:absolute;left:50%;width:1px;background:#7aa2ff66;transform:translateX(-50%);pointer-events:none;}
 #link-banner{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:12;display:none;align-items:center;gap:9px;background:rgba(20,20,28,.95);border:1px solid var(--border);border-radius:9px;padding:6px 11px;font-size:.74rem;color:var(--text);box-shadow:0 6px 20px #0006;white-space:nowrap;}
@@ -374,8 +377,10 @@ canvas.dragging{cursor:grabbing;}
 #nodeEditWin{position:absolute;z-index:25;width:340px;max-width:92vw;max-height:78%;display:flex;flex-direction:column;
   background:var(--surface);border:1px solid var(--accent);border-radius:13px;box-shadow:0 18px 56px #000b;overflow:hidden;}
 #nodeEditWin .tscroll{flex:1;overflow-y:auto;padding:0;}
-#nodeEditHead{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:move;background:var(--panel);user-select:none;}
-#nodeEditTitle{flex:1;font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#nodeEditHead{display:flex;align-items:center;gap:8px;padding:9px 12px 4px;border-bottom:none;background:var(--panel);user-select:none;cursor:move;}
+#nodeEditTitle{flex:1;min-width:0;font:inherit;font-size:.82rem;font-weight:700;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 0;}
+#nodeEditTitle:not([readonly]):hover{border-bottom-color:var(--border);} #nodeEditTitle:focus{outline:none;border-bottom-color:var(--accent);} #nodeEditTitle[readonly]{cursor:move;}
+.edesc{font-size:.72rem;line-height:1.35;resize:vertical;min-height:2.6em;font-family:inherit;}
 #nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
 #nodeEditClose:hover{color:var(--text);background:#ffffff14;}
 #el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(20,20,28,.86);border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(6px);max-width:250px;box-shadow:0 6px 20px #0006;}
@@ -408,8 +413,15 @@ canvas.dragging{cursor:grabbing;}
 #persp-panel{position:absolute;right:10px;top:185px;z-index:6;width:216px;max-height:calc(100% - 195px);display:flex;flex-direction:column;background:rgba(20,20,28,.92);backdrop-filter:blur(6px);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px #0006;overflow:hidden;}
 #persp-panel.collapsed{height:auto !important;}
 #persp-head{display:flex;align-items:center;gap:6px;padding:3px 8px;border-bottom:1px solid var(--border);flex:0 0 auto;}
-#persp-title{font-weight:700;color:var(--text);font-size:.7rem;letter-spacing:.02em;}
-#persp-count{color:var(--muted);font-size:.62rem;flex:1;}
+#persp-title{font-weight:700;color:var(--text);font-size:.7rem;letter-spacing:.02em;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#persp-count{color:var(--muted);font-size:.62rem;flex:0 0 auto;}
+#persp-panel.collapsed{width:auto !important;height:auto !important;border-radius:9px;}
+#persp-panel.collapsed #persp-add,#persp-panel.collapsed #persp-count,#persp-panel.collapsed #persp-wgrip{display:none;}
+#persp-panel.collapsed #persp-head{cursor:pointer;border-bottom:none;padding:5px 9px;border-radius:9px;}
+#persp-panel.collapsed #persp-head:hover{background:#ffffff12;}
+#persp-panel.collapsed #persp-title{flex:0 0 auto;font-size:.66rem;}
+#persp-wgrip{position:absolute;left:0;top:0;bottom:0;width:7px;cursor:ew-resize;display:none;z-index:7;touch-action:none;}
+#persp-wgrip:hover{background:#ffffff14;}
 #persp-add,#persp-toggle{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:1px 5px;border-radius:5px;}
 #persp-add:hover,#persp-toggle:hover{background:#ffffff14;color:var(--text);}
 #persp-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:3px;display:flex;flex-direction:column;gap:1px;}
@@ -619,6 +631,7 @@ canvas.dragging{cursor:grabbing;}
         <div id="persp-head"><span id="persp-title">Design Lenses</span><span id="persp-count"></span><button id="persp-add" title="Add a design lens">＋</button><button id="persp-toggle" title="Collapse / expand">▾</button></div>
         <div id="persp-body"></div>
         <div id="persp-resize" title="Drag to resize"></div>
+        <div id="persp-wgrip" title="Drag to resize width"></div>
       </div>
       <div id="help-overlay" class="help-overlay">
         <div class="help-card">
@@ -654,7 +667,7 @@ canvas.dragging{cursor:grabbing;}
 
       <!-- floating node editor window (opened by a node's ✎) -->
       <div id="nodeEditWin" style="display:none">
-        <div id="nodeEditHead"><span id="nodeEditTitle">Edit</span><button id="nodeEditClose" title="Close">✕</button></div>
+        <div id="nodeEditHead"><input id="nodeEditTitle" spellcheck="false" readonly><button id="nodeEditClose" title="Close">✕</button></div>
         <div class="tscroll" id="editPanel"></div>
       </div>
     </div>
@@ -715,7 +728,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.85';
+const APP_VERSION = 'v2.90';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -2585,8 +2598,8 @@ function computeSpots(){ plusSpots=[]; const H=n=>nodeHeight(n);
   // connection ports: one above (incoming "from") and one below (outgoing "to") each recipe node
   layoutNodes.forEach(n=>{ if(!n.recipe || !n.sequence.length) return;
     const W=n.key===''?NW/2:nodeBoxW(n), Hn=n.key===''?NH:H(n), cxC=n.lx+W/2;
-    plusSpots.push({kind:'conn', role:'in',  node:n, wx:cxC, wy:n.ly-14});
-    plusSpots.push({kind:'conn', role:'out', node:n, wx:cxC, wy:n.ly+Hn+14});
+    plusSpots.push({kind:'conn', role:'in',  node:n, wx:cxC, wy:n.ly-7});
+    plusSpots.push({kind:'conn', role:'out', node:n, wx:cxC, wy:n.ly+Hn+7});
   });
 }
 // Leaf "add here" affordance is rendered as a DOM connector tied to each visible ＋ (see placePlus).
@@ -2598,7 +2611,7 @@ function getPlus(i){ while(plusPool.length<=i){ const b=document.createElement('
 function getStub(i){ while(stubPool.length<=i){ const s=document.createElement('div'); s.className='cstub'; s.style.display='none';
     s.innerHTML='<i class="cstub-solid"></i><i class="cstub-dot"></i>'; cvsOverlay.appendChild(s); stubPool.push(s);} return stubPool[i]; }
 // Position a ＋ button at a spot; for leaf spots also show a solid→dotted connector from the node edge.
-function placePlus(b, i, sp){ const s=w2s(sp.wx,sp.wy); b.style.left=(s.x-11)+'px'; b.style.top=(s.y-11)+'px'; b.style.display='flex'; b._spot=sp;
+function placePlus(b, i, sp){ const s=w2s(sp.wx,sp.wy); const off=sp.kind==='conn'?8.5:11; b.style.left=(s.x-off)+'px'; b.style.top=(s.y-off)+'px'; b.style.display='flex'; b._spot=sp;
   if(sp.kind==='conn'){ b.classList.add('conn'); b.title = sp.role==='in'?'New connection into this node (then click a source)':'New connection out of this node (then click a target)'; }
   else { b.classList.remove('conn'); b.title=''; }
   const stub=getStub(i);
@@ -2735,7 +2748,7 @@ document.addEventListener('keydown', e=>{ if(e.key!=='Escape') return;
   if(sel && sel.seq && sel.seq.length){ sel={seq:[],recipe:null}; renderBuild(); renderList(); drawTree(); }  // else deselect
 });
 (function(){ const head=document.getElementById('nodeEditHead'); let dr=false, ox=0, oy=0;
-  head.addEventListener('mousedown', e=>{ if(e.target.id==='nodeEditClose')return; dr=true; const r=editWin.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
+  head.addEventListener('mousedown', e=>{ if(e.target.id==='nodeEditClose'||e.target.id==='nodeEditTitle')return; dr=true; const r=editWin.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
     ox=e.clientX-r.left; oy=e.clientY-r.top; e.preventDefault(); });
   window.addEventListener('mousemove', e=>{ if(!dr)return; const wr=wrap.getBoundingClientRect();
     editWin.style.left=Math.max(0, Math.min(e.clientX-wr.left-ox, wrap.clientWidth-60))+'px';
@@ -2905,7 +2918,7 @@ function renderEditor(){
   if(!Object.keys(EL_INI).length || EL_INI.__n!==elements.length){ elInitials(); EL_INI.__n=elements.length; }
   const S=sel||{seq:[],recipe:null};
   const titleEl=document.getElementById('nodeEditTitle');
-  if(titleEl){ const rr=S.recipe; titleEl.textContent = rr? rr.name : ((S.seq&&S.seq.length)? 'Unnamed step' : 'Palette'); }
+  if(titleEl){ titleEl.value=''; titleEl.readOnly=true; titleEl.placeholder=''; }
   const r=S.recipe; const seq=S.seq||[];
   const isRoot = seq.length===0;
   const isGap = !r && !isRoot;
@@ -2915,75 +2928,76 @@ function renderEditor(){
     h=`<div class="ez"><div class="eidrow"><span class="ebadge" style="background:var(--accent)22;color:var(--accent)">▶ START</span>
         <b style="font-size:1rem">${escHtml(palettes[pidx].name)}</b></div>
         <div class="ehint">${elements.length} elements · ${recipes.length} recipes. Select a node, or use the Build tab / canvas ＋ to add one.</div></div>`;
+    if(titleEl) titleEl.value='Palette';
     el.innerHTML=h; return;
   }
 
-  // Identity
+  // Identity / type
   const badge = isGap?['⚠ UNNAMED','var(--danger)'] : isGrowth(r)?['🌱 CHAIN','var(--accent2)'] : isModifier(r)?['⊞ MODIFIER','var(--accent)'] : isFamily(r)?['🌿 FAMILY','var(--accent2)'] : (r.altOrigins&&r.altOrigins.length)?['⟂ MULTI-ORIGIN','var(--warn)'] : ['◆ BASIC','var(--accent)'];
-  const dotsHtml = `<div class="dots" style="margin-top:9px;display:flex;gap:3px">${seq.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</div>`;
-  h+=`<div class="ez"><div class="eidrow"><span class="ebadge" style="background:${badge[1]}22;color:${badge[1]}">${badge[0]}</span>
-      <input class="ename" id="eName" value="${r?escAttr(r.name):''}" ${isGap?'placeholder="Name this step…"':''}></div>${dotsHtml}
-      <div class="ehint" id="eNameHint"></div></div>`;
+  const typeChip = `<div class="etype" style="color:${badge[1]}">${badge[0]}</div>`;
+  const dotsHtml = `<div class="dots" style="margin-top:7px;display:flex;gap:3px">${seq.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</div>`;
 
   if(isGap){
-    h+=`<div class="ez"><div class="erow"><button class="btn btn-danger btn-xs" id="eGapRm">Remove step</button></div>
-        <div class="ehint">Type a name in the title to keep this step, or remove it to pull its children closer.</div></div>`;
+    if(titleEl){ titleEl.value=''; titleEl.readOnly=false; titleEl.placeholder='Name this step…'; }
+    h+=`<div class="ez"><div class="ehint" id="eNameHint"></div>${dotsHtml}</div>`;
+    h+=`<div class="ez" style="display:flex;justify-content:center;gap:8px"><button class="btn btn-danger btn-xs" id="eGapRm">Remove step</button></div>`;
     el.innerHTML=h; wireEditor(S); return;
   }
+  if(titleEl){ titleEl.value=r.name; titleEl.readOnly=false; titleEl.placeholder=''; }
 
-  // Reached via (non-root recipe)
-  if(seq.length>=1){
-    const taken=reachTaken(seq), last=seq[seq.length-1];
-    h+=`<div class="ez"><div class="ezh">Reached via</div><div class="eltoks" id="eReach">${elements.map(e=>eTok(e,{sel:e.id===last,dim:taken.has(e.id)&&e.id!==last,data:`data-reach="${e.id}"`})).join('')}</div>
-        <div class="ehint">Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.</div></div>`;
-  }
+  // Merged identity group: sequence + reached-via + description, no inner separators (name lives in the title bar)
+  let reachHtml='';
+  if(seq.length>=1){ const taken=reachTaken(seq), last=seq[seq.length-1];
+    reachHtml=`<div class="ezh" style="margin:10px 0 4px">Reached via <span class="ezi" title="Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.">ⓘ</span></div><div class="eltoks" id="eReach">${elements.map(e=>eTok(e,{sel:e.id===last,dim:taken.has(e.id)&&e.id!==last,data:`data-reach="${e.id}"`})).join('')}</div>`; }
+  h+=`<div class="ez" style="padding-top:5px"><div class="ehint" id="eNameHint"></div>${dotsHtml}${reachHtml}<textarea class="f edesc" id="eDesc" rows="2" placeholder="Optional description…" style="margin:10px 0 0">${escHtml(r.description||'')}</textarea></div>`;
 
-  // Description
-  h+=`<div class="ez"><div class="ezh">Note</div><input class="f" id="eDesc" placeholder="Optional description…" value="${escAttr(r.description||'')}" style="margin:0"></div>`;
+  let typeUsed=false;
 
   // Type-specific
   if(isGrowth(r)){
     const ge=elements.find(e=>e.id===r.growth.element);
     const key=seq.join('\x1f'); const stg=Math.min(r.growth.stages, growthStage[key]||r.growth.stages);
-    h+=`<div class="ez"><div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by <b style="color:var(--text)">${ge?ge.name:'?'}</b></span>
+    typeUsed=true;
+    h+=`<div class="ez">${typeChip}<div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by <b style="color:var(--text)">${ge?ge.name:'?'}</b></span>
         <span style="margin-left:auto;font-size:.74rem;color:var(--muted)">Stages</span><span class="estep"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
         <div class="eltoks" id="eStagePips" style="margin-top:8px">${Array.from({length:Math.min(r.growth.stages,12)},(_,i)=>i+1).map(k=>`<span class="eltok ${k===stg?'sel':''}" data-stage="${k}" style="background:var(--bg);border-color:var(--border);color:${k===stg?'var(--accent)':'var(--muted)'}">${k}</span>`).join('')}</div>
         <div class="erow" style="margin-top:8px"><button class="btn btn-ghost btn-xs" id="ePromoteStage">⑂ Promote stage ${stg}</button><button class="btn btn-ghost btn-xs" id="eToBasic">Convert to basic</button></div></div>`;
   } else if(isFamily(r)){
-    const full=r.family.length>=elements.length;
-    h+=`<div class="ez"><div class="ezh">Variants</div><div id="eVars"></div>
+    const full=r.family.length>=elements.length; typeUsed=true;
+    h+=`<div class="ez">${typeChip}<div class="ezh">Variants <span class="ezi" title="Each variant grows by a distinct element.">ⓘ</span></div><div id="eVars"></div>
         <button class="btn btn-ghost btn-xs" id="eAddVar" ${full?'disabled style="opacity:.4;cursor:default"':''}>+ variant</button>
-        <div class="ehint">${full?'All '+elements.length+' elements used — no more variants.':'Each variant grows by a distinct element.'}</div></div>`;
+        ${full?`<div class="ehint">All ${elements.length} elements used — no more variants.</div>`:''}</div>`;
   } else if(isModifier(r)){
-    h+=`<div class="ez"><div class="ezh">Option axes</div><div id="eAxes"></div>
+    typeUsed=true;
+    h+=`<div class="ez">${typeChip}<div class="ezh">Option axes</div><div id="eAxes"></div>
         <button class="btn btn-ghost btn-xs" id="eAddAxis" style="margin-top:6px">+ axis</button></div>
        <div class="ez"><div class="ezh">Promote a combination</div><div id="eCombo"></div></div>`;
   }
 
-  // Origins
+  // Origins (alternates only — the canonical one is the node shown at the top)
   const origins=recipeOrigins(r);
   if(origins.length>1){
-    h+=`<div class="ez"><div class="ezh">Origins · ${origins.length} ways</div>`;
-    origins.forEach((o,i)=>{ const src=recipeBySeq(o.slice(0,-1)); const from=i===0?'canonical':('from <b style="color:var(--text)">'+(src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1))))+'</b>');
+    const chip = typeUsed?'':typeChip; if(!typeUsed) typeUsed=true;
+    h+=`<div class="ez">${chip}`;
+    origins.forEach((o,i)=>{ if(i===0) return; const src=recipeBySeq(o.slice(0,-1)); const from='from <b style="color:var(--text)">'+(src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1))))+'</b>';
       h+=`<div class="eorigin"><span class="dots" style="display:flex;gap:3px">${o.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:11px;height:11px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</span>
-        <span class="ehint" style="margin:0">${from}</span>${i>0?`<button class="btn btn-ghost btn-xs" data-orm="${i-1}" style="margin-left:auto">✕</button>`:'<span style="margin-left:auto;font-size:.66rem;color:var(--muted)">primary</span>'}</div>`; });
-    h+=`<div class="ehint">Add another origin with the Connect tool (Build tab) or the canvas ＋.</div></div>`;
+        <span class="ehint" style="margin:0">${from}</span><button class="btn btn-ghost btn-xs" data-orm="${i-1}" style="margin-left:auto">✕</button></div>`; });
+    h+=`</div>`;
   }
 
-  // Structure
+  // Structure (no header; centered actions; basic type isn't labelled)
   const plainBasic = !isGrowth(r) && !isModifier(r) && !isFamily(r);
-  h+=`<div class="ez"><div class="ezh">Structure</div><div class="erow">
+  h+=`<div class="ez" style="display:flex;justify-content:center"><div class="erow" style="justify-content:center">
       ${plainBasic?'<button class="btn btn-ghost btn-xs" id="eToChain">Convert to chain</button>':''}
-      <button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>
-      <div class="ehint">Insert-before &amp; adding children live on the canvas ＋.</div></div>`;
+      <button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div></div>`;
 
   el.innerHTML=h; wireEditor(S);
 }
 
 function wireEditor(S){
   const r=S.recipe, seq=S.seq||[];
-  const nm=document.getElementById('eName');
-  if(nm){ let orig=nm.value;
+  const nm=document.getElementById('nodeEditTitle');
+  if(nm && !nm.readOnly){ let orig=nm.value;
     nm.onfocus=()=>orig=nm.value;
     nm.oninput=()=>{ const v=nm.value.trim(); const clash=nameExists(v,r); const hint=document.getElementById('eNameHint');
       nm.style.borderBottomColor=clash?'var(--danger)':''; if(hint){hint.textContent=clash?'“'+v+'” already exists.':''; hint.className='ehint err';} };
@@ -2994,7 +3008,7 @@ function wireEditor(S){
         if(recipeOccupying(seq)) return;
         pushHistory(); const nr={name:v,sequence:[...seq],description:'',altOrigins:[]}; recipes.push(nr); palettes[pidx].recipes=recipes; sel={seq:[...seq],recipe:nr}; commit(); return; }
       if(r && v!==r.name){ pushHistory(); r.name=v; commit(); } }
-  }
+  } else if(nm){ nm.onfocus=nm.oninput=nm.onkeydown=nm.onblur=null; }
   const grm=document.getElementById('eGapRm');
   if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ toast(err); return; } sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); };
 
@@ -3692,7 +3706,8 @@ document.getElementById('btnUndoCv').onclick = undo;
 document.getElementById('btnRedoCv').onclick = redo;
 
 // ── Perspectives: reusable analytical lenses for examining the trie (global, persisted) ──
-let perspectives=[]; const perspExpanded=new Set(); let perspCollapsed=false;
+let perspectives=[]; const perspExpanded=new Set(); let perspCollapsed=false; let perspW=216;
+try{ const v=parseInt(localStorage.getItem('mosaicPerspW'),10); if(v) perspW=Math.max(110,Math.min(280,v)); }catch(e){}
 function perspLoad(){ try{ perspectives=JSON.parse(localStorage.getItem('mosaicPerspectives')||'[]'); if(!Array.isArray(perspectives)) perspectives=[]; }catch(e){ perspectives=[]; }
   try{ perspCollapsed=localStorage.getItem('mosaicPerspCollapsed')==='1'; }catch(e){ perspCollapsed=false; } }
 function perspSave(){ try{ localStorage.setItem('mosaicPerspectives', JSON.stringify(perspectives)); }catch(e){} }
@@ -3710,7 +3725,9 @@ function perspTick(){ if(perspCollapsed) return; perspTimerEls.forEach(t=>{ if(t
 function renderPersp(){
   const body=document.getElementById('persp-body'), panel=document.getElementById('persp-panel'); if(!body||!panel) return;
   panel.classList.toggle('collapsed', perspCollapsed);
+  panel.style.width = '';   // collapsed becomes an auto-sized pill (CSS); expanded uses default width
   document.getElementById('persp-toggle').textContent = perspCollapsed?'▸':'▾';
+  document.getElementById('persp-title').textContent = perspCollapsed?'Lenses':'Design Lenses';
   document.getElementById('persp-count').textContent = perspectives.length?('('+perspectives.length+')'):'';
   body.innerHTML='';
   if(!perspectives.length){ const e=document.createElement('div'); e.className='persp-empty'; e.textContent='No lenses yet. Add a question you use to examine the trie — e.g. “Can the player build coherent electric machines?”'; body.appendChild(e); return; }
@@ -3766,7 +3783,8 @@ function perspAdd(){
   inp.onblur=commit;
 }
 document.getElementById('persp-add').onclick=perspAdd;
-document.getElementById('persp-toggle').onclick=()=>{ perspCollapsed=!perspCollapsed; try{ localStorage.setItem('mosaicPerspCollapsed', perspCollapsed?'1':'0'); }catch(e){} renderPersp(); };
+document.getElementById('persp-toggle').onclick=(e)=>{ e.stopPropagation(); perspCollapsed=!perspCollapsed; try{ localStorage.setItem('mosaicPerspCollapsed', perspCollapsed?'1':'0'); }catch(e){} renderPersp(); };
+document.getElementById('persp-head').addEventListener('click', ()=>{ if(perspCollapsed){ perspCollapsed=false; try{ localStorage.setItem('mosaicPerspCollapsed','0'); }catch(e){} renderPersp(); } });
 (function(){ const panel=document.getElementById('persp-panel'), h=document.getElementById('persp-resize'); if(!panel||!h) return;
   try{ const v=parseInt(localStorage.getItem('mosaicPerspH'),10); if(v) panel.style.height=v+'px'; }catch(e){}
   let rz=false, sy=0, sh=0;
@@ -3775,6 +3793,13 @@ document.getElementById('persp-toggle').onclick=()=>{ perspCollapsed=!perspColla
     let nh=Math.max(90, Math.min(sh+(e.clientY-sy), max)); panel.style.height=nh+'px'; });
   const end=()=>{ if(!rz) return; rz=false; try{ localStorage.setItem('mosaicPerspH', String(panel.offsetHeight)); }catch(_){ } };
   h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
+})();
+(function(){ const panel=document.getElementById('persp-panel'), g=document.getElementById('persp-wgrip'); if(!panel||!g) return;
+  let rz=false, sx=0, sw=0;
+  g.addEventListener('pointerdown', e=>{ rz=true; sx=e.clientX; sw=panel.offsetWidth; try{ g.setPointerCapture(e.pointerId); }catch(_){ } e.preventDefault(); e.stopPropagation(); });
+  g.addEventListener('pointermove', e=>{ if(!rz) return; perspW=Math.max(110, Math.min(280, sw+(sx-e.clientX))); panel.style.width=perspW+'px'; });   // right-anchored: drag left grows
+  const end=()=>{ if(!rz) return; rz=false; try{ localStorage.setItem('mosaicPerspW', String(Math.round(perspW))); }catch(_){ } };
+  g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
 })();
 perspLoad(); renderPersp(); setInterval(perspTick, 1000);
 
