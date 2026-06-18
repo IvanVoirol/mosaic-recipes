@@ -377,10 +377,13 @@ canvas.dragging{cursor:grabbing;}
 #nodeEditWin{position:absolute;z-index:25;width:340px;max-width:92vw;max-height:78%;display:flex;flex-direction:column;
   background:var(--surface);border:1px solid var(--accent);border-radius:13px;box-shadow:0 18px 56px #000b;overflow:hidden;}
 #nodeEditWin .tscroll{flex:1;overflow-y:auto;padding:0;}
-#nodeEditHead{display:flex;align-items:center;gap:8px;padding:9px 12px 4px;border-bottom:none;background:var(--panel);user-select:none;cursor:move;}
+#nodeEditHead{display:flex;align-items:center;gap:8px;padding:9px 12px 2px;border-bottom:none;background:var(--panel);user-select:none;cursor:move;}
 #nodeEditTitle{flex:1;min-width:0;font:inherit;font-size:.82rem;font-weight:700;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 0;}
 #nodeEditTitle:not([readonly]):hover{border-bottom-color:var(--border);} #nodeEditTitle:focus{outline:none;border-bottom-color:var(--accent);} #nodeEditTitle[readonly]{cursor:move;}
 .edesc{font-size:.72rem;line-height:1.35;resize:vertical;min-height:2.6em;font-family:inherit;}
+.ereach{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.rdot{width:15px;height:15px;border-radius:50%;cursor:pointer;border:2px solid transparent;box-sizing:border-box;transition:transform .07s;}
+.rdot:hover{transform:scale(1.15);} .rdot.sel{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--text);} .rdot.dim{opacity:.12;cursor:not-allowed;filter:grayscale(.5);}
 #nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
 #nodeEditClose:hover{color:var(--text);background:#ffffff14;}
 #el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(20,20,28,.86);border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(6px);max-width:250px;box-shadow:0 6px 20px #0006;}
@@ -728,7 +731,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.90';
+const APP_VERSION = 'v2.93';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -2689,7 +2692,7 @@ function openConnWizard(anchor, role){ closeWizard(); closeConnWizard();
     let h=`<div class="cwh"><span>New connection ${role==='in'?'from':'to'}</span><span class="cws">step ${st.step}/2</span></div>`;
     h+=`<div class="cwh" style="margin-top:2px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">Connecting element</div>`;
     const toks=elements.filter(e=>elFree(e.id));
-    h+=`<div class="eltoks" style="gap:5px">${toks.map(e=>eTok(e,{sel:st.el===e.id, data:`data-cel="${e.id}"`})).join('')}</div>`;
+    h+=`<div class="eltoks" style="gap:5px">${toks.map(e=>eDot(e,{sel:st.el===e.id, data:`data-cel="${e.id}"`})).join('')}</div>`;
     if(!toks.length) h+=`<div class="ehint err" style="margin-top:5px">Every element is already used from this node.</div>`;
     if(st.step>=2){ h+=`<div class="cwh" style="margin-top:9px">${role==='in'?'From — click a node or pick one':'To — click a node or pick one'}</div><input class="f" id="cwq" placeholder="Search…" style="margin:0"><div class="cwlist" id="cwlist"></div>`; }
     h+=`<div class="erow" style="margin-top:9px"><button class="btn btn-ghost btn-sm" id="cwcancel">Cancel</button></div>`;
@@ -2707,7 +2710,7 @@ document.addEventListener('mousedown', e=>{ if(_connWiz && !_connWiz.contains(e.
 const editWin=document.getElementById('nodeEditWin');
 function nodeEditorOpen(){ return editWin && editWin.style.display!=='none'; }
 let editWinPos=null;
-function openNodeEditor(node, sx, sy){ sel={seq:[...node.sequence], recipe:node.recipe};
+function openNodeEditor(node, sx, sy){ sel={seq:[...node.sequence], recipe:node.recipe}; editOriginIdx=-1; editArmedDelete=false;
   editWin.style.display='flex';
   const w=340, ww=wrap.clientWidth, wh=wrap.clientHeight;
   let left, top;
@@ -2814,7 +2817,7 @@ function openWizard(anchor, spot){ closeWizard(); closeConnWizard();
     let h=`<div class="cwh"><span>${where}</span><span class="cws">step ${st.step}/3</span></div>`;
     if(spot.kind==='between') h+=`<div class="cwmode"><button data-wm="between" class="${st.mode!=='branch'?'on':''}">Insert between</button><button data-wm="branch" class="${st.mode==='branch'?'on':''}">New branch</button></div>`;
     const anyFree = elements.some(e=>!illegalEl(e.id));
-    h+=`<div class="eltoks" style="gap:5px">${elements.map(e=>{ const bad=illegalEl(e.id); return eTok(e,{sel:st.el===e.id, dim:bad, data:`data-wel="${e.id}"${bad?' data-bad="1"':''}`}); }).join('')}</div>`;
+    h+=`<div class="eltoks" style="gap:5px">${elements.map(e=>{ const bad=illegalEl(e.id); return eDot(e,{sel:st.el===e.id, dim:bad, data:`data-wel="${e.id}"${bad?' data-bad="1"':''}`}); }).join('')}</div>`;
     if(!anyFree) h+=`<div class="ehint err" style="margin-top:5px">Every element already leads to an existing recipe here.</div>`;
     if(st.step>=2){ h+=`<div class="cwh" style="margin-top:9px">Type</div><div class="cwtypes">${WTYPES.map(t=>(spot.kind==='between'&&t[0]==='family')?'':`<button class="cwt ${st.type===t[0]?'on':''}" data-wt="${t[0]}">${t[1]}<span>${t[2]}</span><span class="cwtip">${t[3]}</span></button>`).join('')}</div>`; }
     if(st.step>=3){
@@ -2892,6 +2895,10 @@ const EL_INI = {};                       // short label per element: unique-enou
 function elInitials(){ const seen={}; elements.forEach(e=>{ let s=e.name.slice(0,1).toUpperCase(); if(seen[s]) s=e.name.slice(0,2); seen[e.name.slice(0,1).toUpperCase()]=1; EL_INI[e.id]=s; }); }
 function eTok(el, o){ o=o||{}; if(!el) return `<span class="eltok ${o.sel?'sel':''}" data-el="none" ${o.data||''} style="background:var(--bg);color:var(--muted);border-color:var(--border)" title="None">∅</span>`;
   return `<span class="eltok ${o.sel?'sel':''} ${o.dim?'dim':''}" data-el="${el.id}" ${o.data||''} style="background:${el.color}28;color:${el.color};border-color:${el.color}66" title="${escAttr(el.name)}"><span>${EL_INI[el.id]||''}</span></span>`; }
+// Compact dot-style element chip — used wherever an element is picked in tight UI (reach, wizards, variants, axes).
+function eDot(el, o){ o=o||{}; const cls=`rdot ${o.sel?'sel':''} ${o.dim?'dim':''}`;
+  if(!el) return `<span class="${cls}" data-el="none" ${o.data||''} title="None" style="background:var(--bg);border-color:var(--border)"></span>`;
+  return `<span class="${cls}" data-el="${el.id}" ${o.data||''} title="${escAttr(el.name)}" style="background:${el.color}"></span>`; }
 function nameExists(name, except){ return recipes.some(r=>r!==except && r.name.toLowerCase()===name.trim().toLowerCase()); }
 
 // Which last-step elements are free at this path (no sibling recipe already there).
@@ -2913,6 +2920,7 @@ function changeReach(seq, newEl){ const i=seq.length-1, oldEl=seq[i];
 }
 
 let editArmedDelete=false;
+let editOriginIdx=-1;
 function renderEditor(){
   const el=document.getElementById('editPanel'); if(!el) return; el.innerHTML='';
   if(!Object.keys(EL_INI).length || EL_INI.__n!==elements.length){ elInitials(); EL_INI.__n=elements.length; }
@@ -2935,7 +2943,7 @@ function renderEditor(){
   // Identity / type
   const badge = isGap?['⚠ UNNAMED','var(--danger)'] : isGrowth(r)?['🌱 CHAIN','var(--accent2)'] : isModifier(r)?['⊞ MODIFIER','var(--accent)'] : isFamily(r)?['🌿 FAMILY','var(--accent2)'] : (r.altOrigins&&r.altOrigins.length)?['⟂ MULTI-ORIGIN','var(--warn)'] : ['◆ BASIC','var(--accent)'];
   const typeChip = `<div class="etype" style="color:${badge[1]}">${badge[0]}</div>`;
-  const dotsHtml = `<div class="dots" style="margin-top:7px;display:flex;gap:3px">${seq.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</div>`;
+  const dotsHtml = `<div class="dots" style="margin-top:2px;display:flex;gap:3px">${seq.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</div>`;
 
   if(isGap){
     if(titleEl){ titleEl.value=''; titleEl.readOnly=false; titleEl.placeholder='Name this step…'; }
@@ -2945,11 +2953,13 @@ function renderEditor(){
   }
   if(titleEl){ titleEl.value=r.name; titleEl.readOnly=false; titleEl.placeholder=''; }
 
-  // Merged identity group: sequence + reached-via + description, no inner separators (name lives in the title bar)
+  // Merged identity group: sequence + reached-via + description + structure actions, no inner separators (name lives in the title bar)
+  const plainBasic = !isGrowth(r) && !isModifier(r) && !isFamily(r);
+  const structHtml = `<div class="erow" style="justify-content:center;margin-top:13px">${plainBasic?'<button class="btn btn-ghost btn-xs" id="eToChain">Convert to chain</button>':''}<button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>`;
   let reachHtml='';
   if(seq.length>=1){ const taken=reachTaken(seq), last=seq[seq.length-1];
-    reachHtml=`<div class="ezh" style="margin:10px 0 4px">Reached via <span class="ezi" title="Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.">ⓘ</span></div><div class="eltoks" id="eReach">${elements.map(e=>eTok(e,{sel:e.id===last,dim:taken.has(e.id)&&e.id!==last,data:`data-reach="${e.id}"`})).join('')}</div>`; }
-  h+=`<div class="ez" style="padding-top:5px"><div class="ehint" id="eNameHint"></div>${dotsHtml}${reachHtml}<textarea class="f edesc" id="eDesc" rows="2" placeholder="Optional description…" style="margin:10px 0 0">${escHtml(r.description||'')}</textarea></div>`;
+    reachHtml=`<div class="ezh" style="margin:12px 0 5px">Reached via <span class="ezi" title="Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.">ⓘ</span></div><div class="ereach" id="eReach">${elements.map(e=>`<span class="rdot ${e.id===last?'sel':''} ${taken.has(e.id)&&e.id!==last?'dim':''}" data-reach="${e.id}" title="${escAttr(e.name)}" style="background:${e.color}"></span>`).join('')}</div>`; }
+  h+=`<div class="ez" style="padding-top:2px">${dotsHtml}<div class="ehint" id="eNameHint" style="margin:2px 0 0"></div>${reachHtml}<textarea class="f edesc" id="eDesc" rows="2" placeholder="Optional description…" style="margin:12px 0 0">${escHtml(r.description||'')}</textarea>${structHtml}</div>`;
 
   let typeUsed=false;
 
@@ -2979,17 +2989,14 @@ function renderEditor(){
   if(origins.length>1){
     const chip = typeUsed?'':typeChip; if(!typeUsed) typeUsed=true;
     h+=`<div class="ez">${chip}`;
-    origins.forEach((o,i)=>{ if(i===0) return; const src=recipeBySeq(o.slice(0,-1)); const from='from <b style="color:var(--text)">'+(src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1))))+'</b>';
+    origins.forEach((o,i)=>{ if(i===0) return; const ai=i-1; const src=recipeBySeq(o.slice(0,-1)); const from='from <b style="color:var(--text)">'+(src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1))))+'</b>';
       h+=`<div class="eorigin"><span class="dots" style="display:flex;gap:3px">${o.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:11px;height:11px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</span>
-        <span class="ehint" style="margin:0">${from}</span><button class="btn btn-ghost btn-xs" data-orm="${i-1}" style="margin-left:auto">✕</button></div>`; });
+        <span class="ehint" style="margin:0">${from}</span><button class="btn btn-ghost btn-xs ${editOriginIdx===ai?'on':''}" data-ore="${ai}" style="margin-left:auto" title="Change connecting element">✎</button><button class="btn btn-ghost btn-xs" data-orm="${ai}" title="Remove origin">✕</button></div>`;
+      if(editOriginIdx===ai){ const last=o[o.length-1];
+        h+=`<div class="ereach" style="margin:3px 0 6px 2px">${elements.map(e=>{ const cand=o.slice(0,-1).concat([e.id]); const bad=e.id!==last && !!recipeByAnyOrigin(cand); return eDot(e,{sel:e.id===last,dim:bad,data:`data-ore2="${ai}"`}); }).join('')}</div>`; }
+    });
     h+=`</div>`;
   }
-
-  // Structure (no header; centered actions; basic type isn't labelled)
-  const plainBasic = !isGrowth(r) && !isModifier(r) && !isFamily(r);
-  h+=`<div class="ez" style="display:flex;justify-content:center"><div class="erow" style="justify-content:center">
-      ${plainBasic?'<button class="btn btn-ghost btn-xs" id="eToChain">Convert to chain</button>':''}
-      <button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div></div>`;
 
   el.innerHTML=h; wireEditor(S);
 }
@@ -3012,7 +3019,7 @@ function wireEditor(S){
   const grm=document.getElementById('eGapRm');
   if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ toast(err); return; } sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); };
 
-  document.querySelectorAll('#eReach .eltok').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
+  document.querySelectorAll('#eReach .rdot').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
     const err=changeReach(seq, p.dataset.reach); if(err){ toast(err); return; }
     const ns=seq.slice(); ns[ns.length-1]=p.dataset.reach; sel={seq:ns, recipe:recipeBySeq(ns)}; commit(); });
 
@@ -3070,7 +3077,7 @@ function wireEditor(S){
         <input class="ename" style="flex:1;font-size:.82rem;border-bottom-color:var(--border)" value="${escAttr(v.name)}" data-vn="${vi}">
         <span class="estep"><button data-vdec="${vi}">−</button><b>${v.stages}</b><button data-vinc="${vi}">+</button></span>
         <button class="btn btn-ghost btn-xs" data-vrm="${vi}">✕</button></div>
-        <div class="eltoks">${elements.map(e=>eTok(e,{sel:v.element===e.id,data:`data-vel="${vi}"`})).join('')}</div></div>`; }).join('');
+        <div class="eltoks">${elements.map(e=>eDot(e,{sel:v.element===e.id,data:`data-vel="${vi}"`})).join('')}</div></div>`; }).join('');
     vars.querySelectorAll('[data-vn]').forEach(i=>i.onchange=()=>{ pushHistory(); r.family[+i.dataset.vn].name=i.value.trim()||'Variant'; commit(); });
     const famSet=(vi,patch)=>{ const trial={sequence:r.sequence, family:r.family.map((x,j)=>j===vi?{...x,...patch}:x)};
       const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r); if(clash){ toast(`Collides with “${clash.name}”.`); return false; } return true; };
@@ -3093,7 +3100,7 @@ function wireEditor(S){
         <button class="btn btn-ghost btn-xs" data-rmax="${ai}">✕</button></div>
         ${folded?'':ax.options.map((o,oi)=>`<div class="eopt"><div class="erow"><input class="f" style="flex:1;margin:0;padding:4px 7px;font-size:.78rem" value="${escAttr(o.label)}" data-opl="${ai}-${oi}" placeholder="Option">
           <button class="btn btn-ghost btn-xs" data-rmop="${ai}-${oi}">✕</button></div>
-          <div class="eltoks" style="margin-top:5px">${elements.map(e=>eTok(e,{sel:(o.elements||[]).includes(e.id),data:`data-ope="${ai}-${oi}"`})).join('')}</div>
+          <div class="eltoks" style="margin-top:5px">${elements.map(e=>eDot(e,{sel:(o.elements||[]).includes(e.id),data:`data-ope="${ai}-${oi}"`})).join('')}</div>
           <div class="ehint" style="margin-top:3px">Tap elements this option adds (order: as tapped).</div></div>`).join('')+`<button class="btn btn-ghost btn-xs" data-addop="${ai}">+ option</button>`}
       </div>`; }).join('');
     axes.querySelectorAll('[data-fold]').forEach(b=>b.onclick=()=>{ r._fold[+b.dataset.fold]=!r._fold[+b.dataset.fold]; wireEditor(S); });
@@ -3120,7 +3127,15 @@ function wireEditor(S){
   }
 
   // origins remove
-  document.querySelectorAll('[data-orm]').forEach(b=>b.onclick=()=>{ pushHistory(); r.altOrigins.splice(+b.dataset.orm,1); commit(); });
+  document.querySelectorAll('[data-orm]').forEach(b=>b.onclick=()=>{ pushHistory(); r.altOrigins.splice(+b.dataset.orm,1); editOriginIdx=-1; commit(); });
+  document.querySelectorAll('[data-ore]').forEach(b=>b.onclick=()=>{ const ai=+b.dataset.ore; editOriginIdx = editOriginIdx===ai?-1:ai; renderEditor(); });
+  document.querySelectorAll('#editPanel [data-ore2]').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return; const ai=+p.dataset.ore2, eid=p.dataset.el;
+    const o=r.altOrigins[ai]; if(!o) return; if(o[o.length-1]===eid){ editOriginIdx=-1; renderEditor(); return; }
+    const cand=o.slice(0,-1).concat([eid]);
+    if(recipeByAnyOrigin(cand)){ toast('That path already exists.'); return; }
+    if((r.altOrigins||[]).some((x,j)=>j!==ai && x.join('\x1f')===cand.join('\x1f'))){ toast('Duplicate origin.'); return; }
+    if(r.sequence.join('\x1f')===cand.join('\x1f')){ toast('Same as the main path.'); return; }
+    pushHistory(); r.altOrigins[ai]=cand; editOriginIdx=-1; commit(); });
 
   // delete (inline two-step confirm)
   const del=document.getElementById('eDel');
