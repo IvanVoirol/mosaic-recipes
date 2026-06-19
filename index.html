@@ -384,6 +384,16 @@ canvas.dragging{cursor:grabbing;}
 .ereach{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
 .rdot{width:15px;height:15px;border-radius:50%;cursor:pointer;border:2px solid transparent;box-sizing:border-box;transition:transform .07s;}
 .rdot:hover{transform:scale(1.15);} .rdot.sel{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--text);} .rdot.dim{opacity:.12;cursor:not-allowed;filter:grayscale(.5);}
+.sqd{border-radius:50%;display:inline-block;}
+.xbar{color:var(--muted);font-weight:700;opacity:.6;font-size:.72rem;line-height:1;}
+.alt-list{background:#ffffff0a;border-radius:7px;padding:6px 8px;margin-top:11px;}
+.alt-rows{display:grid;grid-template-columns:auto auto auto auto;column-gap:6px;row-gap:2px;align-items:center;justify-content:center;}
+.alt-row{display:contents;}
+.alt-rows .btn-xs{padding:1px 5px;}
+.adots{display:inline-flex;align-items:center;gap:3px;justify-self:end;}
+.a-edit{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px;margin:1px 0 4px 2px;justify-content:center;}
+.aname{font-size:.64rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;justify-self:start;}
+.btn.on{background:#5b86d633;border-color:#5b86d6;color:#9cb8ee;}
 #nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
 #nodeEditClose:hover{color:var(--text);background:#ffffff14;}
 #el-legend{position:absolute;left:10px;bottom:10px;z-index:6;background:rgba(20,20,28,.86);border:1px solid var(--border);border-radius:10px;padding:7px 8px;backdrop-filter:blur(6px);max-width:250px;box-shadow:0 6px 20px #0006;}
@@ -731,7 +741,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.93';
+const APP_VERSION = 'v2.97';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -2868,7 +2878,7 @@ function wizCreate(spot, elId, type, name, link, mode){
       recipes.push(nr);
     }
     else if(type==='chain') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],growth:{element:elId,stages:4}});
-    else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Option',options:[{label:'None',elements:[]}]}]});
+    else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Axis',options:[{label:'None',elements:[]}]}]});
     else if(type==='family'){ const F={name,sequence:parentSeq.slice(),description:'',altOrigins:[],id:'fam'+Date.now(),family:[{name:'Variant 1',element:elId,stages:4}]}; recipes.push(F); palettes[pidx].recipes=recipes; sel={seq:[...parentSeq],recipe:F}; commit();
       const fn=layoutNodes.find(n=>n.isFamilyNode && n.recipe===F); if(fn) openNodeEditor(fn); return null; }
     palettes[pidx].recipes=recipes; sel={seq:newSeq,recipe:recipeBySeq(newSeq)}; commit(); return null;
@@ -2878,7 +2888,7 @@ function wizCreate(spot, elId, type, name, link, mode){
     const err=insertStepBefore(spot.childSeq.slice(), elId, count); if(err) return err;   // pushes history
     if(!recipeBySeq(newSeq)){
       if(type==='chain') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],growth:{element:elId,stages:count}});
-      else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Option',options:[{label:'None',elements:[]}]}]});
+      else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Axis',options:[{label:'None',elements:[]}]}]});
       else recipes.push({name,sequence:newSeq,description:'',altOrigins:[]});
     }
     palettes[pidx].recipes=recipes; sel={seq:newSeq,recipe:recipeBySeq(newSeq)}; commit(); return null;
@@ -2941,9 +2951,11 @@ function renderEditor(){
   }
 
   // Identity / type
-  const badge = isGap?['⚠ UNNAMED','var(--danger)'] : isGrowth(r)?['🌱 CHAIN','var(--accent2)'] : isModifier(r)?['⊞ MODIFIER','var(--accent)'] : isFamily(r)?['🌿 FAMILY','var(--accent2)'] : (r.altOrigins&&r.altOrigins.length)?['⟂ MULTI-ORIGIN','var(--warn)'] : ['◆ BASIC','var(--accent)'];
+  const badge = isGap?['⚠ UNNAMED','var(--danger)'] : isGrowth(r)?['🌱 CHAIN','var(--accent2)'] : isModifier(r)?['⊞ MODIFIER','var(--accent)'] : isFamily(r)?['🌿 FAMILY','var(--accent2)'] : ['◆ BASIC','var(--accent)'];
   const typeChip = `<div class="etype" style="color:${badge[1]}">${badge[0]}</div>`;
-  const dotsHtml = `<div class="dots" style="margin-top:2px;display:flex;gap:3px">${seq.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:13px;height:13px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</div>`;
+  // Render a path as dots, with a | just before the final (connecting) element — marks where it crosses into this recipe.
+  const seqBar = (sq,sz)=>sq.map((id,i)=>{const e=elements.find(x=>x.id===id);const bar=(i===sq.length-1&&sq.length>1)?'<span class="xbar">|</span>':'';return bar+`<span class="sqd" style="width:${sz}px;height:${sz}px;background:${e?e.color:'#555'}"></span>`;}).join('');
+  const dotsHtml = `<div class="dots" style="margin-top:2px;display:flex;align-items:center;gap:3px">${seqBar(seq,13)}</div>`;
 
   if(isGap){
     if(titleEl){ titleEl.value=''; titleEl.readOnly=false; titleEl.placeholder='Name this step…'; }
@@ -2959,17 +2971,30 @@ function renderEditor(){
   let reachHtml='';
   if(seq.length>=1){ const taken=reachTaken(seq), last=seq[seq.length-1];
     reachHtml=`<div class="ezh" style="margin:12px 0 5px">Reached via <span class="ezi" title="Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.">ⓘ</span></div><div class="ereach" id="eReach">${elements.map(e=>`<span class="rdot ${e.id===last?'sel':''} ${taken.has(e.id)&&e.id!==last?'dim':''}" data-reach="${e.id}" title="${escAttr(e.name)}" style="background:${e.color}"></span>`).join('')}</div>`; }
-  h+=`<div class="ez" style="padding-top:2px">${dotsHtml}<div class="ehint" id="eNameHint" style="margin:2px 0 0"></div>${reachHtml}<textarea class="f edesc" id="eDesc" rows="2" placeholder="Optional description…" style="margin:12px 0 0">${escHtml(r.description||'')}</textarea>${structHtml}</div>`;
+
+  // Alternate recipes (other origins) — compact, lighter panel, right under Reached via, no separator
+  let altHtml=''; const origins=recipeOrigins(r);
+  if(origins.length>1){
+    altHtml=`<div class="alt-list"><div class="ezh" style="margin:0 0 4px">alternate recipes</div><div class="alt-rows">`;
+    origins.forEach((o,i)=>{ if(i===0) return; const ai=i-1; const src=recipeBySeq(o.slice(0,-1));
+      const name=src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1)));
+      altHtml+=`<div class="alt-row"><span class="aname" title="from ${escAttr(name)}">from ${name}</span><span class="adots">${seqBar(o,10)}</span><button class="btn btn-ghost btn-xs ${editOriginIdx===ai?'on':''}" data-ore="${ai}" title="Change connecting element">✎</button><button class="btn btn-ghost btn-xs" data-orm="${ai}" title="Remove">✕</button></div>`;
+      if(editOriginIdx===ai){ const last=o[o.length-1];
+        altHtml+=`<div class="a-edit">${elements.map(e=>{ const cand=o.slice(0,-1).concat([e.id]); const bad=e.id!==last && !!recipeByAnyOrigin(cand); return eDot(e,{sel:e.id===last,dim:bad,data:`data-ore2="${ai}"`}); }).join('')}</div>`; }
+    });
+    altHtml+=`</div></div>`;
+  }
+  h+=`<div class="ez" style="padding-top:2px">${dotsHtml}<div class="ehint" id="eNameHint" style="margin:2px 0 0"></div>${reachHtml}${altHtml}<textarea class="f edesc" id="eDesc" rows="2" placeholder="Optional description…" style="margin:12px 0 0">${escHtml(r.description||'')}</textarea>${structHtml}</div>`;
 
   let typeUsed=false;
 
   // Type-specific
   if(isGrowth(r)){
-    const ge=elements.find(e=>e.id===r.growth.element);
     const key=seq.join('\x1f'); const stg=Math.min(r.growth.stages, growthStage[key]||r.growth.stages);
     typeUsed=true;
-    h+=`<div class="ez">${typeChip}<div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by <b style="color:var(--text)">${ge?ge.name:'?'}</b></span>
+    h+=`<div class="ez">${typeChip}<div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by</span>
         <span style="margin-left:auto;font-size:.74rem;color:var(--muted)">Stages</span><span class="estep"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
+        <div class="ereach" id="eGel" style="margin:6px 0 0">${elements.map(e=>{ let bad=false; if(e.id!==r.growth.element){ for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(e.id))); if(occ&&occ!==r){bad=true;break;} } } return eDot(e,{sel:e.id===r.growth.element,dim:bad,data:`data-cgel="${e.id}"`}); }).join('')}</div>
         <div class="eltoks" id="eStagePips" style="margin-top:8px">${Array.from({length:Math.min(r.growth.stages,12)},(_,i)=>i+1).map(k=>`<span class="eltok ${k===stg?'sel':''}" data-stage="${k}" style="background:var(--bg);border-color:var(--border);color:${k===stg?'var(--accent)':'var(--muted)'}">${k}</span>`).join('')}</div>
         <div class="erow" style="margin-top:8px"><button class="btn btn-ghost btn-xs" id="ePromoteStage">⑂ Promote stage ${stg}</button><button class="btn btn-ghost btn-xs" id="eToBasic">Convert to basic</button></div></div>`;
   } else if(isFamily(r)){
@@ -2980,22 +3005,7 @@ function renderEditor(){
   } else if(isModifier(r)){
     typeUsed=true;
     h+=`<div class="ez">${typeChip}<div class="ezh">Option axes</div><div id="eAxes"></div>
-        <button class="btn btn-ghost btn-xs" id="eAddAxis" style="margin-top:6px">+ axis</button></div>
-       <div class="ez"><div class="ezh">Promote a combination</div><div id="eCombo"></div></div>`;
-  }
-
-  // Origins (alternates only — the canonical one is the node shown at the top)
-  const origins=recipeOrigins(r);
-  if(origins.length>1){
-    const chip = typeUsed?'':typeChip; if(!typeUsed) typeUsed=true;
-    h+=`<div class="ez">${chip}`;
-    origins.forEach((o,i)=>{ if(i===0) return; const ai=i-1; const src=recipeBySeq(o.slice(0,-1)); const from='from <b style="color:var(--text)">'+(src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1))))+'</b>';
-      h+=`<div class="eorigin"><span class="dots" style="display:flex;gap:3px">${o.map(id=>{const e=elements.find(x=>x.id===id);return `<span style="width:11px;height:11px;border-radius:50%;display:inline-block;background:${e?e.color:'#555'}"></span>`;}).join('')}</span>
-        <span class="ehint" style="margin:0">${from}</span><button class="btn btn-ghost btn-xs ${editOriginIdx===ai?'on':''}" data-ore="${ai}" style="margin-left:auto" title="Change connecting element">✎</button><button class="btn btn-ghost btn-xs" data-orm="${ai}" title="Remove origin">✕</button></div>`;
-      if(editOriginIdx===ai){ const last=o[o.length-1];
-        h+=`<div class="ereach" style="margin:3px 0 6px 2px">${elements.map(e=>{ const cand=o.slice(0,-1).concat([e.id]); const bad=e.id!==last && !!recipeByAnyOrigin(cand); return eDot(e,{sel:e.id===last,dim:bad,data:`data-ore2="${ai}"`}); }).join('')}</div>`; }
-    });
-    h+=`</div>`;
+        <button class="btn btn-ghost btn-xs" id="eAddAxis" style="margin-top:6px">+ axis</button></div>`;
   }
 
   el.innerHTML=h; wireEditor(S);
@@ -3032,6 +3042,9 @@ function wireEditor(S){
     document.getElementById('eCinc').onclick=()=>setStg(r.growth.stages+1); }
   const key=seq.join('\x1f');
   document.querySelectorAll('#eStagePips .eltok').forEach(p=>p.onclick=()=>{ growthStage[key]=+p.dataset.stage; renderEditor(); });
+  document.querySelectorAll('#eGel [data-cgel]').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return; const eid=p.dataset.el; if(r.growth.element===eid)return;
+    for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(eid))); if(occ&&occ!==r){ toast(`Collides with “${occ.name}”.`); return; } }
+    pushHistory(); r.growth.element=eid; commit(); });
   const eToBasic=document.getElementById('eToBasic'); if(eToBasic) eToBasic.onclick=()=>{
     const base=r.sequence.slice(), el=r.growth.element, drop=r.growth.stages-1;
     const thru=(arr)=> arr.length>base.length && base.every((e,i)=>arr[i]===e);
@@ -3115,15 +3128,6 @@ function wireEditor(S){
     axes.querySelectorAll('[data-rmax]').forEach(b=>b.onclick=()=>{ if(r.modifiers.length<=1){toast('A modifier needs ≥1 axis');return;} const a=+b.dataset.rmax; pushHistory(); r.modifiers.splice(a,1); r._fold.splice(a,1); commit(); });
     axes.querySelectorAll('[data-addop]').forEach(b=>b.onclick=()=>{ pushHistory(); r.modifiers[+b.dataset.addop].options.push({label:'New option',elements:[]}); commit(); });
     const aa=document.getElementById('eAddAxis'); if(aa) aa.onclick=()=>{ pushHistory(); r.modifiers.push({name:'New axis',options:[{label:'None',elements:[]},{label:'Option',elements:[]}]}); r._fold.push(false); commit(); };
-    // promote combination
-    const combo=document.getElementById('eCombo'); const mkey=seq.join('\x1f'); const selv=modSelFor(r,mkey);
-    combo.innerHTML=r.modifiers.map((ax,ai)=>`<div class="erow" style="margin-bottom:4px"><span class="ehint" style="margin:0;min-width:50px">${escHtml(ax.name)}</span><span class="seg" style="flex:1">${ax.options.map((o,oi)=>`<button class="${selv[ai]===oi?'on':''}" data-msel="${ai}-${oi}">${escHtml(o.label)}</button>`).join('')}</span></div>`).join('')
-      +`<button class="btn btn-ghost btn-xs" id="ePromote" style="margin-top:6px">⑂ Promote this combination</button>`;
-    combo.querySelectorAll('[data-msel]').forEach(b=>b.onclick=()=>{ const[a,o]=b.dataset.msel.split('-').map(Number); const v=modSelFor(r,mkey).slice(); v[a]=o; modSel[mkey]=v; wireEditor(S); });
-    const pb=document.getElementById('ePromote'); if(pb) pb.onclick=()=>{ const v=modSelFor(r,mkey); const c=modCombos(r).find(x=>x.opts.join(',')===v.join(',')); if(!c||!c.seq.length||c.seq.join('\x1f')===r.sequence.join('\x1f')){ toast('Pick a non-empty combination.'); return; }
-      if(recipeBySeq(c.seq)){ toast('That combination is already its own recipe.'); return; }
-      let base=comboName(r,c.labels), name=base, n=2; while(recipes.find(x=>x.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
-      pushHistory(); const nr={name,sequence:[...c.seq],description:'',altOrigins:[]}; recipes.push(nr); palettes[pidx].recipes=recipes; sel={seq:[...c.seq],recipe:nr}; commit(); };
   }
 
   // origins remove
