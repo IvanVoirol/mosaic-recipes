@@ -744,7 +744,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.04';
+const APP_VERSION = 'v3.05';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1071,7 +1071,10 @@ function buildTrie() {
 // Place each family recipe as a synthetic node under its parent, and collapse any real
 // onward-children that build from a variant's last stage onto that family node.
 function injectFamilies(root){
-  recipes.filter(isFamily).forEach((F)=>{
+  // Deepest-first: a family nested under another family's variant must attach to the real
+  // parent node BEFORE its ancestor family reparents that subtree — otherwise its base path
+  // is no longer reachable and it would be rebuilt as a detached duplicate stem.
+  recipes.filter(isFamily).slice().sort((a,b)=>b.sequence.length-a.sequence.length).forEach((F)=>{
     let parent = findNode(root, F.sequence);
     if(!parent){
       // The base path isn't contributed by any non-family recipe (e.g. a chain folded into a
