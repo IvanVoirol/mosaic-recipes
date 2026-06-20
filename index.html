@@ -347,8 +347,6 @@ canvas.dragging{cursor:grabbing;}
 .cstub i{display:block;height:0;flex:1;}
 .cstub .cstub-solid{border-top:1.5px solid var(--muted);opacity:.75;}
 .cstub .cstub-dot{border-top:1.5px dashed var(--muted);opacity:.55;}
-.cnedit{width:21px;height:21px;border-radius:6px;background:var(--panel);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:.74rem;display:none;align-items:center;justify-content:center;}
-.cnedit:hover{color:var(--accent);border-color:var(--accent);background:#9d7fea1a;}
 .cplus.conn{background:#5b86d6;width:17px;height:17px;} .cplus.conn:hover{background:#7aa2ff;}
 .cplus.conn::before{width:8px;left:4.5px;top:7.5px;} .cplus.conn::after{height:8px;left:7.5px;top:4.5px;}
 .conn-label{position:absolute;transform:translate(-50%,-50%);z-index:11;background:rgba(16,16,24,.96);border:1px solid #7aa2ff66;color:#dfe6ff;font-size:9.5px;font-weight:600;padding:1px 5px;border-radius:5px;pointer-events:none;white-space:nowrap;box-shadow:0 2px 8px #0007;}
@@ -640,7 +638,7 @@ canvas.dragging{cursor:grabbing;}
         <button class="btn-icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
       </div>
       <span id="cvs-hud"><span class="appver" id="appVer"></span><span id="syncStatus" class="sync" title="Storage status"></span></span>
-      <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select · ✎ to edit</div>
+      <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select &amp; edit</div>
       <div id="el-legend"></div>
       <div id="empty-hint" style="display:none">Hover <b>▶ Start</b> and click the <b>＋</b> to add your first recipe.</div>
       <canvas id="minimap" width="158" height="106" title="Overview — click or drag to navigate"></canvas>
@@ -746,7 +744,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.01';
+const APP_VERSION = 'v3.03';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -2663,10 +2661,7 @@ function placeConnLabels(){
   });
   for(let i=pi;i<connLabelPool.length;i++){ connLabelPool[i].style.display='none'; }
 }
-const editBtn=document.createElement('button'); editBtn.className='cnedit'; editBtn.textContent='✎'; editBtn.style.display='none';
-editBtn.onclick=ev=>{ ev.stopPropagation(); const n=editBtn._node; if(!n)return;
-  openNodeEditor(n, parseFloat(editBtn.style.left)+24, parseFloat(editBtn.style.top)); };
-cvsOverlay.appendChild(editBtn);
+// (Removed the per-node ✎ overlay button — clicking a node already opens the editor.)
 // ── unified target-picking: a node is chosen by clicking the canvas OR a list, with valid endpoints lit ──
 function setTargeting(validKeys, anchorKey, onPick){ targeting={validKeys, anchorKey, onPick}; cvs.style.cursor='crosshair'; repaint(); }
 function clearTargeting(){ if(!targeting) return; targeting=null; cvs.style.cursor='grab'; repaint(); }
@@ -2773,7 +2768,7 @@ document.addEventListener('keydown', e=>{ if(e.key!=='Escape') return;
     editWin.style.top=Math.max(0, Math.min(e.clientY-wr.top-oy, wrap.clientHeight-40))+'px'; });
   window.addEventListener('mouseup', ()=>{ if(dr){ dr=false; editWinPos={x:parseFloat(editWin.style.left)||14, y:parseFloat(editWin.style.top)||14}; } });
 })();
-function hideOverlay(){ plusPool.forEach(b=>b.style.display='none'); stubPool.forEach(s=>s.style.display='none'); editBtn.style.display='none'; }
+function hideOverlay(){ plusPool.forEach(b=>b.style.display='none'); stubPool.forEach(s=>s.style.display='none'); }
 const IS_TOUCH = (typeof matchMedia==='function' && matchMedia('(pointer:coarse)').matches);
 let lastMouse=null, mouseInWrap=false;
 // Position the ＋ / ✎ overlay for the last known cursor position. Called on mousemove AND on every
@@ -2785,9 +2780,6 @@ function refreshDesktopOverlay(){
   const near=[]; plusSpots.forEach(sp=>{ const s=w2s(sp.wx,sp.wy); const d=Math.hypot(s.x-mx,s.y-my); if(d<55) near.push({sp,s,d}); });
   near.sort((a,b)=>a.d-b.d); const show=near.slice(0,8);
   plusPool.forEach((b,i)=>{ if(i<show.length){ placePlus(b,i,show[i].sp); } else { b.style.display='none'; getStub(i).style.display='none'; } });
-  const node=nodeAt(mx,my);
-  if(node && node.sequence && node.sequence.length){ const s=w2s(node.lx+NW, node.ly+nodeHeight(node)); editBtn.style.left=(s.x-23)+'px'; editBtn.style.top=(s.y-23)+'px'; editBtn.style.display='flex'; editBtn._node=node; }
-  else editBtn.style.display='none';
 }
 wrap.addEventListener('mousemove', e=>{
   if(IS_TOUCH) return;
@@ -2799,8 +2791,6 @@ if(!IS_TOUCH) wrap.addEventListener('mouseleave', ()=>{ mouseInWrap=false; hideO
 function showTouchOverlay(){ hideOverlay(); if(viewMode!=='edit'||!sel||targeting) return; const selK=(sel.seq||[]).join('\x1f');
   const adj=plusSpots.filter(sp=> (sp.parentSeq && sp.parentSeq.join('\x1f')===selK) || (sp.kind==='conn' && sp.node.key===selK));
   adj.forEach((sp,i)=>{ placePlus(getPlus(i), i, sp); });
-  const node=layoutNodes.find(n=>n.sequence.join('\x1f')===selK && n.sequence.length);
-  if(node){ const s=w2s(node.lx+NW, node.ly+nodeHeight(node)); editBtn.style.left=(s.x-23)+'px'; editBtn.style.top=(s.y-23)+'px'; editBtn.style.display='flex'; editBtn._node=node; }
 }
 
 // ── wizard popover ──
@@ -2839,7 +2829,7 @@ function openWizard(anchor, spot){ closeWizard(); closeConnWizard();
       if(st.type==='connect'){ h+=`<div class="cwh" style="margin-top:9px">Link to existing recipe</div><input class="f" id="wq" placeholder="Search…" style="margin:0"><div class="cwlist" id="wlist"></div>`; }
       else { h+=`<div class="cwh" style="margin-top:9px">Name</div><input class="f" id="wn" placeholder="${st.type} name…" value="${escAttr(st.name)}" style="margin:0"><div class="ehint" id="wnh"></div>`; }
     }
-    h+=`<div class="erow" style="margin-top:9px"><button class="btn btn-accent btn-sm" id="wok">${st.step<3?'Next':(st.type==='connect'?'Link':'Add '+st.type)}</button><button class="btn btn-ghost btn-sm" id="wcancel">Cancel</button></div>`;
+    h+=`<div class="erow" style="margin-top:9px">${st.step>=3?`<button class="btn btn-accent btn-sm" id="wok">${st.type==='connect'?'Link':'Add '+st.type}</button>`:''}<button class="btn btn-ghost btn-sm" id="wcancel">Cancel</button></div>`;
     pop.innerHTML=h;
     pop.querySelectorAll('[data-wm]').forEach(b=>b.onclick=()=>{ st.mode=b.dataset.wm; st.el=null; st.step=1; draw(); });
     pop.querySelectorAll('[data-wel]').forEach(p=>p.onclick=()=>{ if(p.dataset.bad){ toast('That element already leads to an existing recipe here.','err'); return; } st.el=p.dataset.wel; st.step=Math.max(st.step,2); draw();});
@@ -2848,8 +2838,8 @@ function openWizard(anchor, spot){ closeWizard(); closeConnWizard();
     const wq=pop.querySelector('#wq'); if(wq){ fillWList(''); wq.oninput=()=>fillWList(wq.value);
       wq.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); const items=recipes.filter(r=>r.name.toLowerCase().includes((wq.value||'').toLowerCase())); if(items.length){ st.link=items[0]; fillWList(wq.value); } } }; }
     pop.querySelector('#wcancel').onclick=closeWizard;
-    pop.querySelector('#wok').onclick=()=>{ if(st.step<3){ if(st.step===1&&!st.el){return;} st.step++; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0); return; }
-      const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link, st.mode); if(err){ toast(err); return; } closeWizard(); };
+    { const wokBtn=pop.querySelector('#wok'); if(wokBtn) wokBtn.onclick=()=>{
+      const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link, st.mode); if(err){ toast(err); return; } closeWizard(); }; }
     if(st.step>=3 && st.type==='connect'){ setTargeting(new Set(layoutNodes.filter(n=>n.recipe).map(n=>n.key)), null, node=>{ st.link=node.recipe; draw(); }); }
     else if(targeting) clearTargeting();
     clampPop();
@@ -3006,7 +2996,8 @@ function renderEditor(){
     const ge=elements.find(e=>e.id===r.growth.element);
     h+=`<div class="ez">${typeChip}<div class="evar"><div class="erow" style="margin-bottom:6px"><span class="vdot" style="background:${ge?ge.color:'#555'}"></span>
         <span class="estep" style="margin-left:auto"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
-        <div class="eltoks" id="eGel">${elements.map(e=>{ let bad=false; if(e.id!==r.growth.element){ for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(e.id))); if(occ&&occ!==r){bad=true;break;} } } return eDot(e,{sel:e.id===r.growth.element,dim:bad,data:`data-cgel="${e.id}"`}); }).join('')}</div></div></div>`;
+        <div class="eltoks" id="eGel">${elements.map(e=>{ let bad=false; if(e.id!==r.growth.element){ for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(e.id))); if(occ&&occ!==r){bad=true;break;} } } return eDot(e,{sel:e.id===r.growth.element,dim:bad,data:`data-cgel="${e.id}"`}); }).join('')}</div></div>
+        <button class="btn btn-ghost btn-xs" id="eGrowVar" style="margin-top:6px">+ variant</button></div>`;
   } else if(isFamily(r)){
     const full=r.family.length>=elements.length; typeUsed=true;
     h+=`<div class="ez">${typeChip}<div id="eVars"></div>
@@ -3068,6 +3059,29 @@ function wireEditor(S){
     proposed.forEach(({x,s})=>{ x.sequence=s; });
     recipes.forEach(x=>{ (x.altOrigins||[]).forEach(o=>{ if(thru(o)&&hasRun(o)) o.splice(base.length,drop); }); });
     delete r.growth; commit(); };
+  const gv=document.getElementById('eGrowVar'); if(gv) gv.onclick=()=>{
+    const B=r.sequence.slice(), E=r.growth.element, S=r.growth.stages;
+    const free=elements.find(e=>e.id!==E && !B.includes(e.id)) || elements.find(e=>e.id!==E);
+    if(!free){ toast('No other element to branch into.'); return; }
+    const endsInE = B.length>0 && B[B.length-1]===E;
+    if(endsInE){
+      // fold: the family roots one element up; the original series becomes variant 1 — same sequences
+      const famBase=B.slice(0,-1);
+      const vars=[{name:r.name, element:E, stages:S},{name:'Variant', element:free.id, stages:S}];
+      const trial={sequence:famBase, family:vars};
+      const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r);
+      if(clash){ toast(`New branch collides with “${clash.name}”.`); return; }
+      pushHistory(); r.sequence=famBase; delete r.growth; r.family=vars; commit();
+    } else {
+      // base doesn't end in the growth element: keep base as its own recipe, hang a family of the tips off it
+      const vars=[{name:r.name, element:E, stages:Math.max(1,S-1)},{name:'Variant', element:free.id, stages:Math.max(1,S-1)}];
+      const trial={sequence:B, family:vars};
+      const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r);
+      if(clash){ toast(`New branch collides with “${clash.name}”.`); return; }
+      pushHistory(); delete r.growth; const fam={name:r.name+' family', sequence:B.slice(), description:'', altOrigins:[], family:vars};
+      recipes.push(fam); palettes[pidx].recipes=recipes; sel={seq:B.slice(), recipe:fam}; commit();
+    }
+  };
   const eToChain=document.getElementById('eToChain');
   if(eToChain) eToChain.onclick=()=>{ const el=seq[seq.length-1]; const base=r.sequence.slice();
     let n=0;
