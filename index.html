@@ -321,6 +321,8 @@ canvas.dragging{cursor:grabbing;}
 .eidrow{display:flex;align-items:center;gap:8px;}
 .ebadge{font-size:.54rem;text-transform:uppercase;letter-spacing:.05em;border-radius:99px;padding:2px 8px;font-weight:700;white-space:nowrap;}
 .ename{flex:1;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:inherit;font-size:1rem;font-weight:600;padding:2px 0;}
+.einp{flex:1;min-width:0;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font:inherit;padding:3px 0;}
+.einp:focus{outline:none;border-bottom-color:var(--accent);}
 .ename:hover{border-bottom-color:var(--border);} .ename:focus{outline:none;border-bottom-color:var(--accent);}
 .eltok{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 5px;border-radius:99px;font-size:.58rem;font-weight:700;cursor:pointer;border:1.5px solid transparent;user-select:none;transition:transform .07s;white-space:nowrap;}
 .eltok span{font-size:.54rem;} .eltok:hover{transform:scale(1.1);} .eltok.sel{outline:2px solid var(--accent);outline-offset:1px;} .eltok.dim{opacity:.32;cursor:not-allowed;}
@@ -330,8 +332,9 @@ canvas.dragging{cursor:grabbing;}
 .estep button{width:24px;height:26px;border:none;background:transparent;color:var(--muted);font-size:1rem;cursor:pointer;} .estep button:hover{background:var(--accent);color:#0c0c10;} .estep b{min-width:24px;text-align:center;font-size:.82rem;}
 .ehint{font-size:.7rem;color:var(--muted);margin-top:3px;line-height:1.4;} .ehint.err{color:var(--danger);} .ehint.ok{color:var(--accent2);}
 .evar{background:#ffffff08;border-radius:8px;padding:7px 8px;margin-bottom:7px;}
-.eax{border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:8px;}
-.eopt{background:#ffffff08;border-radius:7px;padding:6px 7px;margin-bottom:5px;}
+.vdot{width:13px;height:13px;border-radius:50%;display:inline-block;flex:0 0 auto;}
+.eax{background:#ffffff08;border-radius:8px;padding:8px;margin-bottom:8px;}
+.eopt{background:#ffffff12;border-radius:7px;padding:6px 7px;margin-bottom:5px;}
 .eorigin{display:flex;align-items:center;gap:7px;font-size:.76rem;padding:2px 0;}
 /* canvas + overlay */
 #cvs-overlay{position:absolute;inset:0;pointer-events:none;z-index:5;}
@@ -378,21 +381,23 @@ canvas.dragging{cursor:grabbing;}
   background:var(--surface);border:1px solid var(--accent);border-radius:13px;box-shadow:0 18px 56px #000b;overflow:hidden;}
 #nodeEditWin .tscroll{flex:1;overflow-y:auto;padding:0;}
 #nodeEditHead{display:flex;align-items:center;gap:8px;padding:9px 12px 2px;border-bottom:none;background:var(--panel);user-select:none;cursor:move;}
-#nodeEditTitle{flex:1;min-width:0;font:inherit;font-size:.82rem;font-weight:700;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 0;}
+#nodeEditTitle{flex:1;min-width:0;font:inherit;font-size:1rem;font-weight:700;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 0;}
 #nodeEditTitle:not([readonly]):hover{border-bottom-color:var(--border);} #nodeEditTitle:focus{outline:none;border-bottom-color:var(--accent);} #nodeEditTitle[readonly]{cursor:move;}
-.edesc{font-size:.72rem;line-height:1.35;resize:vertical;min-height:2.6em;font-family:inherit;}
-.ereach{display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.edesc{font-size:.72rem;line-height:1.35;resize:vertical;min-height:2.6em;font-family:inherit;color:var(--muted);opacity:.85;}
+.reach-row{display:flex;align-items:center;gap:8px;margin-top:2px;}
+.reach-ed{margin-left:auto;}
 .rdot{width:15px;height:15px;border-radius:50%;cursor:pointer;border:2px solid transparent;box-sizing:border-box;transition:transform .07s;}
 .rdot:hover{transform:scale(1.15);} .rdot.sel{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--text);} .rdot.dim{opacity:.12;cursor:not-allowed;filter:grayscale(.5);}
 .sqd{border-radius:50%;display:inline-block;}
 .xbar{color:var(--muted);font-weight:700;opacity:.6;font-size:.72rem;line-height:1;}
-.alt-list{background:#ffffff0a;border-radius:7px;padding:6px 8px;margin-top:11px;}
-.alt-rows{display:grid;grid-template-columns:auto auto auto auto;column-gap:6px;row-gap:2px;align-items:center;justify-content:center;}
+.alt-list{background:#ffffff08;border-radius:7px;padding:6px 8px;margin-top:11px;}
+.alt-rows{display:grid;grid-template-columns:1fr auto 1fr;column-gap:6px;row-gap:2px;align-items:center;}
 .alt-row{display:contents;}
 .alt-rows .btn-xs{padding:1px 5px;}
-.adots{display:inline-flex;align-items:center;gap:3px;justify-self:end;}
-.a-edit{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px;margin:1px 0 4px 2px;justify-content:center;}
-.aname{font-size:.64rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;justify-self:start;}
+.aname{grid-column:1;justify-self:start;font-size:.64rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;}
+.adots{grid-column:2;justify-self:end;display:inline-flex;align-items:center;gap:3px;}
+.abtns{grid-column:3;justify-self:end;display:inline-flex;gap:4px;}
+.a-edit{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px;margin:1px 0 4px;justify-content:center;}
 .btn.on{background:#5b86d633;border-color:#5b86d6;color:#9cb8ee;}
 #nodeEditClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;}
 #nodeEditClose:hover{color:var(--text);background:#ffffff14;}
@@ -741,7 +746,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v2.97';
+const APP_VERSION = 'v3.01';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1144,8 +1149,19 @@ function growthStageSeq(r, k){ return r.sequence.concat(Array(Math.max(0, k-1)).
 // PARENT path. Variant v, stage k (1..stages): seq = sequence + element×k. Variants are
 // virtual (computed); the family node is a synthetic child drawn under the parent.
 function isFamily(r){ return !!(r && Array.isArray(r.family) && r.family.length); }
-function familyVarSeq(r, vi, k){ const v=r.family[vi]; return r.sequence.concat(Array(Math.max(0,k)).fill(v.element)); }
-function familyVarLast(r, vi){ return familyVarSeq(r, vi, r.family[vi].stages); }
+// A chain renders exactly like a family with ONE variant. famVariants() unifies them;
+// a chain variant's stage k = base + element×(k-1) (stage 1 = the base itself), so the
+// per-variant seq helpers dispatch through growthStageSeq for chains.
+function isFamilyLike(r){ return isFamily(r) || isGrowth(r); }
+function famVariants(r){ if(isFamily(r)) return r.family;
+  if(isGrowth(r)) return [{name:r.name, element:r.growth.element, stages:r.growth.stages, _chain:true}];
+  return []; }
+function isFamZone(node){ return !!(node && (node.isFamilyNode || (node.recipe && isGrowth(node.recipe) && !isFamily(node.recipe)))); }
+function famOutOf(node){ if(node.isFamilyNode) return node.famOut||[];
+  if(node.recipe && isGrowth(node.recipe)) return Object.entries(node.children).map(([el,child])=>({vi:0, el, child}));
+  return []; }
+function familyVarSeq(r, vi, k){ if(isGrowth(r)&&!isFamily(r)) return growthStageSeq(r,k); const v=r.family[vi]; return r.sequence.concat(Array(Math.max(0,k)).fill(v.element)); }
+function familyVarLast(r, vi){ return familyVarSeq(r, vi, famVariants(r)[vi].stages); }
 function familyOccupied(r){ const out=[]; if(isFamily(r)) r.family.forEach((v,vi)=>{ for(let k=1;k<=v.stages;k++) out.push(familyVarSeq(r,vi,k)); }); return out; }
 
 // Every sequence a recipe "owns": canonical, alternates, growth stages, modifier combos, family variants.
@@ -1630,13 +1646,13 @@ function drawFamilyEdges(parent, fam){
   });
 }
 function drawEdge(parent, child) {
-  if(child.isFamilyNode){ drawFamilyEdges(parent, child); return; }
+  if(isFamZone(child)){ drawFamilyEdges(parent, child); return; }
   const el = elements.find(e => e.id === child.edgeEl);
   const color = el ? el.color : '#606080';
   const isGap = child.recipe === null;
   let sx = parent.lx + (parent.key === '' ? NW/2 : NW), sy = parent.ly + (parent.key===''?NH:nodeHeight(parent))/2;
-  if (parent.isFamilyNode && parent.famOut){
-    const fo = parent.famOut.find(f=>f.child===child);
+  if (isFamZone(parent)){
+    const fo = famOutOf(parent).find(f=>f.child===child);
     if (fo){ const ry = (parent._famrowY && parent._famrowY[fo.vi]); sy = (ry!=null?ry:parent.ly + 26 + fo.vi*18 + 7); }
   }
   if (parent._childExit && parent._childExit[child.key]){ const ce=parent._childExit[child.key]; sx=ce.x; sy=ce.y; }
@@ -1719,9 +1735,9 @@ function famVarKey(node,vi){ return node.key+'\x1f'+vi; }
 function isVarExpanded(node,vi){ return famVarSet.has(famVarKey(node,vi)); }
 function toggleVar(node,vi){ const k=famVarKey(node,vi); if(famVarSet.has(k))famVarSet.delete(k); else famVarSet.add(k); saveFamVar(); drawTree(); }
 function isExpandable(r){ return !!(r && (isGrowth(r)||isFamily(r)||isModifier(r))); }
-function isNodeExpanded(node){ if(node && node.isFamilyNode) return true;   // families always show their variant zone
+function isNodeExpanded(node){ if(isFamZone(node)) return true;   // families & chains always show their variant zone
   return !!(node && node.key && node.recipe && isExpandable(node.recipe) && expandedSet.has(node.key)); }
-function toggleExpand(node){ if(!node||!isExpandable(node.recipe)||node.isFamilyNode) return;
+function toggleExpand(node){ if(!node||!isExpandable(node.recipe)||isFamZone(node)) return;
   if(expandedSet.has(node.key)) expandedSet.delete(node.key); else expandedSet.add(node.key);
   saveExpanded(); drawTree(); }
 
@@ -1731,12 +1747,10 @@ const ZHEAD=24, ZGV=14, ZPAD=9;            // zone header height, internal row g
 function slimDims(node){ const r=node.recipe;
   const MICOL=130, MLH=22, MPW=104, dd=10, dg=4, AXH=15, ZP=ZPAD;
   const labelSlot=labels=>{ ctx.save(); ctx.font='600 10px sans-serif'; let m=0; labels.forEach(l=>{ const v=ctx.measureText(l||'').width; if(v>m)m=v; }); ctx.restore(); return Math.max(40, Math.min(160, Math.ceil(m)+16)); };
-  if(isGrowth(r)){ const S=r.growth.stages, B=r.sequence.length, maxEls=B+(S-1), LS=28, BW=LS+maxEls*(dd+dg)+18;
-    return {type:'chain', S, B, LS, BW, rows:S, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:BW+2*ZP, h:ZHEAD+AXH+S*MLH+8}; }
-  if(isFamily(r)){ const key=node.key, V=r.family.length, B=r.sequence.length;
-    const vstages=r.family.map((v,vi)=> (famVarSet.has(key+'\x1f'+vi) && v.stages>=2) ? v.stages : 1);
+  if(isFamilyLike(r)){ const key=node.key, vars=famVariants(r), V=vars.length, B=r.sequence.length;
+    const vstages=vars.map((v,vi)=> (famVarSet.has(key+'\x1f'+vi) && v.stages>=2) ? v.stages : 1);
     const totalRows=Math.max(1, vstages.reduce((a,b)=>a+b,0));
-    const maxEls=B+Math.max(1,...r.family.map(v=>v.stages)), CW=16, LPAD=11, LS=labelSlot(r.family.map(v=>v.name));
+    const maxEls=B+Math.max(1,...vars.map((v,vi)=> familyVarSeq(r,vi,v.stages).length - B)), CW=16, LPAD=11, LS=labelSlot(vars.map(v=>v.name));
     const BW=Math.max(NW, LPAD+LS+maxEls*(dd+dg)+8+CW+4);
     return {type:'family', V, vstages, totalRows, B, CW, LPAD, LS, BW, rows:totalRows, maxEls, MICOL, MLH, MPW, dd, dg, AXH, w:BW, h:ZHEAD+totalRows*MLH+8}; }
   const A=r.modifiers.length, B=r.sequence.length, combos=modCombos(r), rows=Math.max(1,combos.length);
@@ -1754,34 +1768,25 @@ function compositeInternals(node){
   const rowTop=ri=>top+ri*MLH, rowCY=ri=>top+ri*MLH+MLH/2;
   const entryY=top+d.rows*MLH/2;   // where an incoming edge should meet the zone
   const nodes=[], edges=[], headers=[], childExit={}, famrowY={};
-  if(d.type==='chain'){
-    const S=d.S, rows=[];
-    for(let k=1;k<=S;k++) rows.push({label:String(k), seq:growthStageSeq(r,k), top:rowTop(k-1), cy:rowCY(k-1)});
-    const box={x:x0, y:top, w:BW, h:S*MLH, rows};
-    headers.push({cx:x0+BW/2, name:'Stage'});
-    const ry=rowCY(S-1);
-    Object.values(node.children).forEach(c=>{ childExit[c.key]={x:x0+BW, y:ry}; });
-    // the chain's growth element belongs on the dark band from stage 1, so e.g. stage 3 shows 3 banded dots
-    const chainB = B - (r.sequence.length && r.sequence[r.sequence.length-1]===r.growth.element ? 1 : 0);
-    return { slim:true, nodes, edges, box, headers, headerY, childExit, B:chainB, LS, dd, dg, famrowY, entryY };
-  }
   if(d.type==='family'){
-    const boxX=x0, CW=d.CW, vstages=d.vstages, totalRows=d.totalRows;
+    const boxX=x0, CW=d.CW, vstages=d.vstages, totalRows=d.totalRows, vars=famVariants(r), chain=isGrowth(r)&&!isFamily(r);
     const ftop=node.ly+ZHEAD;                                   // rows sit under a node-style title bar
     const fRowTop=ri=>ftop+ri*MLH, fRowCY=ri=>ftop+ri*MLH+MLH/2;
     const rows=[], carets=[], varIn=[]; let ri=0;
-    r.family.forEach((v,vi)=>{
+    // chain's growth element sits on the dark band from stage 1 (so stage 3 shows banded dots)
+    const bandB = chain ? B - (r.sequence.length && r.sequence[r.sequence.length-1]===r.growth.element ? 1 : 0) : B;
+    vars.forEach((v,vi)=>{
       const exp = vstages[vi]>1, startRi=ri;
       if(exp){ for(let k=1;k<=v.stages;k++){ rows.push({label:k===1?v.name:'', seq:familyVarSeq(r,vi,k), top:fRowTop(ri), cy:fRowCY(ri)}); ri++; } }
       else { rows.push({label:v.name, seq:familyVarLast(r,vi), top:fRowTop(ri), cy:fRowCY(ri)}); ri++; }
       const firstCY=fRowCY(startRi), tipCY=fRowCY(ri-1);
-      varIn.push({vi, x:boxX, y:firstCY, el:v.element});         // parent links straight to the variant's first row (left edge)
+      varIn.push({vi, x:boxX, y:firstCY, el: chain ? r.sequence[r.sequence.length-1] : v.element});   // parent links to the variant's first row
       famrowY[vi]=tipCY;
-      (node.famOut||[]).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:boxX+BW, y:tipCY}; });
+      famOutOf(node).filter(f=>f.vi===vi).forEach(f=>{ childExit[f.child.key]={x:boxX+BW, y:tipCY}; });
       if(v.stages>=2) carets.push({vi, x:boxX+BW-CW-3, y:firstCY-6.5, w:CW-2, h:13, expanded:exp});   // caret button on the RIGHT
     });
     const box={x:boxX, y:ftop, w:BW, h:totalRows*MLH, rows};
-    return { slim:true, family:true, box, carets, varIn, headerY:node.ly+ZHEAD/2, childExit, B, LS, dd, dg, famrowY, entryY:ftop+totalRows*MLH/2 };
+    return { slim:true, family:true, box, carets, varIn, headerY:node.ly+ZHEAD/2, childExit, B:bandB, LS, dd, dg, famrowY, entryY:ftop+totalRows*MLH/2 };
   }
   // modifier
   const A=d.A, combos=d.combos.slice().sort((a,b)=>{ for(let i=0;i<a.opts.length;i++){ if(a.opts[i]!==b.opts[i]) return a.opts[i]-b.opts[i]; } return 0; });
@@ -1925,7 +1930,7 @@ function drawFamilyBox(node,isSel){
     ctx.fillText(nm, bx+11, by+bh/2); return;
   }
   // NEAR (zoom >= 0.6): full title + variant rows + carets
-  ctx.font='700 8px sans-serif'; const tlabel='FAMILY', tlw=ctx.measureText(tlabel).width;
+  ctx.font='700 8px sans-serif'; const tlabel=(isGrowth(r)&&!isFamily(r))?'CHAIN':'FAMILY', tlw=ctx.measureText(tlabel).width;
   ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
   let nm=r.name; const nmMax=bw-20-tlw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
   ctx.fillText(nm,bx+11,by+ZHEAD/2+1);
@@ -1948,7 +1953,7 @@ function drawFamilyBox(node,isSel){
     }); }
 }
 function drawExpandedZone(node,isSel){
-  if(node.isFamilyNode){ drawFamilyBox(node,isSel); return; }
+  if(isFamZone(node)){ drawFamilyBox(node,isSel); return; }
   node._pips=null; node._modopts=null; node._fampips=null; node._caret=null; node._famVarCarets=null;
   const r=node.recipe, dims=zoneDims(node);
   const bx=node.lx-ZPAD, by=node.ly, bw=dims.w, bh=dims.h;
@@ -2591,12 +2596,12 @@ function computeSpots(){ plusSpots=[]; const H=n=>nodeHeight(n);
   const rx=n=> n.lx + (n.key===''?NW/2:NW);          // right edge (root is the narrow ▶ Start pill)
   const cy=n=> n.ly + (n.key===''?NH:H(n))/2;        // vertical centre
   layoutNodes.forEach(n=>{
-    if(n.isFamilyNode){                                   // family (always a zone): one extend spot per variant, at its tip row
+    if(isFamZone(n)){                                   // family/chain (always a zone): one extend spot per variant, at its tip row
       const F=n.recipe, sd=zoneDims(n).slim, tipX=n.lx+sd.BW;
-      F.family.forEach((v,vi)=>{
+      famVariants(F).forEach((v,vi)=>{
         const last=familyVarLast(F,vi);
         const ry=(n._famrowY && n._famrowY[vi]!=null)? n._famrowY[vi] : (n.ly+H(n)/2);
-        (n.famOut||[]).filter(o=>o.vi===vi).forEach(o=>{ const c=o.child;
+        famOutOf(n).filter(o=>o.vi===vi).forEach(o=>{ const c=o.child;
           plusSpots.push({kind:'between', parentSeq:last, childSeq:c.sequence.slice(), wx:(tipX + c.lx)/2, wy:(ry+(c.ly+H(c)/2))/2}); });
         plusSpots.push({kind:'after', parentSeq:last, wx:tipX+22, wy:ry, leaf:true, lx:tipX, ly:ry});
       });
@@ -2720,7 +2725,7 @@ document.addEventListener('mousedown', e=>{ if(_connWiz && !_connWiz.contains(e.
 const editWin=document.getElementById('nodeEditWin');
 function nodeEditorOpen(){ return editWin && editWin.style.display!=='none'; }
 let editWinPos=null;
-function openNodeEditor(node, sx, sy){ sel={seq:[...node.sequence], recipe:node.recipe}; editOriginIdx=-1; editArmedDelete=false;
+function openNodeEditor(node, sx, sy){ sel={seq:[...node.sequence], recipe:node.recipe}; editOriginIdx=-1; editArmedDelete=false; editReach=false;
   editWin.style.display='flex';
   const w=340, ww=wrap.clientWidth, wh=wrap.clientHeight;
   let left, top;
@@ -2931,6 +2936,7 @@ function changeReach(seq, newEl){ const i=seq.length-1, oldEl=seq[i];
 
 let editArmedDelete=false;
 let editOriginIdx=-1;
+let editReach=false;
 function renderEditor(){
   const el=document.getElementById('editPanel'); if(!el) return; el.innerHTML='';
   if(!Object.keys(EL_INI).length || EL_INI.__n!==elements.length){ elInitials(); EL_INI.__n=elements.length; }
@@ -2955,7 +2961,9 @@ function renderEditor(){
   const typeChip = `<div class="etype" style="color:${badge[1]}">${badge[0]}</div>`;
   // Render a path as dots, with a | just before the final (connecting) element — marks where it crosses into this recipe.
   const seqBar = (sq,sz)=>sq.map((id,i)=>{const e=elements.find(x=>x.id===id);const bar=(i===sq.length-1&&sq.length>1)?'<span class="xbar">|</span>':'';return bar+`<span class="sqd" style="width:${sz}px;height:${sz}px;background:${e?e.color:'#555'}"></span>`;}).join('');
-  const dotsHtml = `<div class="dots" style="margin-top:2px;display:flex;align-items:center;gap:3px">${seqBar(seq,13)}</div>`;
+  const isChain = isGrowth(r) && !isFamily(r);
+  const displaySeq = isChain ? growthStageSeq(r, r.growth.stages) : seq;   // chains: show the last stage as the main recipe
+  const dotsHtml = `<div class="dots" style="display:flex;align-items:center;gap:3px">${seqBar(displaySeq,13)}</div>`;
 
   if(isGap){
     if(titleEl){ titleEl.value=''; titleEl.readOnly=false; titleEl.placeholder='Name this step…'; }
@@ -2965,12 +2973,16 @@ function renderEditor(){
   }
   if(titleEl){ titleEl.value=r.name; titleEl.readOnly=false; titleEl.placeholder=''; }
 
-  // Merged identity group: sequence + reached-via + description + structure actions, no inner separators (name lives in the title bar)
+  // Merged identity group: sequence (+reach edit) + alternates + description + structure actions
   const plainBasic = !isGrowth(r) && !isModifier(r) && !isFamily(r);
-  const structHtml = `<div class="erow" style="justify-content:center;margin-top:13px">${plainBasic?'<button class="btn btn-ghost btn-xs" id="eToChain">Convert to chain</button>':''}<button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>`;
+  const convBtn = plainBasic ? '<button class="btn btn-ghost btn-xs" id="eToChain">Convert to chain</button>'
+                : isChain ? '<button class="btn btn-ghost btn-xs" id="eToBasic">Convert to basic</button>' : '';
+  const structHtml = `<div class="erow" style="justify-content:center;margin-top:13px">${convBtn}<button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>`;
+  // Reached-via is hidden until its edit button is pressed (like alternate recipes)
+  let reachRow=`<div class="reach-row">${dotsHtml}${seq.length>=1?`<button class="btn btn-ghost btn-xs reach-ed ${editReach?'on':''}" data-reachedit title="Change connecting element">✎</button>`:''}</div>`;
   let reachHtml='';
-  if(seq.length>=1){ const taken=reachTaken(seq), last=seq[seq.length-1];
-    reachHtml=`<div class="ezh" style="margin:12px 0 5px">Reached via <span class="ezi" title="Element from the parent. Dimmed = a sibling already uses it. Changing it moves this node and its children.">ⓘ</span></div><div class="ereach" id="eReach">${elements.map(e=>`<span class="rdot ${e.id===last?'sel':''} ${taken.has(e.id)&&e.id!==last?'dim':''}" data-reach="${e.id}" title="${escAttr(e.name)}" style="background:${e.color}"></span>`).join('')}</div>`; }
+  if(seq.length>=1 && editReach){ const taken=reachTaken(seq), last=seq[seq.length-1];
+    reachHtml=`<div class="eltoks" id="eReach" style="margin-top:6px">${elements.map(e=>`<span class="rdot ${e.id===last?'sel':''} ${taken.has(e.id)&&e.id!==last?'dim':''}" data-reach="${e.id}" title="${escAttr(e.name)}" style="background:${e.color}"></span>`).join('')}</div>`; }
 
   // Alternate recipes (other origins) — compact, lighter panel, right under Reached via, no separator
   let altHtml=''; const origins=recipeOrigins(r);
@@ -2978,33 +2990,31 @@ function renderEditor(){
     altHtml=`<div class="alt-list"><div class="ezh" style="margin:0 0 4px">alternate recipes</div><div class="alt-rows">`;
     origins.forEach((o,i)=>{ if(i===0) return; const ai=i-1; const src=recipeBySeq(o.slice(0,-1));
       const name=src?escHtml(src.name):(o.length<=1?'Start':prettySeq(o.slice(0,-1)));
-      altHtml+=`<div class="alt-row"><span class="aname" title="from ${escAttr(name)}">from ${name}</span><span class="adots">${seqBar(o,10)}</span><button class="btn btn-ghost btn-xs ${editOriginIdx===ai?'on':''}" data-ore="${ai}" title="Change connecting element">✎</button><button class="btn btn-ghost btn-xs" data-orm="${ai}" title="Remove">✕</button></div>`;
+      altHtml+=`<div class="alt-row"><span class="aname" title="from ${escAttr(name)}">from ${name}</span><span class="adots">${seqBar(o,10)}</span><span class="abtns"><button class="btn btn-ghost btn-xs ${editOriginIdx===ai?'on':''}" data-ore="${ai}" title="Change connecting element">✎</button><button class="btn btn-ghost btn-xs" data-orm="${ai}" title="Remove">✕</button></span></div>`;
       if(editOriginIdx===ai){ const last=o[o.length-1];
         altHtml+=`<div class="a-edit">${elements.map(e=>{ const cand=o.slice(0,-1).concat([e.id]); const bad=e.id!==last && !!recipeByAnyOrigin(cand); return eDot(e,{sel:e.id===last,dim:bad,data:`data-ore2="${ai}"`}); }).join('')}</div>`; }
     });
     altHtml+=`</div></div>`;
   }
-  h+=`<div class="ez" style="padding-top:2px">${dotsHtml}<div class="ehint" id="eNameHint" style="margin:2px 0 0"></div>${reachHtml}${altHtml}<textarea class="f edesc" id="eDesc" rows="2" placeholder="Optional description…" style="margin:12px 0 0">${escHtml(r.description||'')}</textarea>${structHtml}</div>`;
+  h+=`<div class="ez" style="padding-top:2px">${reachRow}<div class="ehint" id="eNameHint" style="margin:2px 0 0"></div>${reachHtml}${altHtml}<textarea class="f edesc" id="eDesc" rows="2" placeholder="Optional description…" style="margin:12px 0 0">${escHtml(r.description||'')}</textarea>${structHtml}</div>`;
 
   let typeUsed=false;
 
   // Type-specific
   if(isGrowth(r)){
-    const key=seq.join('\x1f'); const stg=Math.min(r.growth.stages, growthStage[key]||r.growth.stages);
     typeUsed=true;
-    h+=`<div class="ez">${typeChip}<div class="ezh">Growth</div><div class="erow"><span class="ehint" style="margin:0">Advances by</span>
-        <span style="margin-left:auto;font-size:.74rem;color:var(--muted)">Stages</span><span class="estep"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
-        <div class="ereach" id="eGel" style="margin:6px 0 0">${elements.map(e=>{ let bad=false; if(e.id!==r.growth.element){ for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(e.id))); if(occ&&occ!==r){bad=true;break;} } } return eDot(e,{sel:e.id===r.growth.element,dim:bad,data:`data-cgel="${e.id}"`}); }).join('')}</div>
-        <div class="eltoks" id="eStagePips" style="margin-top:8px">${Array.from({length:Math.min(r.growth.stages,12)},(_,i)=>i+1).map(k=>`<span class="eltok ${k===stg?'sel':''}" data-stage="${k}" style="background:var(--bg);border-color:var(--border);color:${k===stg?'var(--accent)':'var(--muted)'}">${k}</span>`).join('')}</div>
-        <div class="erow" style="margin-top:8px"><button class="btn btn-ghost btn-xs" id="ePromoteStage">⑂ Promote stage ${stg}</button><button class="btn btn-ghost btn-xs" id="eToBasic">Convert to basic</button></div></div>`;
+    const ge=elements.find(e=>e.id===r.growth.element);
+    h+=`<div class="ez">${typeChip}<div class="evar"><div class="erow" style="margin-bottom:6px"><span class="vdot" style="background:${ge?ge.color:'#555'}"></span>
+        <span class="estep" style="margin-left:auto"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
+        <div class="eltoks" id="eGel">${elements.map(e=>{ let bad=false; if(e.id!==r.growth.element){ for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(e.id))); if(occ&&occ!==r){bad=true;break;} } } return eDot(e,{sel:e.id===r.growth.element,dim:bad,data:`data-cgel="${e.id}"`}); }).join('')}</div></div></div>`;
   } else if(isFamily(r)){
     const full=r.family.length>=elements.length; typeUsed=true;
-    h+=`<div class="ez">${typeChip}<div class="ezh">Variants <span class="ezi" title="Each variant grows by a distinct element.">ⓘ</span></div><div id="eVars"></div>
+    h+=`<div class="ez">${typeChip}<div id="eVars"></div>
         <button class="btn btn-ghost btn-xs" id="eAddVar" ${full?'disabled style="opacity:.4;cursor:default"':''}>+ variant</button>
         ${full?`<div class="ehint">All ${elements.length} elements used — no more variants.</div>`:''}</div>`;
   } else if(isModifier(r)){
     typeUsed=true;
-    h+=`<div class="ez">${typeChip}<div class="ezh">Option axes</div><div id="eAxes"></div>
+    h+=`<div class="ez">${typeChip}<div id="eAxes"></div>
         <button class="btn btn-ghost btn-xs" id="eAddAxis" style="margin-top:6px">+ axis</button></div>`;
   }
 
@@ -3029,9 +3039,10 @@ function wireEditor(S){
   const grm=document.getElementById('eGapRm');
   if(grm) grm.onclick=()=>{ const err=removeStepAt(seq); if(err){ toast(err); return; } sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); };
 
+  { const rb=document.querySelector('[data-reachedit]'); if(rb) rb.onclick=()=>{ editReach=!editReach; renderEditor(); }; }
   document.querySelectorAll('#eReach .rdot').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return;
     const err=changeReach(seq, p.dataset.reach); if(err){ toast(err); return; }
-    const ns=seq.slice(); ns[ns.length-1]=p.dataset.reach; sel={seq:ns, recipe:recipeBySeq(ns)}; commit(); });
+    editReach=false; const ns=seq.slice(); ns[ns.length-1]=p.dataset.reach; sel={seq:ns, recipe:recipeBySeq(ns)}; commit(); });
 
   // chain stages
   const cst=document.getElementById('eCst');
@@ -3041,7 +3052,6 @@ function wireEditor(S){
     document.getElementById('eCdec').onclick=()=>setStg(r.growth.stages-1);
     document.getElementById('eCinc').onclick=()=>setStg(r.growth.stages+1); }
   const key=seq.join('\x1f');
-  document.querySelectorAll('#eStagePips .eltok').forEach(p=>p.onclick=()=>{ growthStage[key]=+p.dataset.stage; renderEditor(); });
   document.querySelectorAll('#eGel [data-cgel]').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return; const eid=p.dataset.el; if(r.growth.element===eid)return;
     for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(eid))); if(occ&&occ!==r){ toast(`Collides with “${occ.name}”.`); return; } }
     pushHistory(); r.growth.element=eid; commit(); });
@@ -3058,13 +3068,6 @@ function wireEditor(S){
     proposed.forEach(({x,s})=>{ x.sequence=s; });
     recipes.forEach(x=>{ (x.altOrigins||[]).forEach(o=>{ if(thru(o)&&hasRun(o)) o.splice(base.length,drop); }); });
     delete r.growth; commit(); };
-  const ePromote=document.getElementById('ePromoteStage');
-  if(ePromote) ePromote.onclick=()=>{ const k=Math.min(r.growth.stages, growthStage[key]||1); if(k<2){ toast('Pick stage 2 or higher to promote.'); return; }
-    const el=r.growth.element, total=r.growth.stages, pseq=growthStageSeq(r,k), existing=recipeBySeq(pseq);
-    let nr=existing; if(!existing){ let base=`${r.name} ${k}`, name=base, n=2; while(recipes.find(x=>x.name.toLowerCase()===name.toLowerCase())) name=`${base} (${n++})`;
-      const rem=total-k+1; nr={name,sequence:pseq,description:'',altOrigins:[]}; if(rem>=2) nr.growth={element:el,stages:rem}; }
-    pushHistory(); if(!existing) recipes.push(nr); if(k-1>=2) r.growth.stages=k-1; else delete r.growth;
-    palettes[pidx].recipes=recipes; sel={seq:[...pseq],recipe:nr}; growthStage[pseq.join('\x1f')]=1; commit(); };
   const eToChain=document.getElementById('eToChain');
   if(eToChain) eToChain.onclick=()=>{ const el=seq[seq.length-1]; const base=r.sequence.slice();
     let n=0;
@@ -3086,8 +3089,8 @@ function wireEditor(S){
   const vars=document.getElementById('eVars');
   if(vars){
     vars.innerHTML=r.family.map((v,vi)=>{ const ve=elements.find(e=>e.id===v.element);
-      return `<div class="evar"><div class="erow" style="margin-bottom:6px"><span style="width:12px;height:12px;border-radius:50%;background:${ve?ve.color:'#555'}"></span>
-        <input class="ename" style="flex:1;font-size:.82rem;border-bottom-color:var(--border)" value="${escAttr(v.name)}" data-vn="${vi}">
+      return `<div class="evar"><div class="erow" style="margin-bottom:6px"><span class="vdot" style="background:${ve?ve.color:'#555'}"></span>
+        <input class="einp" style="font-size:.82rem" value="${escAttr(v.name)}" data-vn="${vi}">
         <span class="estep"><button data-vdec="${vi}">−</button><b>${v.stages}</b><button data-vinc="${vi}">+</button></span>
         <button class="btn btn-ghost btn-xs" data-vrm="${vi}">✕</button></div>
         <div class="eltoks">${elements.map(e=>eDot(e,{sel:v.element===e.id,data:`data-vel="${vi}"`})).join('')}</div></div>`; }).join('');
@@ -3108,10 +3111,10 @@ function wireEditor(S){
   if(axes){ if(!r._fold) r._fold=r.modifiers.map(()=>false);
     axes.innerHTML=r.modifiers.map((ax,ai)=>{ const folded=r._fold[ai];
       return `<div class="eax"><div class="erow" style="margin-bottom:${folded?'0':'6px'}"><button class="btn btn-ghost btn-xs" data-fold="${ai}" style="padding:2px 6px">${folded?'▸':'▾'}</button>
-        <input class="f" style="flex:1;margin:0;font-weight:600;padding:4px 7px" value="${escAttr(ax.name)}" data-axn="${ai}">
+        <input class="einp" style="font-weight:600;font-size:.82rem" value="${escAttr(ax.name)}" data-axn="${ai}">
         ${folded?`<span class="ehint" style="margin:0">${ax.options.length} opt${ax.options.length>1?'s':''}</span>`:''}
         <button class="btn btn-ghost btn-xs" data-rmax="${ai}">✕</button></div>
-        ${folded?'':ax.options.map((o,oi)=>`<div class="eopt"><div class="erow"><input class="f" style="flex:1;margin:0;padding:4px 7px;font-size:.78rem" value="${escAttr(o.label)}" data-opl="${ai}-${oi}" placeholder="Option">
+        ${folded?'':ax.options.map((o,oi)=>`<div class="eopt"><div class="erow"><input class="einp" style="font-size:.76rem" value="${escAttr(o.label)}" data-opl="${ai}-${oi}" placeholder="Option">
           <button class="btn btn-ghost btn-xs" data-rmop="${ai}-${oi}">✕</button></div>
           <div class="eltoks" style="margin-top:5px">${elements.map(e=>eDot(e,{sel:(o.elements||[]).includes(e.id),data:`data-ope="${ai}-${oi}"`})).join('')}</div>
           <div class="ehint" style="margin-top:3px">Tap elements this option adds (order: as tapped).</div></div>`).join('')+`<button class="btn btn-ghost btn-xs" data-addop="${ai}">+ option</button>`}
