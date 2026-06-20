@@ -744,7 +744,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.03';
+const APP_VERSION = 'v3.04';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -813,6 +813,24 @@ function normalise(list) {
         }
       }
     });
+    // Chain node type removed: fold any leftover growth chain into an equivalent family.
+    // Sequence-preserving — for a base that ends in its growth element (every chain the
+    // editor ever made), the family roots one element up and the run becomes variant 1, so
+    // the exact same cells stay occupied. (Defensive: handles old/imported data too.)
+    const _foldAdd = [];
+    p.recipes.forEach(r => {
+      if (!(r.growth && r.growth.element && r.growth.stages >= 2)) return;
+      const B = r.sequence || [], E = r.growth.element, S = r.growth.stages;
+      if (B.length > 0 && B[B.length-1] === E) {
+        r.sequence = B.slice(0, -1);
+        r.family = [{ name: r.name, element: E, stages: S }];
+        delete r.growth;
+      } else {
+        _foldAdd.push({ name: (r.name||'Growth')+' family', sequence: B.slice(), description: '', altOrigins: [], family: [{ name: r.name, element: E, stages: Math.max(1, S-1) }] });
+        delete r.growth;
+      }
+    });
+    if (_foldAdd.length) p.recipes.push(..._foldAdd);
   });
   return list;
 }
@@ -1054,7 +1072,14 @@ function buildTrie() {
 // onward-children that build from a variant's last stage onto that family node.
 function injectFamilies(root){
   recipes.filter(isFamily).forEach((F)=>{
-    const parent = findNode(root, F.sequence); if(!parent) return;
+    let parent = findNode(root, F.sequence);
+    if(!parent){
+      // The base path isn't contributed by any non-family recipe (e.g. a chain folded into a
+      // family one element up). Rebuild the gap-node stem the chain used to provide, so the
+      // family still attaches and renders where it belongs.
+      parent = root;
+      F.sequence.forEach((el,i)=>{ if(!parent.children[el]) parent.children[el]={ key:F.sequence.slice(0,i+1).join('\x1f'), sequence:F.sequence.slice(0,i+1), recipe:null, children:{}, edgeEl:el }; parent=parent.children[el]; });
+    }
     const famNode = { key:F.sequence.join('\x1f')+'#fam:'+(F.id||F.name), sequence:F.sequence.slice(),
                       recipe:F, children:{}, edgeEl:null, isFamilyNode:true, famOut:[] };
     F.family.forEach((v,vi)=>{
@@ -2798,7 +2823,7 @@ let _wiz=null; function wizOpen(){ return !!_wiz || !!_connWiz; }
 function closeWizard(){ if(_wiz){ _wiz.remove(); _wiz=null; clearTargeting(); } }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _wiz) closeWizard(); });
 document.addEventListener('mousedown', e=>{ if(_wiz && !_wiz.contains(e.target) && !e.target.classList.contains('cplus') && !(targeting && e.target===cvs)) closeWizard(); });
-const WTYPES=[['basic','◆','Basic','A single fixed recipe.'],['chain','🌱','Chain','A growth series; stages set after.'],['modifier','⊞','Modifier','Option axes; configure after.'],['family','🌿','Family','Plant variants under this node.'],['connect','🔗','Connect','Link this path to an EXISTING recipe.']];
+const WTYPES=[['basic','◆','Basic','A single fixed recipe.'],['modifier','⊞','Modifier','Option axes; configure after.'],['family','🌿','Family','Plant variants under this node.'],['connect','🔗','Connect','Link this path to an EXISTING recipe.']];
 function openWizard(anchor, spot){ closeWizard(); closeConnWizard();
   const st={el:null,type:'basic',name:'',link:null,step:1,mode:'between'};
   const pop=document.createElement('div'); pop.className='cwiz'; _wiz=pop; cvsOverlay.appendChild(pop);
@@ -2862,28 +2887,25 @@ function wizCreate(spot, elId, type, name, link, mode){
   if(!asBetween){
     const newSeq=parentSeq.concat([elId]);
     if(type!=='family' && recipeByAnyOrigin(newSeq)) return 'This exact path already produces a recipe.';
-    if(type==='chain'){ for(let k=2;k<=4;k++){ const occ=recipeOccupying(growthStageSeq({sequence:newSeq,growth:{element:elId,stages:4}},k)); if(occ) return `Stage ${k} collides with “${occ.name}”.`; } }
+    // "Name 2-5" shortcut → a family that grows the connecting element across that many stages
+    if(type==='basic'){ const m=name.match(/\b(\d+)\s*-\s*(\d+)\b/);
+      if(m){ const lo=+m[1], hi=+m[2], stg=hi-lo+1; if(hi>lo && stg>=2 && stg<=12){
+        let ok=true; for(let k=2;k<=stg;k++){ if(recipeOccupying(parentSeq.concat(Array(k).fill(elId)))){ok=false;break;} }
+        if(ok){ const fname=name.replace(/\s*\b\d+\s*-\s*\d+\b\s*/,' ').trim()||name;
+          pushHistory(); const F={name:fname,sequence:parentSeq.slice(),description:'',altOrigins:[],id:'fam'+Date.now(),family:[{name:fname,element:elId,stages:stg}]};
+          recipes.push(F); palettes[pidx].recipes=recipes; sel={seq:parentSeq.slice(),recipe:F}; commit();
+          const fn=layoutNodes.find(n=>n.isFamilyNode && n.recipe===F); if(fn) openNodeEditor(fn); return null; } } } }
     pushHistory();
-    if(type==='basic'){
-      const nr={name,sequence:newSeq,description:'',altOrigins:[]};
-      const m=name.match(/\b(\d+)\s*-\s*(\d+)\b/);
-      if(m){ const lo=+m[1], hi=+m[2]; if(hi>lo && hi-lo+1>=2 && hi-lo+1<=12){
-        let ok=true; for(let k=2;k<=hi-lo+1;k++){ if(recipeOccupying(growthStageSeq({sequence:newSeq,growth:{element:elId,stages:hi-lo+1}},k))){ok=false;break;} }
-        if(ok){ nr.name=name.replace(/\s*\b\d+\s*-\s*\d+\b\s*/,' ').trim()||name; nr.growth={element:elId,stages:hi-lo+1}; } } }
-      recipes.push(nr);
-    }
-    else if(type==='chain') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],growth:{element:elId,stages:4}});
+    if(type==='basic') recipes.push({name,sequence:newSeq,description:'',altOrigins:[]});
     else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Axis',options:[{label:'None',elements:[]}]}]});
     else if(type==='family'){ const F={name,sequence:parentSeq.slice(),description:'',altOrigins:[],id:'fam'+Date.now(),family:[{name:'Variant 1',element:elId,stages:4}]}; recipes.push(F); palettes[pidx].recipes=recipes; sel={seq:[...parentSeq],recipe:F}; commit();
       const fn=layoutNodes.find(n=>n.isFamilyNode && n.recipe===F); if(fn) openNodeEditor(fn); return null; }
     palettes[pidx].recipes=recipes; sel={seq:newSeq,recipe:recipeBySeq(newSeq)}; commit(); return null;
   } else { // between → insert on the child edge
     const newSeq=parentSeq.concat([elId]);
-    const count = type==='chain'?4:1;
-    const err=insertStepBefore(spot.childSeq.slice(), elId, count); if(err) return err;   // pushes history
+    const err=insertStepBefore(spot.childSeq.slice(), elId, 1); if(err) return err;   // pushes history
     if(!recipeBySeq(newSeq)){
-      if(type==='chain') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],growth:{element:elId,stages:count}});
-      else if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Axis',options:[{label:'None',elements:[]}]}]});
+      if(type==='modifier') recipes.push({name,sequence:newSeq,description:'',altOrigins:[],id:'mod'+Date.now(),modifiers:[{name:'Axis',options:[{label:'None',elements:[]}]}]});
       else recipes.push({name,sequence:newSeq,description:'',altOrigins:[]});
     }
     palettes[pidx].recipes=recipes; sel={seq:newSeq,recipe:recipeBySeq(newSeq)}; commit(); return null;
@@ -2947,7 +2969,7 @@ function renderEditor(){
   }
 
   // Identity / type
-  const badge = isGap?['⚠ UNNAMED','var(--danger)'] : isGrowth(r)?['🌱 CHAIN','var(--accent2)'] : isModifier(r)?['⊞ MODIFIER','var(--accent)'] : isFamily(r)?['🌿 FAMILY','var(--accent2)'] : ['◆ BASIC','var(--accent)'];
+  const badge = isGap?['⚠ UNNAMED','var(--danger)'] : isModifier(r)?['⊞ MODIFIER','var(--accent)'] : isFamily(r)?['🌿 FAMILY','var(--accent2)'] : ['◆ BASIC','var(--accent)'];
   const typeChip = `<div class="etype" style="color:${badge[1]}">${badge[0]}</div>`;
   // Render a path as dots, with a | just before the final (connecting) element — marks where it crosses into this recipe.
   const seqBar = (sq,sz)=>sq.map((id,i)=>{const e=elements.find(x=>x.id===id);const bar=(i===sq.length-1&&sq.length>1)?'<span class="xbar">|</span>':'';return bar+`<span class="sqd" style="width:${sz}px;height:${sz}px;background:${e?e.color:'#555'}"></span>`;}).join('');
@@ -2965,8 +2987,7 @@ function renderEditor(){
 
   // Merged identity group: sequence (+reach edit) + alternates + description + structure actions
   const plainBasic = !isGrowth(r) && !isModifier(r) && !isFamily(r);
-  const convBtn = plainBasic ? '<button class="btn btn-ghost btn-xs" id="eToChain">Convert to chain</button>'
-                : isChain ? '<button class="btn btn-ghost btn-xs" id="eToBasic">Convert to basic</button>' : '';
+  const convBtn = plainBasic ? '<button class="btn btn-ghost btn-xs" id="eToFamily">Convert to family</button>' : '';
   const structHtml = `<div class="erow" style="justify-content:center;margin-top:13px">${convBtn}<button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>`;
   // Reached-via is hidden until its edit button is pressed (like alternate recipes)
   let reachRow=`<div class="reach-row">${dotsHtml}${seq.length>=1?`<button class="btn btn-ghost btn-xs reach-ed ${editReach?'on':''}" data-reachedit title="Change connecting element">✎</button>`:''}</div>`;
@@ -2991,14 +3012,7 @@ function renderEditor(){
   let typeUsed=false;
 
   // Type-specific
-  if(isGrowth(r)){
-    typeUsed=true;
-    const ge=elements.find(e=>e.id===r.growth.element);
-    h+=`<div class="ez">${typeChip}<div class="evar"><div class="erow" style="margin-bottom:6px"><span class="vdot" style="background:${ge?ge.color:'#555'}"></span>
-        <span class="estep" style="margin-left:auto"><button id="eCdec">−</button><b id="eCst">${r.growth.stages}</b><button id="eCinc">+</button></span></div>
-        <div class="eltoks" id="eGel">${elements.map(e=>{ let bad=false; if(e.id!==r.growth.element){ for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(e.id))); if(occ&&occ!==r){bad=true;break;} } } return eDot(e,{sel:e.id===r.growth.element,dim:bad,data:`data-cgel="${e.id}"`}); }).join('')}</div></div>
-        <button class="btn btn-ghost btn-xs" id="eGrowVar" style="margin-top:6px">+ variant</button></div>`;
-  } else if(isFamily(r)){
+  if(isFamily(r)){
     const full=r.family.length>=elements.length; typeUsed=true;
     h+=`<div class="ez">${typeChip}<div id="eVars"></div>
         <button class="btn btn-ghost btn-xs" id="eAddVar" ${full?'disabled style="opacity:.4;cursor:default"':''}>+ variant</button>
@@ -3035,68 +3049,17 @@ function wireEditor(S){
     const err=changeReach(seq, p.dataset.reach); if(err){ toast(err); return; }
     editReach=false; const ns=seq.slice(); ns[ns.length-1]=p.dataset.reach; sel={seq:ns, recipe:recipeBySeq(ns)}; commit(); });
 
-  // chain stages
-  const cst=document.getElementById('eCst');
-  if(cst){ const setStg=n=>{ n=Math.max(2,Math.min(12,n));
-      for(let k=2;k<=n;k++){ const occ=recipeOccupying(growthStageSeq(r,k)); if(occ&&occ!==r){ toast(`Stage ${k} collides with “${occ.name}”.`); return; } }
-      pushHistory(); r.growth.stages=n; commit(); };
-    document.getElementById('eCdec').onclick=()=>setStg(r.growth.stages-1);
-    document.getElementById('eCinc').onclick=()=>setStg(r.growth.stages+1); }
-  const key=seq.join('\x1f');
-  document.querySelectorAll('#eGel [data-cgel]').forEach(p=>p.onclick=()=>{ if(p.classList.contains('dim'))return; const eid=p.dataset.el; if(r.growth.element===eid)return;
-    for(let k=2;k<=r.growth.stages;k++){ const occ=recipeOccupying(r.sequence.concat(Array(k-1).fill(eid))); if(occ&&occ!==r){ toast(`Collides with “${occ.name}”.`); return; } }
-    pushHistory(); r.growth.element=eid; commit(); });
-  const eToBasic=document.getElementById('eToBasic'); if(eToBasic) eToBasic.onclick=()=>{
-    const base=r.sequence.slice(), el=r.growth.element, drop=r.growth.stages-1;
-    const thru=(arr)=> arr.length>base.length && base.every((e,i)=>arr[i]===e);
-    const hasRun=(arr)=>{ if(arr.length<base.length+drop) return false; for(let i=0;i<drop;i++) if(arr[base.length+i]!==el) return false; return true; };
-    const seqTargets=recipes.filter(x=>x!==r && thru(x.sequence) && hasRun(x.sequence));   // children that departed from the last stage
-    const untouched=new Set(recipes.filter(x=>!seqTargets.includes(x)).map(x=>x.sequence.join('\x1f')));
-    const proposed=seqTargets.map(x=>{ const s=x.sequence.slice(); s.splice(base.length,drop); return {x,s}; });
-    const seen=new Set();
-    for(const {s} of proposed){ const k=s.join('\x1f'); if(untouched.has(k)||seen.has(k)){ toast('Converting would collide with an existing recipe.'); return; } seen.add(k); }
-    pushHistory();
-    proposed.forEach(({x,s})=>{ x.sequence=s; });
-    recipes.forEach(x=>{ (x.altOrigins||[]).forEach(o=>{ if(thru(o)&&hasRun(o)) o.splice(base.length,drop); }); });
-    delete r.growth; commit(); };
-  const gv=document.getElementById('eGrowVar'); if(gv) gv.onclick=()=>{
-    const B=r.sequence.slice(), E=r.growth.element, S=r.growth.stages;
-    const free=elements.find(e=>e.id!==E && !B.includes(e.id)) || elements.find(e=>e.id!==E);
-    if(!free){ toast('No other element to branch into.'); return; }
-    const endsInE = B.length>0 && B[B.length-1]===E;
-    if(endsInE){
-      // fold: the family roots one element up; the original series becomes variant 1 — same sequences
-      const famBase=B.slice(0,-1);
-      const vars=[{name:r.name, element:E, stages:S},{name:'Variant', element:free.id, stages:S}];
-      const trial={sequence:famBase, family:vars};
-      const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r);
-      if(clash){ toast(`New branch collides with “${clash.name}”.`); return; }
-      pushHistory(); r.sequence=famBase; delete r.growth; r.family=vars; commit();
-    } else {
-      // base doesn't end in the growth element: keep base as its own recipe, hang a family of the tips off it
-      const vars=[{name:r.name, element:E, stages:Math.max(1,S-1)},{name:'Variant', element:free.id, stages:Math.max(1,S-1)}];
-      const trial={sequence:B, family:vars};
-      const clash=familyOccupied(trial).map(q=>recipeOccupying(q)).find(o=>o&&o!==r);
-      if(clash){ toast(`New branch collides with “${clash.name}”.`); return; }
-      pushHistory(); delete r.growth; const fam={name:r.name+' family', sequence:B.slice(), description:'', altOrigins:[], family:vars};
-      recipes.push(fam); palettes[pidx].recipes=recipes; sel={seq:B.slice(), recipe:fam}; commit();
-    }
-  };
-  const eToChain=document.getElementById('eToChain');
-  if(eToChain) eToChain.onclick=()=>{ const el=seq[seq.length-1]; const base=r.sequence.slice();
-    let n=0;
-    for(let cand=4;cand>=2;cand--){ let ok=true; for(let k=2;k<=cand;k++){ const occ=recipeOccupying(growthStageSeq({sequence:base,growth:{element:el,stages:cand}},k)); if(occ&&occ!==r){ok=false;break;} } if(ok){n=cand;break;} }
-    if(!n){ toast('Can’t convert: the next step already exists as another recipe.'); return; }
-    // Existing children depart from stage 1 — push them so they depart from the LAST stage:
-    // insert (n-1) copies of the growth element at the base boundary, for every origin that runs past this node.
-    const ins=Array(n-1).fill(el);
-    const thru=(arr)=> arr.length>base.length && base.every((e,i)=>arr[i]===e);
-    pushHistory();
-    recipes.forEach(x=>{
-      if(x!==r && thru(x.sequence)) x.sequence.splice(base.length,0,...ins);
-      (x.altOrigins||[]).forEach(o=>{ if(thru(o)) o.splice(base.length,0,...ins); });
-    });
-    r.growth={element:el,stages:n}; commit(); };
+  // Convert a basic recipe into a family (the chain type was removed; single-element growth now
+  // lives as a one-variant family). Roots the family one element up so the recipe's own cell becomes
+  // variant stage 1 — same sequence-preserving fold used everywhere else, so nothing shifts under it.
+  const eToFamily=document.getElementById('eToFamily'); if(eToFamily) eToFamily.onclick=()=>{
+    const Sq=r.sequence.slice();
+    if(Sq.length<1){ toast('Cannot convert the root.'); return; }
+    const last=Sq[Sq.length-1], famBase=Sq.slice(0,-1);
+    let stages=0;
+    for(let cand=4;cand>=2;cand--){ let ok=true; for(let k=2;k<=cand;k++){ const occ=recipeOccupying(famBase.concat(Array(k).fill(last))); if(occ&&occ!==r){ok=false;break;} } if(ok){stages=cand;break;} }
+    if(!stages){ toast('Can’t convert: the next cell already exists as another recipe.'); return; }
+    pushHistory(); r.sequence=famBase; r.family=[{name:r.name, element:last, stages}]; commit(); };
   const eDesc=document.getElementById('eDesc'); if(eDesc) eDesc.onchange=()=>{ pushHistory(); r.description=eDesc.value.trim(); commit(); };
 
   // family variants
