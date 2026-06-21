@@ -744,7 +744,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.05';
+const APP_VERSION = 'v3.11';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -782,6 +782,7 @@ function normalise(list) {
       if (r.description === undefined) r.description = '';
       delete r.icon;                                                     // recipe-icon feature removed
       if (!Array.isArray(r.altOrigins)) r.altOrigins = [];
+      if (r.ground !== true) delete r.ground;            // ground/terrain flag — boolean, orthogonal to type
       // Growth must be {element, stages>=2}; drop anything malformed.
       if (r.growth && !(r.growth.element && r.growth.stages >= 2)) delete r.growth;
       // Modifiers: array of axes {name, options:[{label, elements:[]}]}. Clean malformed.
@@ -968,11 +969,11 @@ function hideConflict(){ const b=document.getElementById('conflictBanner'); b.cl
 //  SETTINGS
 // ================================================================
 const DEFAULT_SETTINGS = {
-  theme:'dark', accent:'#9d7fea', edgeStyle:'curved',
-  showBadges:true, showDots:true, spacing:'comfortable',
-  gridStyle:'dots', gridSize:'medium', gridOpacity:40, gridDotSize:2.6, linkOpacity:80,
-  colorBy:'off', colorDepth:1, colorMode:'lightness',   // family coloring
-  nodeWidth:190
+  theme:'dark', accent:'#57e389', edgeStyle:'curved',
+  showBadges:false, showDots:true, spacing:'comfortable',
+  gridStyle:'dots', gridSize:'small', gridOpacity:6, gridDotSize:2.8, linkOpacity:80,
+  colorBy:'family', colorDepth:3, colorMode:'blend',   // family coloring
+  nodeWidth:280
 };
 let settings = { ...DEFAULT_SETTINGS };
 
@@ -1864,6 +1865,9 @@ function drawDotRow(seq, x, cy, B, dd, dg, bnds){
     ctx.setLineDash([]); }
 }
 function hexA(c,a){ const h=Math.round(a*255).toString(16).padStart(2,'0'); return (/^#[0-9a-fA-F]{6}$/.test(c)?c:'#6a6a78')+h; }
+// "Ground" cue: a ground recipe renders with fully squared corners (see RAD in the node drawers).
+// GROUND_COL is the inspector toggle accent.
+const GROUND_COL='#e0a23c';
 function lum(c){ if(!/^#[0-9a-fA-F]{6}$/.test(c)) return 0.5; return (0.299*parseInt(c.slice(1,3),16)+0.587*parseInt(c.slice(3,5),16)+0.114*parseInt(c.slice(5,7),16))/255; }
 function tintColors(ids){ const cs=(ids||[]).map(id=>(elements.find(e=>e.id===id)||{}).color).filter(Boolean); return cs.length?cs:['#6a6a78']; }
 function paintTint(x,y,w,h,rad,ids,alpha){ const cs=tintColors(ids); ctx.save(); roundRect(ctx,x,y,w,h,rad); ctx.clip();
@@ -1921,46 +1925,45 @@ function drawSlimZone(node, I, tcol){
     I.carets.forEach(c=>{ ctx.fillStyle=mix(TH.muted,tcol,0.4); ctx.fillText(c.expanded?'▾':'▸', c.x+c.w/2, c.y+c.h/2+0.5); node._famVarCarets.push(c); });
   }
 }
+// A family is a container of variants, not a recipe — it has no name of its own; it's labelled by
+// its variant names (falling back to "Family" when none are named).
+function famAutoLabel(r){ const ns=((r&&r.family)||[]).map(v=>((v&&v.name)||'').trim()).filter(Boolean); return ns.length?ns.join(', '):'Family'; }
 function drawFamilyBox(node,isSel){
   node._pips=null; node._modopts=null; node._fampips=null; node._caret=null; node._collapseBtn=null; node._famVarCarets=null;
   const r=node.recipe, dims=zoneDims(node), I=node._internals||compositeInternals(node);
   const bx=node.lx, by=node.ly, bw=dims.w, bh=dims.h;
   const onPath=curPath.has(node.key)&&!isSel, fam=familyColor(node.sequence), accent=settings.accent;
+  const gr=r.ground===true, RAD=gr?0:8;
   if (viewMode==='craft'){
     const need=seqNeeds(node.sequence);
     const ok = node.sequence.length>0 && Object.keys(need).every(id=>invCount(id)>=need[id]);
     const frontier = ok && sortedChildren(node).some(c=>{ const cm=seqNeeds(c.sequence); return !(c.sequence.length>0 && Object.keys(cm).every(id=>invCount(id)>=cm[id])); });
     if(!ok) ctx.globalAlpha *= 0.4;
     ctx.fillStyle = isSel ? accent+'1f' : (!ok ? TH.node : (frontier ? accent+'22' : '#2fd4a022'));
-    roundRect(ctx,bx,by,bw,bh,8); ctx.fill();
+    roundRect(ctx,bx,by,bw,bh,RAD); ctx.fill();
     ctx.strokeStyle = isSel ? accent : (!ok ? '#5b5b66' : (frontier ? accent : '#2fd4a0'));
-    ctx.lineWidth = (isSel||frontier)?2:1; roundRect(ctx,bx,by,bw,bh,8); ctx.stroke();
+    ctx.lineWidth = (isSel||frontier)?2:1; roundRect(ctx,bx,by,bw,bh,RAD); ctx.stroke();
   } else {
     if (fam && !isSel) ctx.fillStyle = mix(TH.node, fam, 0.18); else ctx.fillStyle = isSel ? accent+'1f' : TH.node;
-    roundRect(ctx,bx,by,bw,bh,8); ctx.fill();
+    roundRect(ctx,bx,by,bw,bh,RAD); ctx.fill();
     ctx.strokeStyle = isSel ? accent : (onPath ? accent+'aa' : (fam ? mix(TH.nodeBorder, fam, 0.5) : TH.nodeBorder));
-    ctx.lineWidth = (isSel||onPath)?2:1; roundRect(ctx,bx,by,bw,bh,8); ctx.stroke();
-    if (fam){ ctx.save(); ctx.beginPath(); roundRect(ctx,bx,by,bw,bh,8); ctx.clip(); ctx.fillStyle=fam; ctx.fillRect(bx,by,5,bh); ctx.restore(); }
+    ctx.lineWidth = (isSel||onPath)?2:1; roundRect(ctx,bx,by,bw,bh,RAD); ctx.stroke();
+    if (fam){ ctx.save(); ctx.beginPath(); roundRect(ctx,bx,by,bw,bh,RAD); ctx.clip(); ctx.fillStyle=fam; ctx.fillRect(bx,by,5,bh); ctx.restore(); }
   }
   const accF = fam || accent;
   // ── Level-of-detail by zoom, matching normal nodes ──
-  if (zoom < 0.22){                                            // VERY FAR: large centred name only
-    const fw=Math.min(48, Math.max(18, 16/zoom)); ctx.fillStyle=TH.text; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font=`700 ${fw}px 'Segoe UI',sans-serif`;
-    let nm=r.name; const mw=bw-14; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name&&nm.length>1)nm=nm.slice(0,-1)+'…';
-    ctx.fillText(nm, bx+bw/2, by+bh/2); return;
+  // NOT FULLY SHOWN (zoom < 0.6): no dot-rows yet — list the variant names, each on its own line.
+  if (zoom < 0.6){
+    const vars=r.family||[], N=Math.max(1,vars.length), lineH=bh/N;
+    ctx.fillStyle=TH.text; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.font=`${isSel?700:500} ${Math.max(5,lineH*0.6)}px 'Segoe UI',sans-serif`;
+    const mw=bw-16;
+    vars.forEach((v,i)=>{ let nm=(v.name||'Variant'),_f=nm; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==_f&&nm.length>1)nm=nm.slice(0,-1)+'…';
+      ctx.fillText(nm, bx+11, by+lineH*(i+0.5)); });
+    return;
   }
-  if (zoom < 0.6){                                             // FAR/MID: counter-scaled name, no rows
-    const far=zoom<0.4, nameWorld=Math.min(far?30:24, Math.max(12, 12/zoom));
-    ctx.fillStyle=TH.text; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.font=`${isSel?700:(far?600:500)} ${nameWorld}px 'Segoe UI',sans-serif`;
-    let nm=r.name; const mw=bw-16; while(ctx.measureText(nm).width>mw&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name&&nm.length>1)nm=nm.slice(0,-1)+'…';
-    ctx.fillText(nm, bx+11, by+bh/2); return;
-  }
-  // NEAR (zoom >= 0.6): full title + variant rows + carets
-  ctx.font='700 8px sans-serif'; const tlabel=(isGrowth(r)&&!isFamily(r))?'CHAIN':'FAMILY', tlw=ctx.measureText(tlabel).width;
-  ctx.fillStyle=TH.text; ctx.font='700 11px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-  let nm=r.name; const nmMax=bw-20-tlw-8; while(ctx.measureText(nm).width>nmMax&&nm.length>1)nm=nm.slice(0,-1); if(nm!==r.name)nm=nm.slice(0,-1)+'…';
-  ctx.fillText(nm,bx+11,by+ZHEAD/2+1);
-  ctx.font='700 8px sans-serif'; ctx.fillStyle=mix(TH.muted,accF,0.45); ctx.textAlign='right'; ctx.fillText(tlabel, bx+bw-8, by+ZHEAD/2+1);   // FAMILY hint top-right
+  // FULLY SHOWN (zoom >= 0.6): the variant rows carry the names, so the box needs no title — just a small type tag.
+  ctx.font='700 8px sans-serif'; ctx.fillStyle=mix(TH.muted,accF,0.45); ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText('FAMILY', bx+bw-8, by+ZHEAD/2+1);
   const anyAlt=recipes.some(rr=>rr.altOrigins&&rr.altOrigins.length), LPAD=zoneDims(node).slim.LPAD;
   ctx.save(); roundRect(ctx,bx,by,bw,bh,8); ctx.clip();
   I.box.rows.forEach(row=>{
@@ -1986,8 +1989,9 @@ function drawExpandedZone(node,isSel){
   const tcol=isModifier(r)?settings.accent:'#2fd4a0';
   const tlabel=isGrowth(r)?'CHAIN':isFamily(r)?'FAMILY':'MODIFIER';
   ctx.save();
-  const zbg=TH.bg||'#0c0c10'; roundRect(ctx,bx,by,bw,bh,12); ctx.fillStyle=isSel?mix(zbg,tcol,0.13):zbg; ctx.fill();
-  ctx.setLineDash([6,4]); ctx.lineWidth=1.5; ctx.strokeStyle=isSel?tcol:tcol+'99'; roundRect(ctx,bx,by,bw,bh,12); ctx.stroke(); ctx.setLineDash([]);
+  const grz=r.ground===true, RADZ=grz?0:12;
+  const zbg=TH.bg||'#0c0c10'; roundRect(ctx,bx,by,bw,bh,RADZ); ctx.fillStyle=isSel?mix(zbg,tcol,0.13):zbg; ctx.fill();
+  ctx.setLineDash([6,4]); ctx.lineWidth=1.5; ctx.strokeStyle=isSel?tcol:tcol+'99'; roundRect(ctx,bx,by,bw,bh,RADZ); ctx.stroke(); ctx.setLineDash([]);
   // header: name (truncated) + collapse button (composites only — families are always open); type label only if it fits
   const fam=node.isFamilyNode;
   const cbw=20,cbh=15,cbx=bx+bw-cbw-6,cby=by+5;
@@ -2048,25 +2052,26 @@ function drawNode(node) {
   const H = nodeHeight(node);
   const SD = settings.showDots && viewMode!=='analyse';   // seq dots are an edit-mode aid; analyse shows slot pips instead
   const fam = familyColor(node.sequence);
+  const gr = recipe.ground===true; const RAD = gr?0:8;            // ground recipes: fully squared silhouette
   if (viewMode==='craft'){
     const need=seqNeeds(node.sequence);
     const ok = node.sequence.length>0 && Object.keys(need).every(id=>invCount(id)>=need[id]);
     const frontier = ok && sortedChildren(node).some(c=>{ const cm=seqNeeds(c.sequence); return !(c.sequence.length>0 && Object.keys(cm).every(id=>invCount(id)>=cm[id])); });
     if(!ok) ctx.globalAlpha *= 0.4;
     ctx.fillStyle = isSel ? settings.accent+'1f' : (!ok ? TH.node : (frontier ? settings.accent+'22' : '#2fd4a022'));
-    roundRect(ctx,x,y,NW,H,8); ctx.fill();
+    roundRect(ctx,x,y,NW,H,RAD); ctx.fill();
     ctx.strokeStyle = isSel ? settings.accent : (!ok ? '#5b5b66' : (frontier ? settings.accent : '#2fd4a0'));
     ctx.lineWidth = (isSel||frontier)?2:1;
-    roundRect(ctx,x,y,NW,H,8); ctx.stroke();
+    roundRect(ctx,x,y,NW,H,RAD); ctx.stroke();
   } else {
   if (fam && !isSel){ ctx.fillStyle = mix(TH.node, fam, 0.18); }
   else ctx.fillStyle = isSel ? settings.accent+'1f' : TH.node;
-  roundRect(ctx,x,y,NW,H,8); ctx.fill();
+  roundRect(ctx,x,y,NW,H,RAD); ctx.fill();
   ctx.strokeStyle = isSel ? settings.accent : (onPath ? settings.accent+'aa' : (fam ? mix(TH.nodeBorder, fam, 0.5) : TH.nodeBorder));
   ctx.lineWidth = (isSel||onPath)?2:1;
-  roundRect(ctx,x,y,NW,H,8); ctx.stroke();
-  if (fam){ // left family bar — clip to the node's own rounded shape so corners match
-    ctx.save(); ctx.beginPath(); roundRect(ctx,x,y,NW,H,8); ctx.clip();
+  roundRect(ctx,x,y,NW,H,RAD); ctx.stroke();
+  if (fam){ // left family bar — clip to the node's own shape so corners match
+    ctx.save(); ctx.beginPath(); roundRect(ctx,x,y,NW,H,RAD); ctx.clip();
     ctx.fillStyle = fam; ctx.fillRect(x,y,5,H); ctx.restore();
   }
   }
@@ -2828,7 +2833,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _wiz) closeWiza
 document.addEventListener('mousedown', e=>{ if(_wiz && !_wiz.contains(e.target) && !e.target.classList.contains('cplus') && !(targeting && e.target===cvs)) closeWizard(); });
 const WTYPES=[['basic','◆','Basic','A single fixed recipe.'],['modifier','⊞','Modifier','Option axes; configure after.'],['family','🌿','Family','Plant variants under this node.'],['connect','🔗','Connect','Link this path to an EXISTING recipe.']];
 function openWizard(anchor, spot){ closeWizard(); closeConnWizard();
-  const st={el:null,type:'basic',name:'',link:null,step:1,mode:'between'};
+  const st={el:null,type:null,name:'',link:null,step:1,mode:'between'};
   const pop=document.createElement('div'); pop.className='cwiz'; _wiz=pop; cvsOverlay.appendChild(pop);
   const ar=anchor.getBoundingClientRect(), wr=wrap.getBoundingClientRect();
   pop.style.left=Math.min(ar.left-wr.left+26, wrap.clientWidth-250)+'px';
@@ -2861,7 +2866,9 @@ function openWizard(anchor, spot){ closeWizard(); closeConnWizard();
     pop.innerHTML=h;
     pop.querySelectorAll('[data-wm]').forEach(b=>b.onclick=()=>{ st.mode=b.dataset.wm; st.el=null; st.step=1; draw(); });
     pop.querySelectorAll('[data-wel]').forEach(p=>p.onclick=()=>{ if(p.dataset.bad){ toast('That element already leads to an existing recipe here.','err'); return; } st.el=p.dataset.wel; st.step=Math.max(st.step,2); draw();});
-    pop.querySelectorAll('[data-wt]').forEach(b=>b.onclick=()=>{st.type=b.dataset.wt; st.step=3; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0);});
+    pop.querySelectorAll('[data-wt]').forEach(b=>b.onclick=()=>{ st.type=b.dataset.wt;
+      if(st.type==='family'){ const err=wizCreate(spot, st.el, 'family', '', null, st.mode); if(err){ toast(err); return; } closeWizard(); return; }   // families aren't named
+      st.step=3; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0);});
     const wn=pop.querySelector('#wn'); if(wn) wn.oninput=()=>{ st.name=wn.value; const clash=recipes.find(r=>r.name.toLowerCase()===wn.value.trim().toLowerCase()); const hh=pop.querySelector('#wnh'); if(hh){hh.textContent=clash?'Name already exists.':''; hh.className='ehint err';} };
     const wq=pop.querySelector('#wq'); if(wq){ fillWList(''); wq.oninput=()=>fillWList(wq.value);
       wq.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); const items=recipes.filter(r=>r.name.toLowerCase().includes((wq.value||'').toLowerCase())); if(items.length){ st.link=items[0]; fillWList(wq.value); } } }; }
@@ -2886,7 +2893,7 @@ function wizCreate(spot, elId, type, name, link, mode){
     if(link.sequence.join('\x1f')===origin.join('\x1f') || (link.altOrigins||[]).some(o=>o.join('\x1f')===origin.join('\x1f'))) return 'Already an origin of that recipe.';
     pushHistory(); link.altOrigins=link.altOrigins||[]; link.altOrigins.push(origin); palettes[pidx].recipes=recipes; sel={seq:[...link.sequence],recipe:link}; commit(); return null; }
   if(name && recipes.find(r=>r.name.toLowerCase()===name.toLowerCase())) return 'Name already exists.';
-  if(!name) return 'Enter a name.';
+  if(!name && type!=='family') return 'Enter a name.';                 // families aren't named
   if(!asBetween){
     const newSeq=parentSeq.concat([elId]);
     if(type!=='family' && recipeByAnyOrigin(newSeq)) return 'This exact path already produces a recipe.';
@@ -2986,12 +2993,13 @@ function renderEditor(){
     h+=`<div class="ez" style="display:flex;justify-content:center;gap:8px"><button class="btn btn-danger btn-xs" id="eGapRm">Remove step</button></div>`;
     el.innerHTML=h; wireEditor(S); return;
   }
-  if(titleEl){ titleEl.value=r.name; titleEl.readOnly=false; titleEl.placeholder=''; }
+  if(titleEl){ if(isFamily(r)){ titleEl.value=famAutoLabel(r); titleEl.readOnly=true; titleEl.placeholder=''; } else { titleEl.value=r.name; titleEl.readOnly=false; titleEl.placeholder=''; } }
 
   // Merged identity group: sequence (+reach edit) + alternates + description + structure actions
   const plainBasic = !isGrowth(r) && !isModifier(r) && !isFamily(r);
   const convBtn = plainBasic ? '<button class="btn btn-ghost btn-xs" id="eToFamily">Convert to family</button>' : '';
-  const structHtml = `<div class="erow" style="justify-content:center;margin-top:13px">${convBtn}<button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>`;
+  const groundBtn = `<button class="btn btn-ghost btn-xs" id="eGround" title="Mark this recipe as a ground / terrain type" style="${r.ground?`color:${GROUND_COL};border-color:${GROUND_COL}66`:''}">${r.ground?'✓ Ground':'Ground'}</button>`;
+  const structHtml = `<div class="erow" style="justify-content:center;margin-top:13px">${groundBtn}${convBtn}<button class="btn btn-danger btn-xs" id="eDel">${editArmedDelete?'Confirm delete':'Delete'}</button></div>`;
   // Reached-via is hidden until its edit button is pressed (like alternate recipes)
   let reachRow=`<div class="reach-row">${dotsHtml}${seq.length>=1?`<button class="btn btn-ghost btn-xs reach-ed ${editReach?'on':''}" data-reachedit title="Change connecting element">✎</button>`:''}</div>`;
   let reachHtml='';
@@ -3125,6 +3133,7 @@ function wireEditor(S){
     pushHistory(); r.altOrigins[ai]=cand; editOriginIdx=-1; commit(); });
 
   // delete (inline two-step confirm)
+  const eGround=document.getElementById('eGround'); if(eGround) eGround.onclick=()=>{ pushHistory(); if(r.ground) delete r.ground; else r.ground=true; commit(); };
   const del=document.getElementById('eDel');
   if(del){ del.onclick=()=>{ if(!editArmedDelete){ editArmedDelete=true; del.textContent='Confirm delete'; setTimeout(()=>{ editArmedDelete=false; if(document.getElementById('eDel'))document.getElementById('eDel').textContent='Delete'; },2500); }
       else { editArmedDelete=false; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes; sel={seq:[],recipe:null}; if(typeof closeNodeEditor==='function')closeNodeEditor(); commit(); } }; }
