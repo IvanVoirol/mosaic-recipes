@@ -730,21 +730,11 @@ canvas.dragging{cursor:grabbing;}
   </div>
 </div>
 
-<div id="growth-overlay" class="modal-ov2">
-  <div class="modal">
-    <h2>Convert to growth series?</h2>
-    <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px">These recipes are named like a series (e.g. “1-4”). Review the advance element and stage count, untick any you want to keep as-is, then convert.</p>
-    <div id="growthRows" style="max-height:50vh;overflow-y:auto"></div>
-    <div class="modal-btns">
-      <button class="btn btn-ghost"  id="btnGrowthCancel">Not now</button>
-      <button class="btn btn-accent" id="btnGrowthConvert">Convert selected</button>
-    </div>
-  </div>
-</div>
+<!-- legacy growth-convert overlay removed: the chain type is gone -->
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.12';
+const APP_VERSION = 'v3.13';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1928,6 +1918,7 @@ function drawSlimZone(node, I, tcol){
 // A family is a container of variants, not a recipe — it has no name of its own; it's labelled by
 // its variant names (falling back to "Family" when none are named).
 function famAutoLabel(r){ const ns=((r&&r.family)||[]).map(v=>((v&&v.name)||'').trim()).filter(Boolean); return ns.length?ns.join(', '):'Family'; }
+function displayName(r){ return isFamily(r)? famAutoLabel(r) : (r&&r.name)||''; }   // families have no name of their own
 function drawFamilyBox(node,isSel){
   node._pips=null; node._modopts=null; node._fampips=null; node._caret=null; node._collapseBtn=null; node._famVarCarets=null;
   const r=node.recipe, dims=zoneDims(node), I=node._internals||compositeInternals(node);
@@ -2274,6 +2265,7 @@ function reparentPlan(nodeSeq, newParentSeq){
   const claim=k=>{ if(untouchedKeys.has(k)||seen.has(k)) return false; seen.add(k); return true; };
   for(const {x,s} of plan){
     if(isFamily(x)){ for(const q of familyOccupied({...x, sequence:s})){ if(!claim(q.join('\x1f'))) return {error:'That spot is already taken.'}; } }
+    else if(isModifier(x)){ for(const q of occupiedSeqs({...x, sequence:s, altOrigins:[]})){ if(!claim(q.join('\x1f'))) return {error:'That spot is already taken.'}; } }
     else if(!claim(s.join('\x1f'))) return {error:'That spot is already taken.'};
   }
   return {plan, nodeSeq, newSeq, el, inBetween:occupant.length>0};
@@ -2342,7 +2334,7 @@ cvs.addEventListener('mousemove', e=>{
     const origins = (!isGap && r.altOrigins && r.altOrigins.length) ? recipeOrigins(r) : null;
     const tn = document.getElementById('tip-name');
     if (isGap) { tn.textContent = '⚠ Unnamed node'; }
-    else { tn.textContent = r.name; }
+    else { tn.textContent = displayName(r); }
     if (origins){
       document.getElementById('tip-seq').innerHTML =
         `<div class="tip-origins-head">${origins.length} ways to make this</div>` +
@@ -2508,13 +2500,13 @@ window.addEventListener('resize', drawTree);
   const inp=document.getElementById('nodeSearchInput'), res=document.getElementById('nodeSearchResults');
   let hi=-1;
   function matches(){ const q=inp.value.trim().toLowerCase(); if(!q) return [];
-    return recipes.filter(r=>r.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,30); }
+    return recipes.filter(r=>displayName(r).toLowerCase().includes(q)).sort((a,b)=>displayName(a).localeCompare(displayName(b))).slice(0,30); }
   function panToRecipe(r){ focusNode(r.sequence, r, {pan:true, open:true}); }
   function render(){ const list=matches();
     if(!list.length){ res.classList.remove('on'); res.innerHTML=''; return; }
     res.innerHTML=''; list.forEach((r,i)=>{ const d=document.createElement('div');
       d.className='ns-row'+(i===hi?' hi':'');
-      d.innerHTML=`<span>${escHtml(r.name)}</span><span class="ns-meta">${r.sequence.length}${isGrowth(r)?' 🌱':''}${isModifier(r)?' ⊞':''}</span>`;
+      d.innerHTML=`<span>${escHtml(displayName(r))}</span><span class="ns-meta">${r.sequence.length}${isFamily(r)?' 🌿':''}${isModifier(r)?' ⊞':''}</span>`;
       d.onmousedown=e=>{ e.preventDefault(); inp.value=''; res.classList.remove('on'); panToRecipe(r); };
       res.appendChild(d); });
     res.classList.add('on');
@@ -2739,7 +2731,7 @@ function openConnWizard(anchor, role){ closeWizard(); closeConnWizard();
   const elFree = elId => role!=='out' || !recipeByAnyOrigin(anchor.sequence.concat([elId]));   // hide elements already used from this node
   function finish(node){ const src=role==='in'?node:anchor, tgt=role==='in'?anchor:node; if(createIndirect(src,tgt,st.el)) closeConnWizard(); }
   function candidates(){ const ks=connValidKeys(anchor, role);
-    return recipes.filter(r=>{ const n=layoutNodes.find(x=>x.recipe===r); return n && ks.has(n.key); }); }
+    return recipes.filter(r=>{ if(isFamily(r)) return false; const n=layoutNodes.find(x=>x.recipe===r); return n && ks.has(n.key); }); }   // families can't be link targets (altOrigins are ignored on them)
   function fillCList(qq){ const list=pop.querySelector('#cwlist'); if(!list) return;
     const items=candidates().filter(r=>r.name.toLowerCase().includes((qq||'').toLowerCase())).slice(0,40);
     list.innerHTML=items.map(r=>`<div data-cr="${escAttr(r.name)}">${escHtml(r.name)}<span class="cwseq">${escHtml(prettySeq(r.sequence))}</span></div>`).join('')||'<div class="ehint" style="padding:4px 8px">no match</div>';
@@ -2884,15 +2876,15 @@ function openWizard(anchor, spot){ closeWizard(); closeConnWizard();
       st.step=3; draw(); const n=pop.querySelector('#wn')||pop.querySelector('#wq'); if(n)setTimeout(()=>n.focus(),0);});
     const wn=pop.querySelector('#wn'); if(wn) wn.oninput=()=>{ st.name=wn.value; const clash=recipes.find(r=>r.name.toLowerCase()===wn.value.trim().toLowerCase()); const hh=pop.querySelector('#wnh'); if(hh){hh.textContent=clash?'Name already exists.':''; hh.className='ehint err';} };
     const wq=pop.querySelector('#wq'); if(wq){ fillWList(''); wq.oninput=()=>fillWList(wq.value);
-      wq.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); const items=recipes.filter(r=>r.name.toLowerCase().includes((wq.value||'').toLowerCase())); if(items.length){ st.link=items[0]; fillWList(wq.value); } } }; }
+      wq.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); const items=recipes.filter(r=>!isFamily(r) && r.name.toLowerCase().includes((wq.value||'').toLowerCase())); if(items.length){ st.link=items[0]; fillWList(wq.value); } } }; }
     pop.querySelector('#wcancel').onclick=closeWizard;
     { const wokBtn=pop.querySelector('#wok'); if(wokBtn) wokBtn.onclick=()=>{
       const err=wizCreate(spot, st.el, st.type, (st.name||'').trim(), st.link, st.mode); if(err){ toast(err); return; } closeWizard(); }; }
-    if(st.step>=3 && st.type==='connect'){ setTargeting(new Set(layoutNodes.filter(n=>n.recipe).map(n=>n.key)), null, node=>{ st.link=node.recipe; draw(); }); }
+    if(st.step>=3 && st.type==='connect'){ setTargeting(new Set(layoutNodes.filter(n=>n.recipe && !isFamily(n.recipe)).map(n=>n.key)), null, node=>{ st.link=node.recipe; draw(); }); }
     else if(targeting) clearTargeting();
     clampPop();
   }
-  function fillWList(q){ const list=pop.querySelector('#wlist'); if(!list)return; const items=recipes.filter(r=>r.name.toLowerCase().includes((q||'').toLowerCase())).slice(0,40);
+  function fillWList(q){ const list=pop.querySelector('#wlist'); if(!list)return; const items=recipes.filter(r=>!isFamily(r) && r.name.toLowerCase().includes((q||'').toLowerCase())).slice(0,40);
     list.innerHTML=items.map(r=>`<div data-wr="${escAttr(r.name)}" class="${st.link&&st.link===r?'sel':''}">${escHtml(r.name)}<span class="cwseq">${escHtml(prettySeq(r.sequence))}</span></div>`).join('')||'<div class="ehint" style="padding:4px 8px">no match</div>';
     list.querySelectorAll('[data-wr]').forEach(d=>d.onclick=()=>{ st.link=recipes.find(r=>r.name===d.dataset.wr)||null; const wq=pop.querySelector('#wq'); if(wq&&st.link) wq.value=st.link.name; fillWList(q); }); }
   draw();
@@ -3179,7 +3171,7 @@ function renderList() {
       if(listArmed!==r){ listArmed=r; renderList(); setTimeout(()=>{ if(listArmed===r){ listArmed=null; renderList(); } }, 2500); return; }
       listArmed=null; pushHistory(); recipes=recipes.filter(x=>x!==r); palettes[pidx].recipes=recipes;
       if(sel&&recipeBySeq(sel.seq)===r) sel={seq:[],recipe:null}; commit(); };
-    row.innerHTML = `<div class="recipe-info"><div class="rname">${escHtml(r.name)}${isGrowth(r)?` <span class="g-badge2">🌱${r.growth.stages}</span>`:''}</div><div class="rseq">${seqHtml}</div>${r.description?`<div class="rdesc">${escHtml(r.description)}</div>`:''}</div>`;
+    row.innerHTML = `<div class="recipe-info"><div class="rname">${escHtml(displayName(r))}${isFamily(r)?` <span class="g-badge2">🌿</span>`:''}</div><div class="rseq">${seqHtml}</div>${r.description?`<div class="rdesc">${escHtml(r.description)}</div>`:''}</div>`;
     row.appendChild(del); el.appendChild(row);
   });
 }
@@ -3874,52 +3866,7 @@ document.getElementById('searchBox').addEventListener('input', e=>{
 function rebuildAll(){ renderBuild(); renderList(); renderValidation(); renderStats(); renderSettings(); drawTree(); }
 
 // ── Detect existing "1-4"-style recipes that could become growth series ──
-function growthCandidates(){
-  return recipes.filter(r=>{
-    if (isGrowth(r)) return false;
-    const m = r.name.match(/\b(\d+)\s*-\s*(\d+)\b/);
-    if (!m) return false;
-    const n = (+m[2]) - (+m[1]) + 1;
-    return n>=2 && n<=12 && r.sequence.length>=1;
-  }).map(r=>{
-    const m = r.name.match(/\b(\d+)\s*-\s*(\d+)\b/);
-    return { r, stages:(+m[2])-(+m[1])+1, element:r.sequence[r.sequence.length-1] };
-  });
-}
-function maybeOfferGrowthConvert(){
-  const cands = growthCandidates();
-  if (!cands.length) return;
-  const rows = document.getElementById('growthRows'); rows.innerHTML='';
-  cands.forEach((c,i)=>{
-    const row=document.createElement('div'); row.className='grow-row';
-    row.innerHTML = `<input type="checkbox" checked data-i="${i}">
-      <span class="gname">${escHtml(c.r.name)}</span>
-      <select data-el="${i}">${elements.map(e=>`<option value="${e.id}"${e.id===c.element?' selected':''}>${e.name}</option>`).join('')}</select>
-      <input type="number" min="2" max="12" value="${c.stages}" data-st="${i}">`;
-    rows.appendChild(row);
-  });
-  const ov=document.getElementById('growth-overlay'); ov.classList.add('on');
-  document.getElementById('btnGrowthCancel').onclick=()=>ov.classList.remove('on');
-  document.getElementById('btnGrowthConvert').onclick=()=>{
-    pushHistory();
-    let any=false;
-    cands.forEach((c,i)=>{
-      const cb=rows.querySelector(`input[type=checkbox][data-i="${i}"]`);
-      if (!cb.checked) return;
-      const el=rows.querySelector(`select[data-el="${i}"]`).value;
-      const st=Math.max(2,Math.min(12,+rows.querySelector(`input[data-st="${i}"]`).value||c.stages));
-      // skip if stage sequences collide with other recipes
-      let ok=true;
-      for (let k=2;k<=st;k++){ const occ=recipeOccupying(growthStageSeq({sequence:c.r.sequence,growth:{element:el,stages:st}},k)); if(occ&&occ!==c.r){ok=false;break;} }
-      if (!ok) return;
-      c.r.growth={element:el,stages:st};
-      c.r.name=c.r.name.replace(/\s*\b\d+\s*-\s*\d+\b\s*/,' ').trim()||c.r.name;
-      any=true;
-    });
-    ov.classList.remove('on');
-    if (any) commit(); else rebuildAll();
-  };
-}
+// (Legacy chain bulk-convert tool removed with the chain node type.)
 
 document.getElementById('btnFit').onclick = fitToView;
 document.getElementById('btnResetView').onclick = resetView;
@@ -3934,7 +3881,6 @@ document.getElementById('btnResetView').onclick = resetView;
   loadPalette(pidx);
   updateUndoButtons();
   setSync(serverOk ? 'saved' : 'offline');
-  maybeOfferGrowthConvert();
 })();
 </script>
 </body>
