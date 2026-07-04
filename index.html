@@ -744,7 +744,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.11';
+const APP_VERSION = 'v3.12';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -2260,9 +2260,22 @@ function reparentPlan(nodeSeq, newParentSeq){
   movedD.forEach(x=>plan.push({x, s:newSeq.concat(x.sequence.slice(nodeSeq.length))}));
   occupant.forEach(x=>plan.push({x, s:newSeq.concat([el]).concat(x.sequence.slice(newSeq.length))})); // nest old child under the moved node
   const touched=new Set(plan.map(p=>p.x));
-  const untouched=new Set(recipes.filter(x=>!touched.has(x)).map(x=>x.sequence.join('\x1f')));
+  // Families share their base sequence with the recipe at that path (that's how they attach), so
+  // they're exempt from base-sequence uniqueness — matching recipeBySeq, which excludes families.
+  // Occupancy of everything NOT moved: base sequences of non-family recipes plus all occupied
+  // cells (family variant stages, modifier combos, alt origins). Families are exempt from BASE
+  // uniqueness (they share their base with the recipe at that path — recipeBySeq excludes them),
+  // but their occupied cells must stay collision-free.
+  const untouchedKeys=new Set();
+  recipes.forEach(x=>{ if(touched.has(x)) return;
+    if(!isFamily(x)) untouchedKeys.add(x.sequence.join('\x1f'));
+    occupiedSeqs(x).forEach(q=>untouchedKeys.add(q.join('\x1f'))); });
   const seen=new Set();
-  for(const {s} of plan){ const k=s.join('\x1f'); if(untouched.has(k)||seen.has(k)) return {error:'That spot is already taken.'}; seen.add(k); }
+  const claim=k=>{ if(untouchedKeys.has(k)||seen.has(k)) return false; seen.add(k); return true; };
+  for(const {x,s} of plan){
+    if(isFamily(x)){ for(const q of familyOccupied({...x, sequence:s})){ if(!claim(q.join('\x1f'))) return {error:'That spot is already taken.'}; } }
+    else if(!claim(s.join('\x1f'))) return {error:'That spot is already taken.'};
+  }
   return {plan, nodeSeq, newSeq, el, inBetween:occupant.length>0};
 }
 // Move a node (and its whole subtree) under a new parent, keeping its reaching element.
