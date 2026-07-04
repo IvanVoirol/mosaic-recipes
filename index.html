@@ -343,6 +343,8 @@ canvas.dragging{cursor:grabbing;}
 .cplus::before,.cplus::after{content:'';position:absolute;background:#0c0c10;border-radius:1px;}
 .cplus::before{width:10px;height:2px;left:6px;top:10px;} .cplus::after{width:2px;height:10px;left:10px;top:6px;}
 .cplus:hover{background:#b79bff;}
+.cplus.dead{background:#c0392b;transform:scale(0.72);box-shadow:0 1px 5px #0008;}
+.cplus.dead:hover{background:#e05545;}
 .cstub{position:absolute;height:2px;display:flex;align-items:center;pointer-events:none;z-index:4;}
 .cstub i{display:block;height:0;flex:1;}
 .cstub .cstub-solid{border-top:1.5px solid var(--muted);opacity:.75;}
@@ -734,7 +736,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.13';
+const APP_VERSION = 'v3.14';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -2665,9 +2667,18 @@ function getPlus(i){ while(plusPool.length<=i){ const b=document.createElement('
 function getStub(i){ while(stubPool.length<=i){ const s=document.createElement('div'); s.className='cstub'; s.style.display='none';
     s.innerHTML='<i class="cstub-solid"></i><i class="cstub-dot"></i>'; cvsOverlay.appendChild(s); stubPool.push(s);} return stubPool[i]; }
 // Position a ＋ button at a spot; for leaf spots also show a solid→dotted connector from the node edge.
+// A ＋ is "dead" when no element can depart from its spot: extend spots and out-ports need a free
+// element at their own departure sequence. (In-ports consume an element at the SOURCE, and between-
+// spots always accept the child's own connector, so neither can die this way.)
+function spotDead(sp){
+  if(sp.kind==='after')  return !elements.some(e=>!recipeOccupying(sp.parentSeq.concat([e.id])));
+  if(sp.kind==='conn' && sp.role==='out') return !elements.some(e=>!recipeByAnyOrigin(sp.node.sequence.concat([e.id])));
+  return false;
+}
 function placePlus(b, i, sp){ const s=w2s(sp.wx,sp.wy); const off=sp.kind==='conn'?8.5:11; b.style.left=(s.x-off)+'px'; b.style.top=(s.y-off)+'px'; b.style.display='flex'; b._spot=sp;
-  if(sp.kind==='conn'){ b.classList.add('conn'); b.title = sp.role==='in'?'New connection into this node (then click a source)':'New connection out of this node (then click a target)'; }
-  else { b.classList.remove('conn'); b.title=''; }
+  const dead=spotDead(sp); b.classList.toggle('dead', dead);
+  if(sp.kind==='conn'){ b.classList.add('conn'); b.title = dead?'No element left — every element already leads to a recipe from here.':(sp.role==='in'?'New connection into this node (then click a source)':'New connection out of this node (then click a target)'); }
+  else { b.classList.remove('conn'); b.title=dead?'No element left — every element already leads to a recipe from here.':''; }
   const stub=getStub(i);
   if(sp.kind!=='conn' && sp.leaf && sp.lx!=null){ const e=w2s(sp.lx,sp.ly); const x0=e.x, x1=s.x-12, wdt=Math.max(0,x1-x0);
     stub.style.left=x0+'px'; stub.style.top=(e.y-1)+'px'; stub.style.width=wdt+'px'; stub.style.display=wdt>4?'flex':'none'; }
@@ -3204,7 +3215,7 @@ function collectIssues(){
   // expansion collisions across distinct recipes (export footgun), excluding exact base-dups already flagged
   const src={}; recipes.forEach(r=>{ expandedSequences(r).forEach(seq=>{ const k=seq.join('\x1f'); (src[k]=src[k]||new Set()).add(r); }); });
   Object.entries(src).forEach(([k,set])=>{ if(set.size>1 && !dupKeys.has(k)){ const arr=[...set];
-    arr.forEach(r=>issues.push({sev:'warn',recipe:r,msg:`Expanded sequence collides with ${arr.filter(x=>x!==r).map(x=>'"'+(x.name||'?')+'"').join(', ')}`})); } });
+    arr.forEach(r=>issues.push({sev:'warn',recipe:r,msg:`Expanded sequence collides with ${arr.filter(x=>x!==r).map(x=>'"'+(displayName(x)||'?')+'"').join(', ')}`})); } });
   // de-dupe identical (recipe,msg)
   const seen=new Set(); return issues.filter(it=>{ const id=recipes.indexOf(it.recipe)+'|'+it.msg; if(seen.has(id))return false; seen.add(id); return true; });
 }
@@ -3221,7 +3232,7 @@ function renderValidation() {
     h.textContent=`${errs} error${errs!==1?'s':''}, ${warns} warning${warns!==1?'s':''}`; el.appendChild(h);
     issues.forEach(it=>{ const item=document.createElement('div'); item.className='gap-item';
       const col=it.sev==='err'?'var(--danger)':'#f0b040', icon=it.sev==='err'?'✕':'⚠';
-      item.innerHTML=`<div class="gap-msg" style="color:${col}">${icon} ${escHtml(it.recipe.name||'(unnamed)')}</div><div class="gap-sub">${escHtml(it.msg)}</div>`;
+      item.innerHTML=`<div class="gap-msg" style="color:${col}">${icon} ${escHtml(displayName(it.recipe)||'(unnamed)')}</div><div class="gap-sub">${escHtml(it.msg)}</div>`;
       item.onclick=()=>focusNode([...it.recipe.sequence], it.recipe, {pan:true, open:true});
       el.appendChild(item); });
   }
