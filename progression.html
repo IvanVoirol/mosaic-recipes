@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mosaic — Progression Editor</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* app-specific — shared tokens & components in style.css */
+/* the Palette Editor's runtime accent is #57e389 by default — match it statically here */
+:root{ --accent:#57e389; }
+body{display:flex;flex-direction:column;font-size:13.5px;}
+input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;outline:none}
+input:focus,textarea:focus{border-color:var(--accent)}
+::placeholder{color:#55546a}
+
+header{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface);flex:none}
+header h1{font-size:.95rem;margin:0;font-weight:700}
+header .ver{color:var(--muted);font-size:.72rem}
+header .sp{flex:1}
+#saveState{font-size:.7rem;padding:2px 8px;border-radius:99px;white-space:nowrap;color:var(--muted)}
+#saveState.ok{color:var(--accent2)}
+#saveState.off{color:var(--warn);border:1px solid var(--warn)}
+
+main{flex:1;display:grid;grid-template-columns:340px 1fr 380px;min-height:0}
+#colL,#colR{background:var(--surface)}
+.col{min-height:0;overflow-y:auto;padding:12px;border-right:1px solid var(--border)}
+.col:last-child{border-right:none}
+
+
+.sect{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin:14px 0 7px}
+.sect:first-child{margin-top:0}
+.hint{color:var(--muted);font-size:.76rem;margin:4px 0 8px}
+
+/* affordance chips */
+.affrow{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.aff{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 6px;border-radius:20px;border:1px solid var(--border);
+     background:#ffffff07;font-size:.78rem;cursor:pointer;user-select:none}
+.aff .dot{width:9px;height:9px;border-radius:50%}
+.aff.on{border-color:currentColor}
+.aff .x{opacity:.4;margin-left:2px;font-size:.7rem}
+.aff .x:hover{opacity:1;color:var(--danger)}
+.affadd{display:flex;gap:6px}
+.affadd input{flex:1;min-width:0}
+
+/* recipe list */
+#rsearch{width:100%;margin-bottom:7px}
+.rrow{padding:6px 8px;border:1px solid transparent;border-radius:9px;margin-bottom:3px;background:#ffffff05}
+.rrow:hover{border-color:var(--border)}
+.rrow .rl1{display:flex;align-items:center;gap:7px}
+.rrow .rname{font-weight:600;font-size:.84rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow.dec .rname{color:var(--muted);font-weight:500}
+.edots{display:flex;gap:2.5px;flex:none}
+.edots i{width:8px;height:8px;border-radius:50%;display:block}
+.rrow .fl{flex:none;display:flex;gap:2px}
+.rrow .flb{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.72rem;opacity:.32}
+.rrow .flb:hover{opacity:.8;background:#ffffff0c}
+.rrow .flb.on{opacity:1}
+.rrow .flb.start.on{color:var(--accent)}
+.rrow .flb.dec.on{color:var(--warn)}
+.rtags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;padding-left:2px}
+.rtags .aff{padding:1px 8px 1px 5px;font-size:.72rem;opacity:.35}
+.rtags .aff.on{opacity:1}
+.rtags .aff:not(.on) .dot{filter:grayscale(.7)}
+.rrow .rl1{cursor:pointer}
+.rrow.open{border-color:var(--accent);background:#57e38910}
+
+/* challenges */
+.chal{background:var(--node);border:1px solid var(--node-border);border-radius:10px;padding:11px 12px;margin-bottom:12px}
+.chal.err{border-color:#e0555566}
+.chal .l1{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.chal .cname{flex:1;font-weight:700;background:none;border:none;border-bottom:1px solid transparent;border-radius:0;padding:2px 0;font-size:.95rem}
+.chal .cname:focus{border-bottom-color:var(--accent)}
+.chal .area{width:110px;font-size:.76rem}
+.chal textarea{width:100%;resize:vertical;min-height:34px;font-size:.8rem;color:#b9b8cf;margin-bottom:8px}
+.chal .subh{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:8px 0 4px;font-weight:700;display:flex;align-items:center;gap:8px}
+.modewrap{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.modewrap button{padding:1px 8px;font-size:.68rem;color:var(--muted)}
+.modewrap button.on{background:var(--accent);color:#0c1a10;font-weight:700}
+.solvers{font-size:.78rem;color:var(--muted);margin-top:3px}
+.solvers b{color:var(--accent)}
+.solvers.none b{color:var(--danger)}
+.solvers .names{color:#b9b8cf}
+.unl{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.unl .aff{font-size:.74rem}
+.unl input{flex:1;min-width:120px;font-size:.78rem;padding:3px 7px}
+.upick{position:relative}
+.upick .ulist{position:absolute;z-index:30;left:0;top:calc(100% + 3px);width:240px;max-height:210px;overflow-y:auto;
+  background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:4px;box-shadow:0 8px 24px #000a}
+.upick .ulist div{padding:4px 8px;border-radius:6px;font-size:.8rem;cursor:pointer}
+.upick .ulist div:hover{background:#ffffff0d}
+.txtline{width:100%;font-size:.78rem;margin-top:3px}
+
+/* graph */
+.gcolh{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px;white-space:nowrap}
+.gcol{display:flex;flex-direction:column;gap:10px;min-width:186px}
+.gnode{background:var(--node);border:1.5px solid var(--node-border);border-radius:var(--r);padding:8px 10px;cursor:pointer;width:186px}
+.gnode:hover{border-color:#57e38988}
+.gnode.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.gnode.bad{border-color:#e0555588}
+.gnode .gn{font-weight:700;font-size:.83rem;margin-bottom:2px}
+.gnode .ga{color:var(--muted);font-size:.7rem;margin-bottom:4px}
+.gnode .gm{font-size:.72rem;color:#b9b8cf}
+.gnode .gm b{color:var(--accent)} .gnode.bad .gm b{color:var(--danger)}
+.gnode .gneeds{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
+.gnode .gneeds i{width:8px;height:8px;border-radius:50%;display:block}
+.gstart{background:#57e3891a;border-color:#57e38966;cursor:default}
+.gstart .gn{color:var(--accent)}
+/* inspector */
+#inspector .chal{margin-bottom:14px}
+#inspector .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+/* analysis */
+.wave{background:var(--node);border:1px solid var(--border);border-radius:11px;padding:9px 11px;margin-bottom:9px}
+.wave .wh{font-weight:700;font-size:.8rem;color:var(--accent);margin-bottom:5px}
+.wave .wc{font-size:.8rem;margin:3px 0}
+.wave .wc .cn{font-weight:600}
+.wave .wc .arrow{color:var(--muted)}
+.wave .wr{color:#b9b8cf;font-size:.76rem}
+.warnbox{border:1px solid #f0b04044;background:#f0b04010;border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:.78rem}
+.warnbox.err{border-color:#e0555544;background:#e0555510}
+.warnbox b{display:block;margin-bottom:2px}
+.warnbox .who{color:#b9b8cf}
+.okbox{color:var(--accent);font-size:.8rem;padding:4px 2px}
+.startsum{font-size:.78rem;color:#b9b8cf;margin-bottom:8px}
+</style>
+</head>
+<body>
+<header>
+  <a href="./" title="Back to the Palette Editor" style="color:var(--muted);text-decoration:none;font-size:1rem">←</a>
+  <h1>Mosaic · Progression Editor</h1><span class="ver" id="ver"></span>
+  <span class="sp"></span>
+  <span id="saveState"></span>
+  <button class="btn btn-ghost btn-sm" id="btnSync" title="Re-fetch recipes from the palette server">↻ Sync recipes</button>
+  <button class="btn btn-ghost btn-sm" id="btnImportPal" title="Offline fallback: load recipes from a JSON export">Import file…</button>
+  <button class="btn btn-ghost btn-sm" id="btnExport">Export project</button>
+  <button class="btn btn-ghost btn-sm" id="btnImport">Import project…</button>
+  <button class="btn btn-danger btn-sm" id="btnReset">Reset</button>
+  <input type="file" id="fileInp" accept=".json" style="display:none">
+</header>
+<main>
+  <div class="col tscroll" id="colL">
+    <div class="sect">Affordance dimensions</div>
+    <div class="hint">The shared characteristics a challenge tests for — e.g. <i>walkable, floats, light, signal, barrier</i>.</div>
+    <div class="affrow" id="affList"></div>
+    <div class="affadd"><input id="affNew" placeholder="new dimension…"><button class="btn btn-ghost btn-xs" id="affAdd">Add</button></div>
+    <div class="sect">Recipes <span id="rcount" style="color:var(--muted);font-weight:400"></span></div>
+    <div class="hint">Tag each recipe's affordances. ★ = known from the start · ✿ = decorative (excluded from progression warnings).</div>
+    <input id="rsearch" placeholder="filter recipes…">
+    <div id="rlist"></div>
+  </div>
+  <div class="col tscroll" id="colC" style="padding:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);flex:none">
+      <span class="sect" style="margin:0">Progression graph</span>
+      <button class="btn btn-accent btn-xs" id="chalAdd">+ challenge</button>
+      <span class="hint" style="margin:0">columns = waves · edges = "this unlock makes that challenge solvable" · click a node to edit</span>
+    </div>
+    <div id="graphWrap" style="flex:1;overflow:auto;position:relative">
+      <svg id="graphSvg" style="position:absolute;left:0;top:0;pointer-events:none"></svg>
+      <div id="graphCols" style="position:relative;display:flex;gap:46px;padding:18px 22px;align-items:flex-start;min-height:100%"></div>
+    </div>
+  </div>
+  <div class="col tscroll" id="colR">
+    <div id="inspector"></div>
+    <div class="sect">Progression</div>
+    <div class="startsum" id="startSum"></div>
+    <div id="waves"></div>
+    <div class="sect">Warnings</div>
+    <div id="warns"></div>
+  </div>
+</main>
+<script>
+// ═══ data ═══
+const VERSION='p1.1';
+document.getElementById('ver').textContent=VERSION;
+let ELCOL={dirt:'#7a5230',grass:'#4a9a3a',sand:'#d8c070',bamboo:'#9abf5a',stone:'#888d96',cristal:'#7ad0e0'};   // overwritten by palette sync
+const AFFCOLS=['#57e389','#7ad0e0','#e0a23c','#c792ea','#f07178','#82aaff','#f0b040','#89ddff','#e0709a','#a3e07a'];
+// Mosaic recipes snapshot (name, sequence, isFamily) — refresh via "Import recipes…"
+const SEED_RECIPES=[["Sand Ground",["sand"],0],["Dirt Ground",["dirt"],0],["Plowed Dirt Ground",["dirt","dirt"],0],["Grass Ground",["dirt","grass"],0],["Reef",["stone"],0],["Stone Ground",["stone","stone"],0],["Rock Fence",["stone","stone","stone","stone"],0],["Pavement Ground",["stone","stone","stone"],0],["Bamboo Ground",["bamboo"],0],["Adobe Ground",["sand","sand"],0],["Lilypad Ground",["grass"],0],["Grass Bud",["dirt","grass","grass"],0],["Mushroom Bud",["stone","stone","grass"],0],["Pipe",["sand","sand","bamboo"],0],["Small Light Post",["bamboo","bamboo","cristal"],0],["Tall Light Post",["bamboo","bamboo","cristal","bamboo"],0],["Bamboo Pressure Plate",["bamboo","cristal"],0],["Adobe Pressure Plate",["sand","sand","cristal"],0],["Pavement Pressure Plate",["stone","stone","stone","cristal"],0],["Underground Cable",["cristal"],0],["Underground Energy Gem",["cristal","cristal"],0],["Cable",["stone","stone","cristal"],0],["Energy Gem",["stone","stone","cristal","cristal"],0],["Adobe Wall",["sand","sand","sand","sand"],0],["Bamboo Wall",["bamboo","bamboo","bamboo"],0],["Stone Wall",["stone","stone","stone","stone","stone"],0],["Stone Hill",["stone","stone","stone","stone","stone","stone","stone"],0],["Brick Ground",["dirt","dirt","dirt"],0],["Brick Pressure Plate",["dirt","dirt","dirt","cristal"],0],["Brick Wall",["dirt","dirt","dirt","dirt","dirt"],0],["Desert Bud",["sand","grass"],0],["Desert Flowers",["sand","grass"],1],["Grass Flower",["dirt","grass","grass"],1],["Shrub",["dirt","grass","grass","grass","grass","grass","grass","grass","grass"],0],["Water Flowers",["grass"],1],["Mushrooms",["stone","stone","grass"],1],["Rail",["stone","stone","stone","bamboo"],0],["Potted Flower",["stone","stone","stone","dirt"],0],["Bush",["dirt","grass","grass","grass","grass","grass","grass","grass"],0],["Mesa Hill",["dirt","dirt","dirt","dirt","dirt","dirt","dirt"],0],["Stone Block",["stone","stone","stone","stone","stone","stone"],0],["Brick Block",["dirt","dirt","dirt","dirt","dirt","dirt"],0],["Adobe Block",["sand","sand","sand","sand","sand"],0],["Granite Hill",["sand","sand","sand","sand","sand","sand"],0],["Pavement Lever",["stone","stone","stone","cristal","bamboo"],0],["Adobe Lever",["sand","sand","cristal","bamboo"],0],["Bamboo Lever",["bamboo","cristal","bamboo"],0],["Brick Lever",["dirt","dirt","dirt","cristal","bamboo"],0],["Bamboo Button",["bamboo","cristal","stone"],0],["Cabin Entry",["dirt","grass","grass","grass","grass","grass","grass","grass","grass","bamboo"],0],["Pavement Button",["stone","stone","stone","cristal","stone"],0],["Adobe Button",["sand","sand","cristal","stone"],0],["Brick Button",["dirt","dirt","dirt","cristal","stone"],0],["Brick Fence",["dirt","dirt","dirt","dirt"],0],["Adobe Fence",["sand","sand","sand"],0],["Plowed Bud",["dirt","dirt","grass"],0],["Bamboo Fence",["bamboo","bamboo"],0],["Tree Stump",["bamboo","bamboo","grass"],0],["Energy Inverter",["stone","stone","cristal","cristal","cristal"],0],["Underground Energy Inverter",["cristal","cristal","cristal"],0],["Bamboo Block",["bamboo","bamboo","bamboo","bamboo"],0],["Plowed Plants",["dirt","dirt","grass"],1],["Trees",["bamboo","bamboo","grass"],1]];
+
+function seedDoc(){
+  return {
+    recipes: SEED_RECIPES.map(([name,seq,fam])=>({id:name, name, seq, fam})),   // provisional ids; real palette ids on sync
+    affordances: [
+      {id:'walkable', name:'walkable ground', color:AFFCOLS[0]},
+      {id:'water',    name:'placeable on water', color:AFFCOLS[1]},
+      {id:'light',    name:'light source', color:AFFCOLS[2]},
+      {id:'signal',   name:'sends signal', color:AFFCOLS[3]},
+      {id:'barrier',  name:'blocks movement', color:AFFCOLS[4]},
+    ],
+    tags: { 'Lilypad Ground':['walkable','water'], 'Dirt Ground':['walkable'], 'Sand Ground':['walkable'],
+            'Small Light Post':['light'], 'Bamboo Pressure Plate':['signal'] },
+    start: ['Dirt Ground','Sand Ground'],
+    decorative: ['Potted Flower','Bush','Desert Flowers','Grass Flower','Water Flowers'],
+    challenges: [
+      { id:'c'+Date.now(), name:'Cross rivers & lakes', area:'Riverlands',
+        desc:'Water tiles are uncrossable at first. Any recipe that is walkable AND placeable on water lets the player bridge them.',
+        needs:['walkable','water'], mode:'all',
+        unlocks:{ recipes:['Grass Ground'], resources:['grass seeds'], spaces:['Lake Isle'], usages:[] } },
+    ],
+  };
+}
+// ═══ state / persistence (server-first, localStorage fallback) ═══
+const LSKEY='mosaic-challenges-v1';
+let doc, serverOk=false;
+try{ const raw=localStorage.getItem(LSKEY); doc=raw?JSON.parse(raw):seedDoc(); }catch(e){ doc=seedDoc(); }
+let saveT=null;
+function setState(t){ const el=document.getElementById('saveState'); el.textContent=t; el.className=/offline/.test(t)?'off':(/saved|online/.test(t)?'ok':''); }
+function save(){ clearTimeout(saveT); saveT=setTimeout(async()=>{
+  try{ localStorage.setItem(LSKEY, JSON.stringify(doc)); }catch(e){}
+  if(serverOk){ try{
+    const r=await fetch('api/challenges',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(doc)});
+    if(r.status===409){ const j=await r.json(); if(confirm('The challenge doc changed elsewhere. Load the newer version? (Cancel keeps yours and overwrites.)')){ doc=j.current; renderAll(); } else { doc._version=j.current._version; return save(); } }
+    else if(r.ok){ const j=await r.json(); doc._version=j.doc._version; setState('saved ✓'); setTimeout(()=>setState('online'),1200); return; }
+  }catch(e){ serverOk=false; } }
+  setState(serverOk?'online':'offline (local only)');
+},350); }
+
+// Sync recipes from the palette server. Non-destructive: refs to now-missing recipes become
+// ghosts (kept + remappable), never pruned. Also migrates legacy name-based refs to ids.
+function applyPaletteData(pal){
+  const els=pal.elements||[];
+  els.forEach(e=>{ if(e.id&&e.color) ELCOL[e.id]=e.color; });
+  const famLabel=r=>{ const ns=(r.family||[]).map(v=>(v.name||'').trim()).filter(Boolean); return ns.length?ns.join(', '):'Family'; };
+  const fresh=(pal.recipes||[]).filter(r=>r&&r.sequence).map(r=>({
+    id:r.id||r.name, name:r.name||'', label:Array.isArray(r.family)&&r.family.length?famLabel(r):(r.name||''), seq:r.sequence, fam:Array.isArray(r.family)&&r.family.length?1:0 }));
+  // legacy migration: refs that match an old NAME move to the palette id
+  const oldByName={}; doc.recipes.forEach(r=>{ if(r.name) oldByName[r.name]=r.id; });
+  const idset=new Set(fresh.map(r=>r.id));
+  const byNameNew={}; fresh.forEach(r=>{ if(r.name) byNameNew[r.name]=r.id; });
+  allRefIds().forEach(ref=>{
+    if(idset.has(ref)) return;                                    // already a live id
+    if(byNameNew[ref]!==undefined && byNameNew[ref]!==ref){ remapRef(ref, byNameNew[ref]); return; }  // name → id
+  });
+  // remember labels of refs that are STILL missing (ghosts), from the previous snapshot
+  const prev={}; doc.recipes.forEach(r=>prev[r.id]=r.label||r.name);
+  doc.recipes=fresh;
+  allRefIds().forEach(ref=>{ if(!idset.has(ref)) ghostNames[ref]=ghostNames[ref]||prev[ref]||ref; });
+}
+async function syncFromServer(){
+  try{
+    const r=await fetch('api/palettes',{cache:'no-store'}); if(!r.ok) throw 0;
+    const j=await r.json(); const pals=j.palettes||[];
+    if(!pals.length) throw 0;
+    const pal=pals.find(p=>p.id===doc.paletteId)||pals[0]; doc.paletteId=pal.id;
+    applyPaletteData(pal); serverOk=true; return true;
+  }catch(e){ return false; }
+}
+async function boot(){
+  try{ const r=await fetch('api/challenges',{cache:'no-store'});
+    if(r.ok){ const j=await r.json(); if(j&&j.challenges){ doc=j; } serverOk=true; } }catch(e){}
+  const synced=await syncFromServer();
+  setState(serverOk?'online':'offline (local only)');
+  renderAll();
+}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const byId=id=>doc.recipes.find(r=>r.id===id);
+const byName=n=>doc.recipes.find(r=>r.name===n);
+const affById=id=>doc.affordances.find(a=>a.id===id);
+// Display label for a recipe reference; ids that no longer exist in the palette are GHOSTS —
+// kept intact (never pruned) so deleting a recipe in the Palette Editor can't damage this doc.
+const ghostNames={};                              // id -> last known label, remembered for display
+function rlabel(id){ const r=byId(id); return r ? (r.label||r.name||'(family)') : (ghostNames[id]||id); }
+function isGhost(id){ return !byId(id); }
+function allRefIds(){ const s=new Set();
+  Object.keys(doc.tags).forEach(k=>s.add(k)); doc.start.forEach(k=>s.add(k)); doc.decorative.forEach(k=>s.add(k));
+  doc.challenges.forEach(c=>(c.unlocks.recipes||[]).forEach(k=>s.add(k)));
+  return [...s]; }
+function remapRef(oldId,newId){                    // rewrite every reference oldId → newId (or drop if newId null)
+  if(doc.tags[oldId]){ if(newId){ const t=new Set([...(doc.tags[newId]||[]),...doc.tags[oldId]]); doc.tags[newId]=[...t]; } delete doc.tags[oldId]; }
+  const swap=arr=>{ const i=arr.indexOf(oldId); if(i>=0){ if(newId&&!arr.includes(newId)) arr[i]=newId; else arr.splice(i,1); } };
+  swap(doc.start); swap(doc.decorative);
+  doc.challenges.forEach(c=>swap(c.unlocks.recipes||[]));
+  delete ghostNames[oldId];
+}
+
+// ═══ core: who solves a challenge ═══
+function solvers(ch){                              // → recipe IDs
+  if(!ch.needs.length) return [];
+  return doc.recipes.filter(r=>{
+    const t=doc.tags[r.id]||[];
+    return ch.mode==='any' ? ch.needs.some(n=>t.includes(n)) : ch.needs.every(n=>t.includes(n));
+  }).map(r=>r.id);
+}
+// ═══ core: progression simulation ═══
+// A recipe is available from the start if it's ★start or never appears as an unlock of any challenge.
+// Then repeat: a challenge fires once ANY known recipe solves it; its unlocked recipes join the pool.
+function simulate(){
+  const gated=new Set(); doc.challenges.forEach(c=>(c.unlocks.recipes||[]).forEach(n=>gated.add(n)));
+  const known=new Set(doc.start.filter(n=>byId(n)));
+  const ungated=doc.recipes.map(r=>r.id).filter(n=>!gated.has(n)&&!known.has(n));
+  ungated.forEach(n=>known.add(n));
+  const solvedSet=new Set(), waves=[];
+  const unlockedBy={};                       // recipe name -> challenge id that unlocked it ('' = start pool)
+  known.forEach(n=>unlockedBy[n]='');
+  const waveOf={};                           // challenge id -> wave index
+  const solvedBy=c=>solvers(c).some(n=>known.has(n));
+  for(let guard=0; guard<200; guard++){
+    const newly=doc.challenges.filter(c=>!solvedSet.has(c.id)&&c.needs.length&&solvedBy(c));
+    if(!newly.length) break;
+    const wave={challenges:[],unlocked:[]};
+    newly.forEach(c=>{ solvedSet.add(c.id); waveOf[c.id]=waves.length;
+      const via=solvers(c).filter(n=>known.has(n));
+      wave.challenges.push({c, via});
+    });
+    newly.forEach(c=>{ (c.unlocks.recipes||[]).forEach(n=>{ if(!known.has(n)&&byId(n)){ known.add(n); wave.unlocked.push(n); unlockedBy[n]=c.id; } }); });
+    waves.push(wave);
+  }
+  const unsolved=doc.challenges.filter(c=>!solvedSet.has(c.id));
+  const neverKnown=doc.recipes.map(r=>r.id).filter(n=>!known.has(n));
+  return {waves, unsolved, neverKnown, ungated, known, unlockedBy, waveOf};
+}
+
+// ═══ render: affordances ═══
+function renderAffs(){
+  const el=document.getElementById('affList');
+  el.innerHTML=doc.affordances.map(a=>`<span class="aff" style="color:${a.color}"><span class="dot" style="background:${a.color}"></span>${esc(a.name)}<span class="x" data-affrm="${a.id}">✕</span></span>`).join('');
+  el.querySelectorAll('[data-affrm]').forEach(x=>x.onclick=()=>{
+    const id=x.dataset.affrm;
+    const used=doc.challenges.filter(c=>c.needs.includes(id)).length + Object.values(doc.tags).filter(t=>t.includes(id)).length;
+    if(used && !confirm(`"${affById(id).name}" is used ${used}×. Remove anyway?`)) return;
+    doc.affordances=doc.affordances.filter(a=>a.id!==id);
+    Object.keys(doc.tags).forEach(k=>doc.tags[k]=doc.tags[k].filter(t=>t!==id));
+    doc.challenges.forEach(c=>c.needs=c.needs.filter(t=>t!==id));
+    save(); renderAll(); });
+}
+document.getElementById('affAdd').onclick=()=>{
+  const inp=document.getElementById('affNew'); const nm=inp.value.trim(); if(!nm) return;
+  const id=nm.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||('a'+Date.now());
+  if(affById(id)){ alert('Already exists.'); return; }
+  doc.affordances.push({id, name:nm, color:AFFCOLS[doc.affordances.length%AFFCOLS.length]});
+  inp.value=''; save(); renderAll(); };
+document.getElementById('affNew').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('affAdd').onclick(); });
+
+// ═══ render: recipes ═══
+let selRecipe=null;                          // name of the recipe whose tag picker is open
+function renderRecipes(){
+  const q=(document.getElementById('rsearch').value||'').toLowerCase();
+  const list=document.getElementById('rlist');
+  const rows=doc.recipes.filter(r=>(r.label||r.name||'').toLowerCase().includes(q));
+  document.getElementById('rcount').textContent='('+doc.recipes.length+')';
+  list.innerHTML=rows.map(r=>{
+    const tags=doc.tags[r.id]||[];
+    const dec=doc.decorative.includes(r.id), st=doc.start.includes(r.id);
+    const open=selRecipe===r.id;
+    // collapsed: only assigned tags (always visible); open: full picker for this recipe only
+    const shown=open?doc.affordances:doc.affordances.filter(a=>tags.includes(a.id));
+    return `<div class="rrow ${dec?'dec':''} ${open?'open':''}" data-r="${esc(r.id)}">
+      <div class="rl1" data-rsel="${esc(r.id)}">
+        <span class="edots">${r.seq.slice(0,6).map(e=>`<i style="background:${ELCOL[e]||'#888'}"></i>`).join('')}</span>
+        <span class="rname">${esc(r.label||r.name||'(family)')}${r.fam?' 🌿':''}</span>
+        <span class="fl">
+          <button class="flb start ${st?'on':''}" data-st="${esc(r.id)}" title="Known from the start">★</button>
+          <button class="flb dec ${dec?'on':''}" data-dec="${esc(r.id)}" title="Decorative (excluded from warnings)">✿</button>
+        </span>
+      </div>
+      ${shown.length?`<div class="rtags">${shown.map(a=>`<span class="aff ${tags.includes(a.id)?'on':''}" style="color:${a.color}" data-tag="${a.id}" data-of="${esc(r.id)}"><span class="dot" style="background:${a.color}"></span>${esc(a.name)}</span>`).join('')}</div>`:''}
+    </div>`; }).join('');
+  list.querySelectorAll('[data-rsel]').forEach(h=>h.onclick=e=>{
+    if(e.target.closest('.flb')) return;                       // ★/✿ keep their own handlers
+    selRecipe = selRecipe===h.dataset.rsel ? null : h.dataset.rsel;
+    renderRecipes(); });
+  list.querySelectorAll('[data-tag]').forEach(ch=>ch.onclick=()=>{
+    const rn=ch.dataset.of, id=ch.dataset.tag; const t=doc.tags[rn]||(doc.tags[rn]=[]);
+    const i=t.indexOf(id); if(i>=0)t.splice(i,1); else t.push(id);
+    save(); renderRecipes(); renderGraph(); renderInspector(); renderAnalysis(); });
+  list.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ const n=b.dataset.st;
+    const i=doc.start.indexOf(n); if(i>=0)doc.start.splice(i,1); else doc.start.push(n);
+    save(); renderRecipes(); renderAnalysis(); });
+  list.querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>{ const n=b.dataset.dec;
+    const i=doc.decorative.indexOf(n); if(i>=0)doc.decorative.splice(i,1); else doc.decorative.push(n);
+    save(); renderRecipes(); renderAnalysis(); });
+}
+document.getElementById('rsearch').addEventListener('input',renderRecipes);
+// ═══ render: graph ═══
+let selChal=null;                                 // id of the challenge open in the inspector
+function graphEdges(sim){
+  // edge A→B when a recipe unlocked by A is among the solvers that make B fire (''=Start)
+  const edges={};                                  // 'src>dst' -> [recipe names]
+  sim.waves.forEach(w=>w.challenges.forEach(({c,via})=>{
+    via.forEach(rn=>{ const src=sim.unlockedBy[rn] ?? ''; const k=(src||'START')+'>'+c.id;
+      (edges[k]||(edges[k]=[])).push(rn); }); }));
+  return edges;
+}
+function renderGraph(){
+  const sim=simulate();
+  const cols=document.getElementById('graphCols'), svg=document.getElementById('graphSvg');
+  const startCount=doc.start.filter(n=>byName(n)).length;
+  let h=`<div class="gcol"><div class="gcolh">Start</div>
+    <div class="gnode gstart" id="gn-START"><div class="gn">★ Start pool</div>
+    <div class="gm">${startCount} starting + ${sim.ungated.length} ungated recipes</div></div></div>`;
+  sim.waves.forEach((w,i)=>{
+    h+=`<div class="gcol"><div class="gcolh">Wave ${i+1}</div>`+w.challenges.map(({c,via})=>gnode(c,via,false)).join('')+`</div>`;
+  });
+  const dead=sim.unsolved.filter(c=>c.needs.length);
+  const empty=sim.unsolved.filter(c=>!c.needs.length);
+  if(dead.length||empty.length){
+    h+=`<div class="gcol"><div class="gcolh" style="color:var(--danger)">Never fires</div>`
+      +dead.map(c=>gnode(c,null,true)).join('')+empty.map(c=>gnode(c,null,true)).join('')+`</div>`;
+  }
+  cols.innerHTML=h;
+  cols.querySelectorAll('.gnode[data-g]').forEach(n=>n.onclick=()=>{ selChal = selChal===n.dataset.g ? null : n.dataset.g; renderGraph(); renderInspector(); });
+  drawEdges(sim);
+}
+function gnode(c,via,bad){
+  const sv=solvers(c);
+  const un=c.unlocks, unN=(un.recipes||[]).length+(un.resources||[]).length+(un.spaces||[]).length+(un.usages||[]).length;
+  return `<div class="gnode ${bad?'bad':''} ${selChal===c.id?'sel':''}" data-g="${c.id}" id="gn-${c.id}">
+    <div class="gn">${esc(c.name||'(unnamed)')}</div>${c.area?`<div class="ga">${esc(c.area)}</div>`:''}
+    <div class="gm"><b>${sv.length}</b> solver${sv.length!==1?'s':''} · ${unN} unlock${unN!==1?'s':''}</div>
+    <div class="gneeds">${c.needs.map(id=>{const a=affById(id);return a?`<i title="${esc(a.name)}" style="background:${a.color}"></i>`:''}).join('')}</div>
+  </div>`;
+}
+function drawEdges(sim){
+  const wrapEl=document.getElementById('graphWrap'), svg=document.getElementById('graphSvg'), cols=document.getElementById('graphCols');
+  const W=cols.scrollWidth, H=Math.max(cols.scrollHeight, wrapEl.clientHeight);
+  svg.setAttribute('width',W); svg.setAttribute('height',H);
+  const pos=id=>{ const el=document.getElementById('gn-'+id); if(!el) return null;
+    return {x:el.offsetLeft, y:el.offsetTop, w:el.offsetWidth, h:el.offsetHeight}; };
+  let s='';
+  const edges=graphEdges(sim);
+  Object.entries(edges).forEach(([k,recs])=>{
+    const [src,dst]=k.split('>');
+    const a=pos(src==='START'?'START':src), b=pos(dst); if(!a||!b) return;
+    const x1=a.x+a.w, y1=a.y+a.h/2, x2=b.x, y2=b.y+b.h/2, mx=(x1+x2)/2;
+    s+=`<path d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" fill="none" stroke="#57e38955" stroke-width="1.6"/>`;
+    s+=`<circle cx="${x2}" cy="${y2}" r="2.6" fill="#57e389"/>`;
+    const uniq=[...new Set(recs)].map(rlabel);
+    s+=`<text x="${mx}" y="${(y1+y2)/2-4}" fill="#6a6980" font-size="9.5" text-anchor="middle">${esc(uniq.slice(0,2).join(', '))}${uniq.length>2?' +'+(uniq.length-2):''}</text>`;
+  });
+  svg.innerHTML=s;
+}
+// ═══ render: inspector (full editor for the selected challenge) ═══
+function renderInspector(){
+  const el=document.getElementById('inspector');
+  const c=doc.challenges.find(x=>x.id===selChal);
+  if(!c){ el.innerHTML=''; return; }
+  const sv=solvers(c), unl=c.unlocks;
+  const chip=id=>{ const a=affById(id); return a?`<span class="aff on" style="color:${a.color}" data-cneed="${id}"><span class="dot" style="background:${a.color}"></span>${esc(a.name)}<span class="x">✕</span></span>`:''; };
+  const addable=doc.affordances.filter(a=>!c.needs.includes(a.id));
+  el.innerHTML=`<div class="backrow"><span class="sect" style="margin:0">Challenge</span>
+      <span><button class="btn btn-danger btn-xs" id="insDel">Delete</button> <button class="btn btn-ghost btn-xs" id="insClose">Close</button></span></div>
+    <div class="chal ${c.needs.length&&!sv.length?'err':''}">
+      <div class="l1"><input class="cname" id="insName" value="${esc(c.name)}" placeholder="challenge name…"></div>
+      <input class="area" id="insArea" value="${esc(c.area||'')}" placeholder="area / biome" style="width:100%;margin-bottom:6px">
+      <textarea id="insDesc" placeholder="what blocks the player, and what the affordance reveals…">${esc(c.desc||'')}</textarea>
+      <div class="subh">Requires
+        <span class="modewrap"><button class="${c.mode!=='any'?'on':''}" data-cmode="all">all of</button><button class="${c.mode==='any'?'on':''}" data-cmode="any">any of</button></span>
+      </div>
+      <div class="unl" id="insNeeds">${c.needs.map(chip).join('')}
+        ${addable.length?`<select id="insAdd"><option value="">+ affordance…</option>${addable.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select>`:''}
+      </div>
+      <div class="solvers ${sv.length?'':'none'}">solved by <b>${sv.length}</b> recipe${sv.length!==1?'s':''}${sv.length?': <span class="names">'+sv.map(v=>esc(rlabel(v))).join(', ')+'</span>':' — nothing in the palette carries this combination yet'}</div>
+      <div class="subh">Unlocks</div>
+      <div class="unl">
+        ${(unl.recipes||[]).map(n=>`<span class="aff on" style="color:${isGhost(n)?'var(--danger)':'var(--accent)'}" data-cur="${esc(n)}" title="${isGhost(n)?'deleted from the palette':''}"><span class="dot" style="background:${isGhost(n)?'var(--danger)':'var(--accent)'}"></span>${esc(rlabel(n))}<span class="x">✕</span></span>`).join('')}
+        <span class="upick"><input placeholder="+ recipe…" id="insPick"><div class="ulist" style="display:none"></div></span>
+      </div>
+      <input class="txtline" id="insRes" value="${esc((unl.resources||[]).join(', '))}" placeholder="resources (comma separated)…">
+      <input class="txtline" id="insSpa" value="${esc((unl.spaces||[]).join(', '))}" placeholder="spaces / areas…">
+      <input class="txtline" id="insUsg" value="${esc((unl.usages||[]).join(', '))}" placeholder="usages / mechanics…">
+    </div>`;
+  const refresh=()=>{ save(); renderGraph(); renderAnalysis(); };
+  const refreshFull=()=>{ save(); renderGraph(); renderInspector(); renderAnalysis(); };
+  el.querySelector('#insClose').onclick=()=>{ selChal=null; renderGraph(); renderInspector(); };
+  el.querySelector('#insDel').onclick=()=>{ if(!confirm(`Delete challenge "${c.name||'(unnamed)'}"?`)) return;
+    doc.challenges=doc.challenges.filter(x=>x!==c); selChal=null; refreshFull(); };
+  el.querySelector('#insName').oninput=e=>{ c.name=e.target.value; save(); renderGraph(); };
+  el.querySelector('#insArea').oninput=e=>{ c.area=e.target.value; save(); renderGraph(); };
+  el.querySelector('#insDesc').oninput=e=>{ c.desc=e.target.value; save(); };
+  el.querySelectorAll('[data-cmode]').forEach(b=>b.onclick=()=>{ c.mode=b.dataset.cmode; refreshFull(); });
+  el.querySelectorAll('[data-cneed]').forEach(ch=>ch.querySelector('.x').onclick=()=>{ c.needs=c.needs.filter(n=>n!==ch.dataset.cneed); refreshFull(); });
+  const add=el.querySelector('#insAdd'); if(add) add.onchange=()=>{ if(add.value){ c.needs.push(add.value); refreshFull(); } };
+  el.querySelectorAll('[data-cur]').forEach(ch=>ch.querySelector('.x').onclick=()=>{ c.unlocks.recipes=c.unlocks.recipes.filter(n=>n!==ch.dataset.cur); refreshFull(); });
+  const pick=el.querySelector('#insPick'), box=pick.parentElement.querySelector('.ulist');
+  const fill=()=>{ const q=pick.value.toLowerCase();
+    const items=doc.recipes.filter(r=>!(c.unlocks.recipes||[]).includes(r.id)&&(r.label||r.name||'').toLowerCase().includes(q)).slice(0,30);
+    box.innerHTML=items.map(r=>`<div data-pick="${esc(r.id)}">${esc(r.label||r.name||'(family)')}</div>`).join('')||'<div style="color:var(--muted)">no match</div>';
+    box.querySelectorAll('[data-pick]').forEach(d=>d.onmousedown=e=>{ e.preventDefault();
+      (c.unlocks.recipes||(c.unlocks.recipes=[])).push(d.dataset.pick); pick.value=''; refreshFull(); }); };
+  pick.onfocus=()=>{ box.style.display='block'; fill(); };
+  pick.onblur=()=>setTimeout(()=>box.style.display='none',150);
+  pick.oninput=fill;
+  const csv=v=>v.split(',').map(s=>s.trim()).filter(Boolean);
+  el.querySelector('#insRes').onchange=e=>{ c.unlocks.resources=csv(e.target.value); refresh(); };
+  el.querySelector('#insSpa').onchange=e=>{ c.unlocks.spaces=csv(e.target.value); refresh(); };
+  el.querySelector('#insUsg').onchange=e=>{ c.unlocks.usages=csv(e.target.value); refresh(); };
+}
+document.getElementById('chalAdd').onclick=()=>{
+  const c={id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name:'', area:'', desc:'', needs:[], mode:'all',
+    unlocks:{recipes:[],resources:[],spaces:[],usages:[]}};
+  doc.challenges.unshift(c); selChal=c.id;
+  save(); renderGraph(); renderInspector(); renderAnalysis();
+  const nm=document.getElementById('insName'); if(nm) nm.focus(); };
+
+// ═══ render: analysis ═══
+function renderAnalysis(){
+  const sim=simulate();
+  const start=doc.start.filter(n=>byId(n));
+  document.getElementById('startSum').innerHTML =
+    `<b style="color:var(--accent)">★ Start:</b> ${start.map(esc).join(', ')||'<i>none marked</i>'}`+
+    (sim.ungated.length?`<br><span style="color:var(--muted)">+ ${sim.ungated.length} recipes not gated by any challenge (treated as available)</span>`:'');
+  const wv=document.getElementById('waves');
+  wv.innerHTML = sim.waves.map((w,i)=>`<div class="wave"><div class="wh">Wave ${i+1}</div>${
+    w.challenges.map(({c,via})=>`<div class="wc"><span class="cn">${esc(c.name||'(unnamed)')}</span> <span class="arrow">via</span> <span class="wr">${via.slice(0,4).map(esc).join(', ')}${via.length>4?' +'+(via.length-4):''}</span></div>`).join('')
+  }${ w.unlocked.length?`<div class="wr" style="margin-top:4px">→ unlocks: ${w.unlocked.map(v=>esc(rlabel(v))).join(', ')}</div>`:''
+  }</div>`).join('') || '<div class="hint">No solvable challenges yet — tag some recipes and give challenges requirements.</div>';
+
+  const warns=[]; const dec=new Set(doc.decorative);
+  sim.unsolved.forEach(c=>{ if(!c.needs.length){ warns.push({sev:'warn',t:`"${c.name||'(unnamed)'}" has no requirements`,who:'It never gates anything — give it affordances.'}); return; }
+    const anySolver=solvers(c).length;
+    warns.push({sev:'err',t:`"${c.name||'(unnamed)'}" is never solvable`,who:anySolver?`Its ${anySolver} solver${anySolver>1?'s are':' is'} locked behind challenges that never fire — circular gating.`:'No recipe carries the required affordance combination.'}); });
+  const soft=sim.neverKnown.filter(n=>!dec.has(n));
+  if(soft.length) warns.push({sev:'err',t:`${soft.length} recipe${soft.length>1?'s':''} can never be reached`,who:soft.map(rlabel).join(', ')});
+  const untagged=doc.recipes.map(r=>r.id).filter(n=>!dec.has(n)&&!(doc.tags[n]||[]).length);
+  if(untagged.length) warns.push({sev:'warn',t:`${untagged.length} non-decorative recipes have no affordances`,who:untagged.slice(0,12).map(rlabel).join(', ')+(untagged.length>12?` +${untagged.length-12} more`:'')});
+  // ghosts: references to recipes deleted from the palette — kept, surfaced, remappable
+  const ghosts=allRefIds().filter(isGhost);
+  ghosts.forEach(g=>warns.push({sev:'warn',t:`"${ghostNames[g]||g}" was deleted from the palette`,who:'Its references are kept. Remap or remove them below.',ghost:g}));
+  const unusedAff=doc.affordances.filter(a=>!doc.challenges.some(c=>c.needs.includes(a.id)));
+  if(unusedAff.length) warns.push({sev:'warn',t:`${unusedAff.length} dimension${unusedAff.length>1?'s':''} not tested by any challenge`,who:unusedAff.map(a=>a.name).join(', ')});
+  document.getElementById('warns').innerHTML = warns.length
+    ? warns.map((w,i)=>`<div class="warnbox ${w.sev==='err'?'err':''}"><b>${w.sev==='err'?'✕':'⚠'} ${esc(w.t)}</b><span class="who">${esc(w.who)}</span>${
+        w.ghost?`<div style="margin-top:5px;display:flex;gap:5px"><select data-gmap="${esc(w.ghost)}"><option value="">remap to…</option>${doc.recipes.map(r=>`<option value="${esc(r.id)}">${esc(r.label||r.name||'(family)')}</option>`).join('')}</select><button class="btn btn-danger btn-xs" data-gdrop="${esc(w.ghost)}">remove refs</button></div>`:''
+      }</div>`).join('')
+    : '<div class="okbox">✓ Progression is sound — every challenge fires and every non-decorative recipe is reachable.</div>';
+  document.querySelectorAll('[data-gmap]').forEach(s=>s.onchange=()=>{ if(!s.value) return; remapRef(s.dataset.gmap, s.value); save(); renderAll(); });
+  document.querySelectorAll('[data-gdrop]').forEach(b=>b.onclick=()=>{ if(!confirm('Remove every reference to this deleted recipe?')) return; remapRef(b.dataset.gdrop, null); save(); renderAll(); });
+}
+
+// ═══ import / export ═══
+let fileMode=null;
+document.getElementById('btnExport').onclick=()=>{
+  const blob=new Blob([JSON.stringify(doc,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mosaic-progression.json'; a.click(); };
+document.getElementById('btnImport').onclick=()=>{ fileMode='project'; document.getElementById('fileInp').click(); };
+document.getElementById('btnImportPal').onclick=()=>{ fileMode='palette'; document.getElementById('fileInp').click(); };
+document.getElementById('fileInp').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return; const rd=new FileReader();
+  rd.onload=()=>{ try{
+    const j=JSON.parse(rd.result);
+    if(fileMode==='project'){
+      if(!j.challenges||!j.affordances) throw new Error('not a project file');
+      doc=j; save(); renderAll();
+    } else {
+      // accept: flat recipe array, {recipes:[...]}, or {palettes:[{recipes}]}
+      const recsArr=Array.isArray(j)?j : (j.recipes || (j.palettes&&j.palettes[0]&&j.palettes[0].recipes));
+      if(!Array.isArray(recsArr)) throw new Error('no recipes found');
+      const pal=Array.isArray(j)?{recipes:recsArr}:(j.palettes?j.palettes[0]:j);
+      applyPaletteData(pal);
+      alert(`Recipes refreshed: ${doc.recipes.length} total. Missing references (if any) are kept as remappable ghosts.`);
+      save(); renderAll();
+    }
+  }catch(err){ alert('Import failed: '+err.message); } e.target.value=''; };
+  rd.readAsText(f); };
+document.getElementById('btnReset').onclick=()=>{ if(!confirm('Reset everything to the seed example?')) return; doc=seedDoc(); save(); renderAll(); };
+
+function renderAll(){ renderAffs(); renderRecipes(); renderGraph(); renderInspector(); renderAnalysis(); }
+renderAll();            // immediate paint from local cache…
+boot();                 // …then server data replaces it
+window.addEventListener('resize',()=>renderGraph());
+document.getElementById('btnSync').onclick=async()=>{ const ok=await syncFromServer(); if(!ok) alert('Palette server unreachable — use Import file… as a fallback.'); save(); renderAll(); };
+</script>
+</body>
+</html>

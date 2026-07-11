@@ -1,0 +1,36 @@
+/* ═══ Mosaic shared design system — used by the Palette Editor (/) and the
+   Progression Editor (/progression). Tokens may be overridden at runtime
+   (the Palette Editor applies its theme + accent onto :root). ═══ */
+:root {
+  --bg:#0c0c10; --surface:#14141c; --border:#252530; --text:#dddcf4;
+  --muted:#64637e; --accent:#9d7fea; --accent2:#2fd4a0; --danger:#f06b6b;
+  --warn:#f0b040; --node:#151520; --node-border:#2c2c40; --r:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font:14px/1.4 'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);}
+
+/* buttons */
+.btn{padding:5px 12px;border-radius:var(--r);border:1px solid transparent;cursor:pointer;
+  font:inherit;font-size:.78rem;font-weight:600;transition:opacity .12s;}
+.btn:hover{opacity:.85;}
+.btn-accent{background:var(--accent);color:#0c0c10;border-color:var(--accent);}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--text);}
+.btn-danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+.btn-sm{padding:3px 9px;font-size:.72rem;}
+.btn-icon{padding:4px 8px;font-size:.9rem;border-radius:var(--r);background:transparent;
+  border:1px solid var(--border);color:var(--text);cursor:pointer;transition:background .12s;}
+.btn-icon:hover{background:var(--border);}
+.btn-icon:disabled{opacity:.3;cursor:default;}
+.btn-icon:disabled:hover{background:transparent;}
+.btn-xs{padding:1px 6px;font-size:.64rem;border-radius:5px;}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* fields */
+input.f,textarea.f{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:var(--r);padding:6px 8px;font:inherit;margin-bottom:8px;}
+input.f:focus,textarea.f:focus{outline:none;border-color:var(--accent);}
+textarea.f{resize:vertical;min-height:48px;font-size:.82rem;}
+
+/* thin scrollbars */
+.tscroll::-webkit-scrollbar{width:3px;}
+.tscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}

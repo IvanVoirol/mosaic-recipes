@@ -20,6 +20,9 @@ const PORT      = process.env.PORT || 8080;
 const ROOT      = __dirname;
 const DATA_DIR  = path.join(ROOT, 'palettes');
 const INDEX     = path.join(ROOT, 'index.html');
+const CHAL_HTML = path.join(ROOT, 'progression.html');  // Progression Editor (served at /progression; /challenges kept as alias)
+const CHAL_FILE = path.join(ROOT, 'challenges-doc.json'); // its single persisted document
+const STYLE_CSS = path.join(ROOT, 'style.css');           // shared design system for both apps
 
 // Ensure the data folder exists on first run.
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -112,15 +115,40 @@ async function deletePalette(res, id) {
   sendJSON(res, 200, { ok: true });
 }
 
+// GET /api/challenges → the persisted Progression Editor document (or {} when none yet)
+async function getChallenges(res) {
+  try { sendJSON(res, 200, JSON.parse(await fsp.readFile(CHAL_FILE, 'utf8'))); }
+  catch { sendJSON(res, 200, {}); }
+}
+// PUT /api/challenges — same optimistic versioning as palettes
+async function saveChallenges(res, bodyStr) {
+  let incoming;
+  try { incoming = JSON.parse(bodyStr); }
+  catch { return sendJSON(res, 400, { error: 'Invalid JSON' }); }
+  let current = null;
+  try { current = JSON.parse(await fsp.readFile(CHAL_FILE, 'utf8')); } catch {}
+  if (current && typeof incoming._version === 'number' && incoming._version !== current._version) {
+    return sendJSON(res, 409, { conflict: true, current });
+  }
+  const next = { ...incoming };
+  next._version = (current && current._version ? current._version : 0) + 1;
+  next._updated = new Date().toISOString();
+  const tmp = CHAL_FILE + '.tmp';
+  await fsp.writeFile(tmp, JSON.stringify(next, null, 2), 'utf8');
+  await fsp.rename(tmp, CHAL_FILE);
+  sendJSON(res, 200, { ok: true, doc: next });
+}
+
 // ---- static index ----------------------------------------------------------
 
-function serveIndex(res) {
-  fs.readFile(INDEX, (err, buf) => {
-    if (err) { res.writeHead(500); res.end('index.html missing'); return; }
+function serveHtml(res, file) {
+  fs.readFile(file, (err, buf) => {
+    if (err) { res.writeHead(500); res.end(path.basename(file) + ' missing'); return; }
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(buf);
   });
 }
+function serveIndex(res) { serveHtml(res, INDEX); }
 
 // ---- router ----------------------------------------------------------------
 
@@ -137,7 +165,22 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 405, { error: 'Method not allowed' });
     }
 
-    // Everything else serves the app (single-page).
+    if (parts[0] === 'api' && parts[1] === 'challenges') {
+      if (req.method === 'GET') return await getChallenges(res);
+      if (req.method === 'PUT') return await saveChallenges(res, await readBody(req));
+      return sendJSON(res, 405, { error: 'Method not allowed' });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/style.css') {
+      return fs.readFile(STYLE_CSS, (err, buf) => {
+        if (err) { res.writeHead(404); res.end(); return; }
+        res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8' });
+        res.end(buf);
+      });
+    }
+
+    // /progression → the Progression Editor (/challenges kept as an alias); everything else → the Palette Editor.
+    if (req.method === 'GET' && (parts[0] === 'progression' || parts[0] === 'challenges')) return serveHtml(res, CHAL_HTML);
     if (req.method === 'GET') return serveIndex(res);
     res.writeHead(404); res.end('Not found');
   } catch (e) {
@@ -146,6 +189,6 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Palette Editor running on port ${PORT}`);
+  console.log(`Palette Editor (/) + Progression Editor (/progression) running on port ${PORT}`);
   console.log(`Palettes stored in: ${DATA_DIR}`);
 });
