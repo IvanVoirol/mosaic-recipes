@@ -34,3 +34,20 @@ textarea.f{resize:vertical;min-height:48px;font-size:.82rem;}
 /* thin scrollbars */
 .tscroll::-webkit-scrollbar{width:3px;}
 .tscroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+/* app menu (hamburger) — shared by both editors */
+.app-menu{position:absolute;top:54px;left:10px;z-index:60;min-width:236px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 12px 34px rgba(0,0,0,.5);padding:10px;display:none;flex-direction:column;gap:8px;}
+.app-menu.on{display:flex;}
+.am-sec{display:flex;flex-direction:column;gap:6px;}
+.am-sec>label{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.am-sec select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:5px 8px;font:inherit;width:100%;}
+.am-row{display:flex;gap:6px;}
+.am-row .btn{flex:1;justify-content:center;}
+.am-div{height:1px;background:var(--border);margin:1px 0;}
+
+/* 38px floating icon button over the workspace */
+.float-icon{width:38px;height:38px;font-size:1.4rem;line-height:1;display:flex;align-items:center;justify-content:center;
+  background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text);cursor:pointer;padding:0;}
+.float-icon:hover{border-color:var(--accent);}

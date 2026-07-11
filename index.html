@@ -79,16 +79,6 @@
 #cvs-palname{position:absolute;left:56px;top:10px;height:38px;z-index:20;display:flex;align-items:center;
   color:var(--text);font-size:.84rem;font-weight:600;letter-spacing:.02em;pointer-events:none;max-width:42vw;}
 #cvs-palname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.app-menu{position:absolute;top:54px;left:10px;z-index:60;min-width:236px;
-  background:var(--surface);border:1px solid var(--border);border-radius:10px;
-  box-shadow:0 12px 34px rgba(0,0,0,.5);padding:10px;display:none;flex-direction:column;gap:8px;}
-.app-menu.on{display:flex;}
-.am-sec{display:flex;flex-direction:column;gap:6px;}
-.am-sec>label{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
-.am-sec select{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:5px 8px;font:inherit;width:100%;}
-.am-row{display:flex;gap:6px;}
-.am-row .btn{flex:1;justify-content:center;}
-.am-div{height:1px;background:var(--border);margin:1px 0;}
 
 #main{display:flex;flex:1;overflow:hidden;}
 #sidebar{width:268px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
@@ -597,10 +587,13 @@ canvas.dragging{cursor:grabbing;}
         <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶ Undo</button><button class="btn btn-ghost btn-sm" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled>↷ Redo</button></div>
         <div class="am-div"></div>
         <div class="am-sec">
-          <label>Export</label>
+          <label>Data</label>
           <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnExpJson" title="Recipes as JSON (round-trips back into the editor)">JSON</button><button class="btn btn-ghost btn-sm" id="btnExpFlat" title="Composites resolved to concrete element sequences (game-ready)">Flat JSON</button></div>
           <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnExpGd" title="Godot script: elements + flattened recipes">Godot .gd</button><button class="btn btn-ghost btn-sm" id="btnExpPng" title="Current tree as a PNG image">PNG</button></div>
+          <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnImportMenu" title="Paste exported JSON into this palette">⇪ Import…</button></div>
         </div>
+        <div class="am-div"></div>
+        <div class="am-row"><button class="btn btn-ghost btn-sm" id="btnAppearance" title="Theme, colors, node size… (Settings tab)">⚙ Appearance</button><a class="btn btn-ghost btn-sm" id="btnProgLink" href="progression" title="Design the metroidvania progression on these recipes" style="text-decoration:none;text-align:center">⚑ Progression</a></div>
       </div>
       <button id="sidebar-show" title="Show panel">»</button>
       <div id="node-search">
@@ -611,7 +604,6 @@ canvas.dragging{cursor:grabbing;}
         <button class="btn-icon" id="btnUndoCv" title="Undo (Ctrl+Z)">↶</button>
         <button class="btn-icon" id="btnRedoCv" title="Redo (Ctrl+Shift+Z)">↷</button>
         <button class="btn-icon" id="btnFit" title="Fit tree to view">⤢</button>
-        <a class="btn-icon" href="progression" title="Open the Progression Editor" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">⚑</a>
         <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
         <button class="btn-icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
       </div>
@@ -712,7 +704,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.16';
+const APP_VERSION = 'v3.17';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -1011,7 +1003,16 @@ if (menuToggle && appMenu){
   appMenu.addEventListener('click', e => e.stopPropagation());
   document.addEventListener('click', e => { if (appMenu.classList.contains('on') && e.target!==menuToggle && !appMenu.contains(e.target)) setMenu(false); });
   document.addEventListener('keydown', e => { if (e.key==='Escape' && appMenu.classList.contains('on')) setMenu(false); });
-  ['btnExpJson','btnExpFlat','btnExpGd','btnExpPng','btnNew','btnEdit'].forEach(id => { const b=document.getElementById(id); if(b) b.addEventListener('click', ()=>setMenu(false)); });
+  ['btnExpJson','btnExpFlat','btnExpGd','btnExpPng','btnNew','btnEdit','btnImportMenu','btnAppearance'].forEach(id => { const b=document.getElementById(id); if(b) b.addEventListener('click', ()=>setMenu(false)); });
+  const bim=document.getElementById('btnImportMenu');
+  if(bim) bim.addEventListener('click', ()=>{ openModal('edit'); const t=document.getElementById('importTxt'); if(t){ if(t.scrollIntoView)t.scrollIntoView({block:'center'}); setTimeout(()=>t.focus(),50); } });
+  const bap=document.getElementById('btnAppearance');
+  if(bap) bap.addEventListener('click', ()=>{
+    document.getElementById('sidebar').classList.remove('hidden');
+    const rs=document.getElementById('sidebar-resize'); if(rs) rs.classList.remove('hidden');
+    const sh=document.getElementById('sidebar-show'); if(sh) sh.classList.remove('on');
+    const tb=document.querySelector('.stabs button[data-tab="settings"]'); if(tb) tb.click();
+  });
 }
 
 function loadPalette(idx) {
