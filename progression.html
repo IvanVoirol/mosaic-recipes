@@ -234,7 +234,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 </main>
 <script>
 // ═══ data ═══
-const VERSION='p2.4';
+const VERSION='p2.5';
 document.getElementById('ver').textContent=VERSION;
 let ELCOL={dirt:'#7a5230',grass:'#4a9a3a',sand:'#d8c070',bamboo:'#9abf5a',stone:'#888d96',cristal:'#7ad0e0'};   // overwritten by palette sync
 const AFFCOLS=['#57e389','#7ad0e0','#e0a23c','#c792ea','#f07178','#82aaff','#f0b040','#89ddff','#e0709a','#a3e07a'];
@@ -315,7 +315,7 @@ function applyPaletteData(pal){
   // remember labels of refs that are STILL missing (ghosts), from the previous snapshot
   const prev={}; doc.recipes.forEach(r=>prev[r.id]=r.label||r.name);
   doc.recipes=fresh;
-  allRefIds().forEach(ref=>{ if(!idset.has(ref)) ghostNames[ref]=ghostNames[ref]||prev[ref]||ref; });
+  allRefIds().forEach(ref=>{ if(!idset.has(ref)) ghostNames()[ref]=ghostNames()[ref]||prev[ref]||ref; });
 }
 async function syncFromServer(){
   try{
@@ -333,6 +333,7 @@ async function boot(){
   setState(serverOk?'online':'offline (local only)');
   lastSnap=snapDoc(); undoStack.length=0; redoStack.length=0; updateUndoUI();
   renderAll();
+  fitGraph();                                   // default view: fit the whole progression tree
 }
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const byId=id=>doc.recipes.find(r=>r.id===id);
@@ -340,8 +341,10 @@ const byName=n=>doc.recipes.find(r=>r.name===n);
 const affById=id=>doc.affordances.find(a=>a.id===id);
 // Display label for a recipe reference; ids that no longer exist in the palette are GHOSTS —
 // kept intact (never pruned) so deleting a recipe in the Palette Editor can't damage this doc.
-const ghostNames={};                              // id -> last known label, remembered for display
-function rlabel(id){ const r=byId(id); return r ? (r.label||r.name||'(family)') : (ghostNames[id]||id); }
+// id -> last known label for recipes deleted from the palette. PERSISTED in the doc, so a
+// ghost reference still displays its recipe name after a reload — a raw id is never shown.
+function ghostNames(){ return doc.ghostNames || (doc.ghostNames={}); }
+function rlabel(id){ const r=byId(id); return r ? (r.label||r.name||'(family)') : (ghostNames()[id]||'(missing recipe)'); }
 function isGhost(id){ return !byId(id); }
 function allRefIds(){ const s=new Set();
   Object.keys(doc.tags).forEach(k=>s.add(k)); doc.start.forEach(k=>s.add(k)); doc.decorative.forEach(k=>s.add(k));
@@ -352,7 +355,7 @@ function remapRef(oldId,newId){                    // rewrite every reference ol
   const swap=arr=>{ const i=arr.indexOf(oldId); if(i>=0){ if(newId&&!arr.includes(newId)) arr[i]=newId; else arr.splice(i,1); } };
   swap(doc.start); swap(doc.decorative);
   doc.challenges.forEach(c=>swap(c.unlocks.recipes||[]));
-  delete ghostNames[oldId];
+  delete ghostNames()[oldId];
 }
 
 // ═══ core: who solves a challenge ═══
@@ -594,13 +597,16 @@ document.getElementById('chalAdd').onclick=()=>{
 // ═══ render: analysis ═══
 function renderAnalysis(){
   const sim=simulate();
-  const start=doc.start.filter(n=>byId(n));
+  // display EVERY start reference by NAME — live ones plainly, deleted ones as red ghosts
+  const startHtml=doc.start.map(id=> isGhost(id)
+      ? `<span style="color:var(--danger)" title="deleted from the palette">${esc(rlabel(id))}</span>`
+      : esc(rlabel(id))).join(', ');
   document.getElementById('startSum').innerHTML =
-    `<b style="color:var(--accent)">★ Start:</b> ${start.map(esc).join(', ')||'<i>none marked</i>'}`+
+    `<b style="color:var(--accent)">★ Start:</b> ${startHtml||'<i>none marked</i>'}`+
     (sim.ungated.length?`<br><span style="color:var(--muted)">+ ${sim.ungated.length} recipes not gated by any challenge (treated as available)</span>`:'');
   const wv=document.getElementById('waves');
   wv.innerHTML = sim.waves.map((w,i)=>`<div class="wave"><div class="wh">Wave ${i+1}</div>${
-    w.challenges.map(({c,via})=>`<div class="wc"><span class="cn">${esc(c.name||'(unnamed)')}</span> <span class="arrow">via</span> <span class="wr">${via.slice(0,4).map(esc).join(', ')}${via.length>4?' +'+(via.length-4):''}</span></div>`).join('')
+    w.challenges.map(({c,via})=>`<div class="wc"><span class="cn">${esc(c.name||'(unnamed)')}</span> <span class="arrow">via</span> <span class="wr">${via.slice(0,4).map(v=>esc(rlabel(v))).join(', ')}${via.length>4?' +'+(via.length-4):''}</span></div>`).join('')
   }${ w.unlocked.length?`<div class="wr" style="margin-top:4px">→ unlocks: ${w.unlocked.map(v=>esc(rlabel(v))).join(', ')}</div>`:''
   }</div>`).join('') || '<div class="hint">No solvable challenges yet — tag some recipes and give challenges requirements.</div>';
 
@@ -614,7 +620,7 @@ function renderAnalysis(){
   if(untagged.length) warns.push({sev:'warn',t:`${untagged.length} non-decorative recipes have no affordances`,who:untagged.slice(0,12).map(rlabel).join(', ')+(untagged.length>12?` +${untagged.length-12} more`:'')});
   // ghosts: references to recipes deleted from the palette — kept, surfaced, remappable
   const ghosts=allRefIds().filter(isGhost);
-  ghosts.forEach(g=>warns.push({sev:'warn',t:`"${ghostNames[g]||g}" was deleted from the palette`,who:'Its references are kept. Remap or remove them below.',ghost:g}));
+  ghosts.forEach(g=>warns.push({sev:'warn',t:`"${ghostNames()[g]||rlabel(g)}" was deleted from the palette`,who:'Its references are kept. Remap or remove them below.',ghost:g}));
   const unusedAff=doc.affordances.filter(a=>!doc.challenges.some(c=>c.needs.includes(a.id)));
   if(unusedAff.length) warns.push({sev:'warn',t:`${unusedAff.length} dimension${unusedAff.length>1?'s':''} not tested by any challenge`,who:unusedAff.map(a=>a.name).join(', ')});
   document.getElementById('warns').innerHTML = warns.length
