@@ -86,3 +86,10 @@ textarea.f{resize:vertical;min-height:48px;font-size:.82rem;}
 #menuToggle{position:absolute;left:10px;top:10px;z-index:31;width:38px;height:38px;font-size:1.4rem;line-height:1;
   display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:9px;}
 #work-controls,#cvs-controls-shared{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:6px;z-index:9;}
+
+/* editor-window body idiom (groups, labels, underline inputs) — shared by both editors */
+.ez{padding:17px 13px;border-bottom:1px solid var(--border);} .ez:last-child{border-bottom:none;}
+.ezh{font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:5px;}
+.einp{flex:1;min-width:0;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font:inherit;padding:3px 0;}
+.einp:focus{outline:none;border-bottom-color:var(--accent);}
+.edesc{font-size:.72rem;line-height:1.35;resize:vertical;min-height:2.6em;font-family:inherit;color:var(--muted);opacity:.85;}

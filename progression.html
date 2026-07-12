@@ -40,10 +40,16 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 .cs-row{padding:6px 10px;font-size:.78rem;cursor:pointer;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border)}
 .cs-row:last-child{border-bottom:none}.cs-row:hover{background:#57e38922}
 .cs-row .cs-meta{color:var(--muted);font-size:.7rem}
-/* floating inspector over the graph — same idiom as the palette node editor */
-#inspector:not(:empty){position:absolute;right:12px;top:56px;z-index:20;width:344px;max-height:calc(100% - 70px);
-  overflow-y:auto;background:rgba(20,20,28,.96);backdrop-filter:blur(6px);border:1px solid var(--border);
-  border-radius:12px;box-shadow:0 10px 30px #0008;padding:12px}
+/* floating inspector — the palette node-editor window, verbatim */
+#inspector:not(:empty){position:absolute;right:12px;top:56px;z-index:20;width:340px;max-width:92vw;max-height:78%;
+  display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--accent);border-radius:13px;
+  box-shadow:0 18px 56px #000b;overflow:hidden}
+#insHead{display:flex;align-items:center;gap:8px;padding:9px 12px 2px;user-select:none;cursor:move}
+#insName{flex:1;min-width:0;font:inherit;font-size:1rem;font-weight:700;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 0}
+#insName:hover{border-bottom-color:var(--border)} #insName:focus{outline:none;border-bottom-color:var(--accent)}
+#insClose{background:transparent;border:none;color:var(--muted);font-size:1rem;cursor:pointer;border-radius:6px;width:24px;height:24px;flex:none}
+#insClose:hover{color:var(--text);background:#ffffff14}
+#insBody{flex:1;overflow-y:auto;padding:0}
 
 
 .sect{color:var(--muted);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin:14px 0 7px}
@@ -84,14 +90,6 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 .rrow.open{border-color:var(--accent);background:#57e38910}
 
 /* challenges */
-.chal{background:var(--node);border:1px solid var(--node-border);border-radius:10px;padding:11px 12px;margin-bottom:12px}
-.chal.err{border-color:#e0555566}
-.chal .l1{display:flex;gap:8px;align-items:center;margin-bottom:6px}
-.chal .cname{flex:1;font-weight:700;background:none;border:none;border-bottom:1px solid transparent;border-radius:0;padding:2px 0;font-size:.95rem}
-.chal .cname:focus{border-bottom-color:var(--accent)}
-.chal .area{width:110px;font-size:.76rem}
-.chal textarea{width:100%;resize:vertical;min-height:34px;font-size:.8rem;color:#b9b8cf;margin-bottom:8px}
-.chal .subh{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:8px 0 4px;font-weight:700;display:flex;align-items:center;gap:8px}
 .modewrap{display:inline-flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
 .modewrap button{padding:1px 8px;font-size:.68rem;color:var(--muted)}
 .modewrap button.on{background:var(--accent);color:#0c1a10;font-weight:700}
@@ -125,8 +123,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 .gstart{background:#57e3891a;border-color:#57e38966;cursor:default}
 .gstart .gn{color:var(--accent)}
 /* inspector */
-#inspector .chal{margin-bottom:14px}
-#inspector .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+#inspector #inspector .backrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 /* analysis */
 .wave{background:var(--node);border:1px solid var(--border);border-radius:11px;padding:9px 11px;margin-bottom:9px}
 .wave .wh{font-weight:700;font-size:.8rem;color:var(--accent);margin-bottom:5px}
@@ -179,7 +176,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
   <div id="sidebar-resize"></div>
 
   <div id="work">
-    <button class="btn-icon" id="menuToggle" title="Menu" aria-label="Menu">☰</button>
+    <button class="btn-icon" id="menuToggle" title="Menu" aria-label="Menu"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button>
     <div id="appMenu" class="app-menu" role="menu">
       <button class="menu-item" id="btnSync" title="Re-fetch recipes from the palette server">↻ Sync recipes</button>
       <button class="menu-item" id="btnImportPal" title="Offline fallback: load recipes from a JSON export">⇪ Import recipes file…</button>
@@ -212,7 +209,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 </main>
 <script>
 // ═══ data ═══
-const VERSION='p2.1';
+const VERSION='p2.2';
 document.getElementById('ver').textContent=VERSION;
 let ELCOL={dirt:'#7a5230',grass:'#4a9a3a',sand:'#d8c070',bamboo:'#9abf5a',stone:'#888d96',cristal:'#7ad0e0'};   // overwritten by palette sync
 const AFFCOLS=['#57e389','#7ad0e0','#e0a23c','#c792ea','#f07178','#82aaff','#f0b040','#89ddff','#e0709a','#a3e07a'];
@@ -482,33 +479,40 @@ function renderInspector(){
   const sv=solvers(c), unl=c.unlocks;
   const chip=id=>{ const a=affById(id); return a?`<span class="aff on" style="color:${a.color}" data-cneed="${id}"><span class="dot" style="background:${a.color}"></span>${esc(a.name)}<span class="x">✕</span></span>`:''; };
   const addable=doc.affordances.filter(a=>!c.needs.includes(a.id));
-  el.innerHTML=`<div class="backrow"><span class="sect" style="margin:0">Challenge</span>
-      <span><button class="btn btn-danger btn-xs" id="insDel">Delete</button> <button class="btn btn-ghost btn-xs" id="insClose">Close</button></span></div>
-    <div class="chal ${c.needs.length&&!sv.length?'err':''}">
-      <div class="l1"><input class="cname" id="insName" value="${esc(c.name)}" placeholder="challenge name…"></div>
-      <input class="area" id="insArea" value="${esc(c.area||'')}" placeholder="area / biome" style="width:100%;margin-bottom:6px">
-      <textarea id="insDesc" placeholder="what blocks the player, and what the affordance reveals…">${esc(c.desc||'')}</textarea>
-      <div class="subh">Requires
-        <span class="modewrap"><button class="${c.mode!=='any'?'on':''}" data-cmode="all">all of</button><button class="${c.mode==='any'?'on':''}" data-cmode="any">any of</button></span>
+  el.innerHTML=`
+    <div id="insHead"><input id="insName" spellcheck="false" value="${esc(c.name)}" placeholder="Name this challenge…"><button id="insClose" title="Close">✕</button></div>
+    <div id="insBody" class="tscroll">
+      <div class="ez">
+        <input class="einp" id="insArea" value="${esc(c.area||'')}" placeholder="area / biome" style="width:100%;margin-bottom:7px">
+        <textarea class="f edesc" id="insDesc" placeholder="what blocks the player, and what the affordance reveals…">${esc(c.desc||'')}</textarea>
+        <div style="display:flex;justify-content:center;margin-top:9px"><button class="btn btn-danger btn-xs" id="insDel">${insArmedDelete?'Confirm delete':'Delete'}</button></div>
       </div>
-      <div class="unl" id="insNeeds">${c.needs.map(chip).join('')}
-        ${addable.length?`<select id="insAdd"><option value="">+ affordance…</option>${addable.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select>`:''}
+      <div class="ez">
+        <div class="ezh">Requires
+          <span class="modewrap"><button class="${c.mode!=='any'?'on':''}" data-cmode="all">all of</button><button class="${c.mode==='any'?'on':''}" data-cmode="any">any of</button></span>
+        </div>
+        <div class="unl" id="insNeeds">${c.needs.map(chip).join('')}
+          ${addable.length?`<select id="insAdd"><option value="">+ affordance…</option>${addable.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select>`:''}
+        </div>
+        <div class="solvers ${sv.length?'':'none'}">solved by <b>${sv.length}</b> recipe${sv.length!==1?'s':''}${sv.length?': <span class="names">'+sv.map(v=>esc(rlabel(v))).join(', ')+'</span>':' — nothing in the palette carries this combination yet'}</div>
       </div>
-      <div class="solvers ${sv.length?'':'none'}">solved by <b>${sv.length}</b> recipe${sv.length!==1?'s':''}${sv.length?': <span class="names">'+sv.map(v=>esc(rlabel(v))).join(', ')+'</span>':' — nothing in the palette carries this combination yet'}</div>
-      <div class="subh">Unlocks</div>
-      <div class="unl">
-        ${(unl.recipes||[]).map(n=>`<span class="aff on" style="color:${isGhost(n)?'var(--danger)':'var(--accent)'}" data-cur="${esc(n)}" title="${isGhost(n)?'deleted from the palette':''}"><span class="dot" style="background:${isGhost(n)?'var(--danger)':'var(--accent)'}"></span>${esc(rlabel(n))}<span class="x">✕</span></span>`).join('')}
-        <span class="upick"><input placeholder="+ recipe…" id="insPick"><div class="ulist" style="display:none"></div></span>
+      <div class="ez">
+        <div class="ezh">Unlocks</div>
+        <div class="unl">
+          ${(unl.recipes||[]).map(n=>`<span class="aff on" style="color:${isGhost(n)?'var(--danger)':'var(--accent)'}" data-cur="${esc(n)}" title="${isGhost(n)?'deleted from the palette':''}"><span class="dot" style="background:${isGhost(n)?'var(--danger)':'var(--accent)'}"></span>${esc(rlabel(n))}<span class="x">✕</span></span>`).join('')}
+          <span class="upick"><input placeholder="+ recipe…" id="insPick"><div class="ulist" style="display:none"></div></span>
+        </div>
+        <input class="f" id="insRes" value="${esc((unl.resources||[]).join(', '))}" placeholder="resources (comma separated)…" style="margin-top:7px">
+        <input class="f" id="insSpa" value="${esc((unl.spaces||[]).join(', '))}" placeholder="spaces / areas…">
+        <input class="f" id="insUsg" value="${esc((unl.usages||[]).join(', '))}" placeholder="usages / mechanics…" style="margin-bottom:0">
       </div>
-      <input class="txtline" id="insRes" value="${esc((unl.resources||[]).join(', '))}" placeholder="resources (comma separated)…">
-      <input class="txtline" id="insSpa" value="${esc((unl.spaces||[]).join(', '))}" placeholder="spaces / areas…">
-      <input class="txtline" id="insUsg" value="${esc((unl.usages||[]).join(', '))}" placeholder="usages / mechanics…">
     </div>`;
   const refresh=()=>{ save(); renderGraph(); renderAnalysis(); };
   const refreshFull=()=>{ save(); renderGraph(); renderInspector(); renderAnalysis(); };
-  el.querySelector('#insClose').onclick=()=>{ selChal=null; renderGraph(); renderInspector(); };
-  el.querySelector('#insDel').onclick=()=>{ if(!confirm(`Delete challenge "${c.name||'(unnamed)'}"?`)) return;
-    doc.challenges=doc.challenges.filter(x=>x!==c); selChal=null; refreshFull(); };
+  el.querySelector('#insClose').onclick=()=>{ selChal=null; insArmedDelete=false; renderGraph(); renderInspector(); };
+  el.querySelector('#insDel').onclick=function(){
+    if(!insArmedDelete){ insArmedDelete=true; this.textContent='Confirm delete'; setTimeout(()=>{ insArmedDelete=false; const b=document.getElementById('insDel'); if(b) b.textContent='Delete'; },2500); return; }
+    insArmedDelete=false; doc.challenges=doc.challenges.filter(x=>x!==c); selChal=null; refreshFull(); };
   el.querySelector('#insName').oninput=e=>{ c.name=e.target.value; save(); renderGraph(); };
   el.querySelector('#insArea').oninput=e=>{ c.area=e.target.value; save(); renderGraph(); };
   el.querySelector('#insDesc').oninput=e=>{ c.desc=e.target.value; save(); };
@@ -529,7 +533,16 @@ function renderInspector(){
   el.querySelector('#insRes').onchange=e=>{ c.unlocks.resources=csv(e.target.value); refresh(); };
   el.querySelector('#insSpa').onchange=e=>{ c.unlocks.spaces=csv(e.target.value); refresh(); };
   el.querySelector('#insUsg').onchange=e=>{ c.unlocks.usages=csv(e.target.value); refresh(); };
+  // drag by the header, like the palette node editor (drags starting on the title input are ignored)
+  const head=el.querySelector('#insHead');
+  head.addEventListener('mousedown',e=>{ if(e.target.id==='insName') return;
+    const r=el.getBoundingClientRect(), wr=document.getElementById('work').getBoundingClientRect();
+    const ox=e.clientX-r.left, oy=e.clientY-r.top;
+    const mv=ev=>{ el.style.left=(ev.clientX-wr.left-ox)+'px'; el.style.top=(ev.clientY-wr.top-oy)+'px'; el.style.right='auto'; };
+    const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); e.preventDefault(); });
 }
+let insArmedDelete=false;
 document.getElementById('chalAdd').onclick=()=>{
   const c={id:'c'+Date.now()+Math.random().toString(36).slice(2,6), name:'', area:'', desc:'', needs:[], mode:'all',
     unlocks:{recipes:[],resources:[],spaces:[],usages:[]}};

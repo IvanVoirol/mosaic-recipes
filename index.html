@@ -258,15 +258,11 @@ canvas.dragging{cursor:grabbing;}
 .set-val{float:right;color:var(--accent);font-weight:600;}
 .set-range{width:100%;accent-color:var(--accent);cursor:pointer;}
 /* contextual Edit inspector */
-.ez{padding:17px 13px;border-bottom:1px solid var(--border);} .ez:last-child{border-bottom:none;}
-.ezh{font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:5px;}
 .ezi{font-size:.64rem;color:var(--muted);cursor:help;opacity:.6;font-weight:400;letter-spacing:0;text-transform:none;} .ezi:hover{opacity:1;color:var(--text);}
 .etype{font-size:.52rem;text-transform:uppercase;letter-spacing:.09em;font-weight:700;opacity:.9;margin-bottom:6px;}
 .eidrow{display:flex;align-items:center;gap:8px;}
 .ebadge{font-size:.54rem;text-transform:uppercase;letter-spacing:.05em;border-radius:99px;padding:2px 8px;font-weight:700;white-space:nowrap;}
 .ename{flex:1;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:inherit;font-size:1rem;font-weight:600;padding:2px 0;}
-.einp{flex:1;min-width:0;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font:inherit;padding:3px 0;}
-.einp:focus{outline:none;border-bottom-color:var(--accent);}
 .ename:hover{border-bottom-color:var(--border);} .ename:focus{outline:none;border-bottom-color:var(--accent);}
 .eltok{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 5px;border-radius:99px;font-size:.58rem;font-weight:700;cursor:pointer;border:1.5px solid transparent;user-select:none;transition:transform .07s;white-space:nowrap;}
 .eltok span{font-size:.54rem;} .eltok:hover{transform:scale(1.1);} .eltok.sel{outline:2px solid var(--accent);outline-offset:1px;} .eltok.dim{opacity:.32;cursor:not-allowed;}
@@ -327,7 +323,6 @@ canvas.dragging{cursor:grabbing;}
 #nodeEditHead{display:flex;align-items:center;gap:8px;padding:9px 12px 2px;border-bottom:none;background:var(--panel);user-select:none;cursor:move;}
 #nodeEditTitle{flex:1;min-width:0;font:inherit;font-size:1rem;font-weight:700;color:var(--text);background:transparent;border:none;border-bottom:1px solid transparent;padding:2px 0;}
 #nodeEditTitle:not([readonly]):hover{border-bottom-color:var(--border);} #nodeEditTitle:focus{outline:none;border-bottom-color:var(--accent);} #nodeEditTitle[readonly]{cursor:move;}
-.edesc{font-size:.72rem;line-height:1.35;resize:vertical;min-height:2.6em;font-family:inherit;color:var(--muted);opacity:.85;}
 .reach-row{display:flex;align-items:center;gap:8px;margin-top:2px;}
 .reach-ed{margin-left:auto;}
 .rdot{width:15px;height:15px;border-radius:50%;cursor:pointer;border:2px solid transparent;box-sizing:border-box;transition:transform .07s;}
@@ -554,7 +549,7 @@ canvas.dragging{cursor:grabbing;}
 
     <div id="cvs-wrap">
       <canvas id="cvs"></canvas>
-      <button class="btn-icon" id="menuToggle" title="Menu" aria-label="Menu">☰</button>
+      <button class="btn-icon" id="menuToggle" title="Menu" aria-label="Menu"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button>
       <div id="cvs-palname"><span id="palNameHdr">Palette Editor</span></div>
       <div id="appMenu" class="app-menu" role="menu">
         <div class="am-sec">
@@ -685,7 +680,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.19';
+const APP_VERSION = 'v3.20';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
