@@ -9,7 +9,7 @@
 /* app-specific — shared tokens & components in style.css */
 /* the Palette Editor's runtime accent is #57e389 by default — match it statically here */
 :root{ --accent:#57e389; }
-body{display:flex;flex-direction:column;font-size:13.5px;}
+body{display:flex;flex-direction:column;}
 input,textarea,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;outline:none}
 input:focus,textarea:focus{border-color:var(--accent)}
 ::placeholder{color:#55546a}
@@ -24,12 +24,17 @@ header .sp{flex:1}
 
 main{flex:1;display:flex;overflow:hidden;position:relative}
 #work{flex:1;position:relative;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-#graphWrap{flex:1;overflow:hidden;position:relative;cursor:grab}
+#graphWrap{flex:1;overflow:hidden;position:relative;cursor:grab;
+  background-image:radial-gradient(circle, rgba(255,255,255,.06) 5%, transparent 5.6%);
+  background-size:28px 28px;background-position:20px 56px;opacity:1}
+#graphWrap::before{content:'';position:absolute;inset:0;pointer-events:none}
 #graphWrap.panning{cursor:grabbing}
 #graphPan{position:absolute;left:0;top:0;transform-origin:0 0}
 .appver{font-size:.66rem;font-weight:600;color:var(--muted);vertical-align:middle}
 .sync{font-size:.7rem;padding:2px 8px;border-radius:99px;white-space:nowrap}
 .sync.saved{color:var(--accent2)} .sync.saving{color:var(--muted)} .sync.offline{color:var(--warn);border:1px solid var(--warn)}
+#minimap{position:absolute;right:10px;top:50px;z-index:6;width:158px;height:106px;border:1px solid var(--border);border-radius:10px;background:rgba(20,20,28,.86);backdrop-filter:blur(6px);cursor:crosshair;box-shadow:0 6px 20px #0006}
+#mm-zoom{position:absolute;right:10px;top:160px;z-index:6;width:158px;text-align:center;color:var(--text);opacity:.72;font-size:.66rem;font-variant-numeric:tabular-nums;pointer-events:none;text-shadow:0 1px 2px #000a}
 #prog-hud{position:absolute;bottom:10px;right:12px;z-index:6;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem}
 #prog-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:.68rem;pointer-events:none;white-space:nowrap;z-index:5}
 #chal-search{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:25;width:250px}
@@ -41,7 +46,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 .cs-row:last-child{border-bottom:none}.cs-row:hover{background:#57e38922}
 .cs-row .cs-meta{color:var(--muted);font-size:.7rem}
 /* floating inspector — the palette node-editor window, verbatim */
-#inspector:not(:empty){position:absolute;right:12px;top:56px;z-index:20;width:340px;max-width:92vw;max-height:78%;
+#inspector:not(:empty){position:absolute;right:12px;top:186px;z-index:20;width:340px;max-width:92vw;max-height:78%;
   display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--accent);border-radius:13px;
   box-shadow:0 18px 56px #000b;overflow:hidden}
 #insHead{display:flex;align-items:center;gap:8px;padding:9px 12px 2px;user-select:none;cursor:move}
@@ -194,8 +199,11 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
     <div id="work-controls">
       <button class="btn-icon" id="chalAdd" title="New challenge" style="color:var(--accent)">＋</button>
       <button class="btn-icon" id="btnFit" title="Fit graph to view">⤢</button>
+      <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
       <a class="btn-icon" id="appSwitch" href="./" title="Switch to the Palette Editor" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">🎨</a>
     </div>
+    <canvas id="minimap" width="158" height="106" title="Overview — click or drag to navigate"></canvas>
+    <div id="mm-zoom" title="Current zoom">100%</div>
     <span id="prog-hud"><span class="appver" id="ver"></span><span id="saveState" class="sync" title="Storage status"></span></span>
     <div id="prog-hint">Scroll to zoom · Drag to pan · Click a node to edit · columns = waves</div>
     <div id="graphWrap">
@@ -209,7 +217,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 </main>
 <script>
 // ═══ data ═══
-const VERSION='p2.2';
+const VERSION='p2.3';
 document.getElementById('ver').textContent=VERSION;
 let ELCOL={dirt:'#7a5230',grass:'#4a9a3a',sand:'#d8c070',bamboo:'#9abf5a',stone:'#888d96',cristal:'#7ad0e0'};   // overwritten by palette sync
 const AFFCOLS=['#57e389','#7ad0e0','#e0a23c','#c792ea','#f07178','#82aaff','#f0b040','#89ddff','#e0709a','#a3e07a'];
@@ -442,6 +450,7 @@ function renderGraph(){
   cols.innerHTML=h;
   cols.querySelectorAll('.gnode[data-g]').forEach(n=>n.onclick=()=>{ selChal = selChal===n.dataset.g ? null : n.dataset.g; renderGraph(); renderInspector(); });
   drawEdges(sim);
+  if(typeof drawMinimap==='function') drawMinimap();
 }
 function gnode(c,via,bad){
   const sv=solvers(c);
@@ -643,7 +652,42 @@ document.getElementById('sidebar-show').onclick=function(){
 // ── graph exploration: wheel-zoom to cursor + drag-pan + fit (same feel as the palette trie) ──
 let gz=1, gpx=20, gpy=56;
 const gWrap=document.getElementById('graphWrap'), gPan=document.getElementById('graphPan');
-function applyPan(){ gPan.style.transform=`translate(${gpx}px,${gpy}px) scale(${gz})`; }
+function applyPan(){ gPan.style.transform=`translate(${gpx}px,${gpy}px) scale(${gz})`;
+  const cell=28*gz; gWrap.style.backgroundSize=cell+'px '+cell+'px'; gWrap.style.backgroundPosition=gpx+'px '+gpy+'px';
+  const z=document.getElementById('mm-zoom'); if(z) z.textContent=Math.round(gz*100)+'%';
+  drawMinimap(); }
+// ── minimap: same chrome as the palette trie — overview + click/drag to navigate ──
+function drawMinimap(){
+  const cv=document.getElementById('minimap'); if(!cv) return;
+  const ctx=cv.getContext('2d'); if(!ctx) return;
+  const W=cv.width, H=cv.height; ctx.clearRect(0,0,W,H);
+  const cols=document.getElementById('graphCols');
+  const cw=Math.max(1,cols.scrollWidth), ch=Math.max(1,cols.scrollHeight);
+  const s=Math.min((W-10)/cw,(H-10)/ch);
+  const offx=(W-cw*s)/2, offy=(H-ch*s)/2;
+  document.querySelectorAll('.gnode').forEach(n=>{
+    const x=offx+n.offsetLeft*s, y=offy+n.offsetTop*s, w=Math.max(2,n.offsetWidth*s), hh=Math.max(1.5,n.offsetHeight*s);
+    ctx.fillStyle = n.classList.contains('gstart') ? '#57e38999'
+                  : n.classList.contains('bad')    ? '#e0555599'
+                  : n.classList.contains('sel')    ? '#57e389'
+                  : '#6a6980aa';
+    ctx.fillRect(x,y,w,hh); });
+  // viewport rectangle in content coords
+  const r=gWrap.getBoundingClientRect();
+  const vx=(-gpx)/gz, vy=(-gpy)/gz, vw=r.width/gz, vh=r.height/gz;
+  ctx.strokeStyle='#57e389'; ctx.lineWidth=1;
+  ctx.strokeRect(offx+vx*s, offy+vy*s, vw*s, vh*s);
+  cv._mm={s,offx,offy};
+}
+{ const cv=document.getElementById('minimap'); let mmDrag=false;
+  const nav=e=>{ const m=cv._mm; if(!m) return; const r=cv.getBoundingClientRect();
+    const cx=(e.clientX-r.left-m.offx)/m.s, cy=(e.clientY-r.top-m.offy)/m.s;
+    const wr=gWrap.getBoundingClientRect();
+    gpx=wr.width/2-gz*cx; gpy=wr.height/2-gz*cy; applyPan(); };
+  cv.addEventListener('mousedown',e=>{ mmDrag=true; nav(e); e.preventDefault(); e.stopPropagation(); });
+  document.addEventListener('mousemove',e=>{ if(mmDrag) nav(e); });
+  document.addEventListener('mouseup',()=>{ mmDrag=false; }); }
+document.getElementById('btnResetView').onclick=()=>{ gz=1; gpx=20; gpy=56; applyPan(); };
 applyPan();
 gWrap.addEventListener('wheel',e=>{ e.preventDefault();
   const r=gWrap.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
