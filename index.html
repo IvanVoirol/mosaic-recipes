@@ -74,8 +74,6 @@
 /* app-specific styles — shared tokens & components live in style.css */
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 
-#menuToggle{position:absolute;left:10px;top:10px;z-index:31;width:38px;height:38px;font-size:1.4rem;line-height:1;
-  display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border);border-radius:9px;}
 #cvs-palname{position:absolute;left:56px;top:10px;height:38px;z-index:20;display:flex;align-items:center;
   color:var(--text);font-size:.84rem;font-weight:600;letter-spacing:.02em;pointer-events:none;max-width:42vw;}
 #cvs-palname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -687,7 +685,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.18';
+const APP_VERSION = 'v3.19';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){

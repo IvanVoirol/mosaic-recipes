@@ -23,12 +23,15 @@ header .sp{flex:1}
 #saveState.off{color:var(--warn);border:1px solid var(--warn)}
 
 main{flex:1;display:flex;overflow:hidden;position:relative}
-#work{flex:1;position:relative;display:flex;flex-direction:column;min-width:0}
-#graphWrap{flex:1;overflow:auto;position:relative;padding-top:52px}
-#work-controls{position:absolute;right:10px;top:10px;z-index:9;display:flex;gap:6px}
-#prog-hud{position:absolute;right:104px;top:18px;z-index:9;display:flex;gap:8px;align-items:center}
-#prog-hud .appver{color:var(--muted);font-size:.68rem}
-#prog-hint{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;z-index:7;color:var(--muted);font-size:.7rem;pointer-events:none;white-space:nowrap}
+#work{flex:1;position:relative;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#graphWrap{flex:1;overflow:hidden;position:relative;cursor:grab}
+#graphWrap.panning{cursor:grabbing}
+#graphPan{position:absolute;left:0;top:0;transform-origin:0 0}
+.appver{font-size:.66rem;font-weight:600;color:var(--muted);vertical-align:middle}
+.sync{font-size:.7rem;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.sync.saved{color:var(--accent2)} .sync.saving{color:var(--muted)} .sync.offline{color:var(--warn);border:1px solid var(--warn)}
+#prog-hud{position:absolute;bottom:10px;right:12px;z-index:6;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem}
+#prog-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:.68rem;pointer-events:none;white-space:nowrap;z-index:5}
 #chal-search{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:25;width:250px}
 #chalSearchInput{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit;font-size:.8rem}
 #chalSearchInput:focus{outline:none;border-color:var(--accent)}
@@ -142,21 +145,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 <body>
 
 <main>
-  <button class="float-icon" id="menuToggle" title="Menu" style="position:absolute;left:10px;top:10px;z-index:31">☰</button>
-  <div id="appMenu" class="app-menu" role="menu">
-    <button class="menu-item" id="btnSync" title="Re-fetch recipes from the palette server">↻ Sync recipes</button>
-    <button class="menu-item" id="btnImportPal" title="Offline fallback: load recipes from a JSON export">⇪ Import recipes file…</button>
-    <div class="am-div"></div>
-    <button class="menu-item" id="btnExport">⇫ Export project</button>
-    <button class="menu-item" id="btnImport">⇪ Import project…</button>
-    <div class="am-div"></div>
-    <button class="menu-item" id="btnReset" style="color:var(--danger)">Reset…</button>
-  </div>
-  <div id="chal-search">
-    <input id="chalSearchInput" placeholder="🔎 Find challenge…" autocomplete="off">
-    <div id="chalSearchResults"></div>
-  </div>
-  <button id="sidebar-show" title="Show panel">»</button>
+
   <input type="file" id="fileInp" accept=".json" style="display:none">
 
   <aside id="sidebar">
@@ -190,22 +179,40 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
   <div id="sidebar-resize"></div>
 
   <div id="work">
-    <span id="prog-hud"><span class="appver" id="ver"></span><span id="saveState"></span></span>
-    <div id="work-controls">
-      <button class="float-icon" id="chalAdd" title="New challenge" style="background:var(--accent);color:#0c0c10;border-color:var(--accent)">＋</button>
-      <a class="float-icon" id="appSwitch" href="./" title="Switch to the Palette Editor" style="text-decoration:none;color:var(--accent)">🎨</a>
+    <button class="btn-icon" id="menuToggle" title="Menu" aria-label="Menu">☰</button>
+    <div id="appMenu" class="app-menu" role="menu">
+      <button class="menu-item" id="btnSync" title="Re-fetch recipes from the palette server">↻ Sync recipes</button>
+      <button class="menu-item" id="btnImportPal" title="Offline fallback: load recipes from a JSON export">⇪ Import recipes file…</button>
+      <div class="am-div"></div>
+      <button class="menu-item" id="btnExport">⇫ Export project</button>
+      <button class="menu-item" id="btnImport">⇪ Import project…</button>
+      <div class="am-div"></div>
+      <button class="menu-item" id="btnReset" style="color:var(--danger)">Reset…</button>
     </div>
-    <div id="prog-hint">columns = waves · edges = “this unlock makes that challenge solvable” · click a node to edit</div>
+    <button id="sidebar-show" title="Show panel">»</button>
+    <div id="chal-search">
+      <input id="chalSearchInput" placeholder="🔎 Find challenge…" autocomplete="off">
+      <div id="chalSearchResults"></div>
+    </div>
+    <div id="work-controls">
+      <button class="btn-icon" id="chalAdd" title="New challenge" style="color:var(--accent)">＋</button>
+      <button class="btn-icon" id="btnFit" title="Fit graph to view">⤢</button>
+      <a class="btn-icon" id="appSwitch" href="./" title="Switch to the Palette Editor" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">🎨</a>
+    </div>
+    <span id="prog-hud"><span class="appver" id="ver"></span><span id="saveState" class="sync" title="Storage status"></span></span>
+    <div id="prog-hint">Scroll to zoom · Drag to pan · Click a node to edit · columns = waves</div>
     <div id="graphWrap">
-      <svg id="graphSvg" style="position:absolute;left:0;top:0;pointer-events:none"></svg>
-      <div id="graphCols" style="position:relative;display:flex;gap:46px;padding:18px 22px;align-items:flex-start;min-height:100%"></div>
+      <div id="graphPan">
+        <svg id="graphSvg" style="position:absolute;left:0;top:0;pointer-events:none"></svg>
+        <div id="graphCols" style="position:relative;display:flex;gap:46px;padding:18px 22px;align-items:flex-start"></div>
+      </div>
     </div>
     <div id="inspector"></div>
   </div>
 </main>
 <script>
 // ═══ data ═══
-const VERSION='p2.0';
+const VERSION='p2.1';
 document.getElementById('ver').textContent=VERSION;
 let ELCOL={dirt:'#7a5230',grass:'#4a9a3a',sand:'#d8c070',bamboo:'#9abf5a',stone:'#888d96',cristal:'#7ad0e0'};   // overwritten by palette sync
 const AFFCOLS=['#57e389','#7ad0e0','#e0a23c','#c792ea','#f07178','#82aaff','#f0b040','#89ddff','#e0709a','#a3e07a'];
@@ -239,7 +246,10 @@ const LSKEY='mosaic-challenges-v1';
 let doc, serverOk=false;
 try{ const raw=localStorage.getItem(LSKEY); doc=raw?JSON.parse(raw):seedDoc(); }catch(e){ doc=seedDoc(); }
 let saveT=null;
-function setState(t){ const el=document.getElementById('saveState'); el.textContent=t; el.className=/offline/.test(t)?'off':(/saved|online/.test(t)?'ok':''); }
+function setState(t){ const el=document.getElementById('saveState');
+  const off=/offline/i.test(t);
+  el.textContent = off?'Offline':(/saved/i.test(t)?'Saved':(/online/i.test(t)?'Online':t));
+  el.className = 'sync ' + (off?'offline':(/saved|online/i.test(t)?'saved':'saving')); }
 function save(){ clearTimeout(saveT); saveT=setTimeout(async()=>{
   try{ localStorage.setItem(LSKEY, JSON.stringify(doc)); }catch(e){}
   if(serverOk){ try{
@@ -446,8 +456,8 @@ function gnode(c,via,bad){
   </div>`;
 }
 function drawEdges(sim){
-  const wrapEl=document.getElementById('graphWrap'), svg=document.getElementById('graphSvg'), cols=document.getElementById('graphCols');
-  const W=cols.scrollWidth, H=Math.max(cols.scrollHeight, wrapEl.clientHeight);
+  const svg=document.getElementById('graphSvg'), cols=document.getElementById('graphCols');
+  const W=cols.scrollWidth, H=cols.scrollHeight;
   svg.setAttribute('width',W); svg.setAttribute('height',H);
   const pos=id=>{ const el=document.getElementById('gn-'+id); if(!el) return null;
     return {x:el.offsetLeft, y:el.offsetTop, w:el.offsetWidth, h:el.offsetHeight}; };
@@ -617,6 +627,30 @@ document.getElementById('sidebar-show').onclick=function(){
   rz.addEventListener('mousedown',e=>{ drag=true; e.preventDefault(); });
   document.addEventListener('mousemove',e=>{ if(!drag) return; sb.style.width=Math.max(220,Math.min(560,e.clientX))+'px'; });
   document.addEventListener('mouseup',()=>{ if(drag){ drag=false; renderGraph(); } }); }
+// ── graph exploration: wheel-zoom to cursor + drag-pan + fit (same feel as the palette trie) ──
+let gz=1, gpx=20, gpy=56;
+const gWrap=document.getElementById('graphWrap'), gPan=document.getElementById('graphPan');
+function applyPan(){ gPan.style.transform=`translate(${gpx}px,${gpy}px) scale(${gz})`; }
+applyPan();
+gWrap.addEventListener('wheel',e=>{ e.preventDefault();
+  const r=gWrap.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  const nz=Math.min(2.5, Math.max(0.25, gz*Math.exp(-e.deltaY*0.0012)));
+  gpx = mx-(mx-gpx)*(nz/gz); gpy = my-(my-gpy)*(nz/gz); gz=nz; applyPan();
+},{passive:false});
+{ let pd=null;
+  gWrap.addEventListener('mousedown',e=>{ if(e.target.closest('.gnode')||e.target.closest('#inspector')) return;
+    pd={x:e.clientX,y:e.clientY,px:gpx,py:gpy}; gWrap.classList.add('panning'); e.preventDefault(); });
+  document.addEventListener('mousemove',e=>{ if(!pd) return; gpx=pd.px+(e.clientX-pd.x); gpy=pd.py+(e.clientY-pd.y); applyPan(); });
+  document.addEventListener('mouseup',()=>{ pd=null; gWrap.classList.remove('panning'); }); }
+function fitGraph(){ const cols=document.getElementById('graphCols'); const r=gWrap.getBoundingClientRect();
+  const cw=Math.max(1,cols.scrollWidth), ch=Math.max(1,cols.scrollHeight);
+  gz=Math.min(1.5, Math.max(0.25, Math.min((r.width-40)/cw,(r.height-90)/ch)));
+  gpx=(r.width-cw*gz)/2; gpy=Math.max(56,(r.height-ch*gz)/2); applyPan(); }
+document.getElementById('btnFit').onclick=fitGraph;
+function centerOnNode(id){ const el=document.getElementById('gn-'+id); if(!el) return;
+  const r=gWrap.getBoundingClientRect();
+  gpx = r.width/2 - gz*(el.offsetLeft+el.offsetWidth/2);
+  gpy = r.height/2 - gz*(el.offsetTop+el.offsetHeight/2); applyPan(); }
 // ── top-center challenge search// ── top-center challenge search → open in the inspector + scroll the graph to it ──
 { const inp=document.getElementById('chalSearchInput'), box=document.getElementById('chalSearchResults');
   const fill=()=>{ const q=inp.value.trim().toLowerCase();
@@ -626,7 +660,7 @@ document.getElementById('sidebar-show').onclick=function(){
     box.classList.add('on');
     box.querySelectorAll('[data-cs]').forEach(d=>d.onmousedown=e=>{ e.preventDefault();
       selChal=d.dataset.cs; renderGraph(); renderInspector();
-      const n=document.getElementById('gn-'+d.dataset.cs); if(n&&n.scrollIntoView) n.scrollIntoView({block:'center',inline:'center',behavior:'smooth'});
+      centerOnNode(d.dataset.cs);
       inp.value=''; box.classList.remove('on'); }); };
   inp.oninput=fill; inp.onfocus=fill;
   inp.onblur=()=>setTimeout(()=>box.classList.remove('on'),150); }
