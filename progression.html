@@ -38,7 +38,10 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 #prog-hud{position:absolute;bottom:10px;right:12px;z-index:6;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.68rem}
 #prog-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:.68rem;pointer-events:none;white-space:nowrap;z-index:5}
 #chal-search{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:25;width:250px}
-#chalSearchInput{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit;font-size:.8rem}
+#chal-search-row{display:flex;gap:5px;align-items:stretch}
+#chal-search-row .btn-icon{flex:none;background:var(--surface)}
+.hp-row{display:flex;justify-content:space-between;gap:10px;margin:3px 0;color:var(--muted)} .hp-row b{color:var(--text);font-weight:600;font-size:.72rem}
+#chalSearchInput{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit;font-size:.8rem}
 #chalSearchInput:focus{outline:none;border-color:var(--accent)}
 #chalSearchResults{margin-top:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:none;max-height:50vh;overflow-y:auto}
 #chalSearchResults.on{display:block}
@@ -193,14 +196,28 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
     </div>
     <button id="sidebar-show" title="Show panel">»</button>
     <div id="chal-search">
-      <input id="chalSearchInput" placeholder="🔎 Find challenge…" autocomplete="off">
+      <div id="chal-search-row">
+        <input id="chalSearchInput" placeholder="🔎 Find challenge…" autocomplete="off">
+        <button class="btn-icon" id="chalAdd" title="New challenge" style="color:var(--accent)">＋</button>
+      </div>
       <div id="chalSearchResults"></div>
     </div>
     <div id="work-controls">
-      <button class="btn-icon" id="chalAdd" title="New challenge" style="color:var(--accent)">＋</button>
+      <button class="btn-icon" id="btnUndoCv" title="Undo (Ctrl+Z)" disabled>↶</button>
+      <button class="btn-icon" id="btnRedoCv" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
       <button class="btn-icon" id="btnFit" title="Fit graph to view">⤢</button>
       <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
+      <button class="btn-icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
       <a class="btn-icon" id="appSwitch" href="./" title="Switch to the Palette Editor" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">🎨</a>
+    </div>
+    <div id="helpPop" style="display:none;position:absolute;right:10px;top:50px;z-index:40;width:230px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.5);padding:11px 13px;font-size:.76rem">
+      <div class="ezh" style="margin-bottom:7px">Keyboard shortcuts</div>
+      <div class="hp-row"><b>Ctrl+Z</b><span>Undo</span></div>
+      <div class="hp-row"><b>Ctrl+Shift+Z</b><span>Redo</span></div>
+      <div class="hp-row"><b>Scroll</b><span>Zoom</span></div>
+      <div class="hp-row"><b>Drag</b><span>Pan</span></div>
+      <div class="hp-row"><b>Click node</b><span>Edit challenge</span></div>
+      <div class="hp-row"><b>Esc</b><span>Close menu / help</span></div>
     </div>
     <canvas id="minimap" width="158" height="106" title="Overview — click or drag to navigate"></canvas>
     <div id="mm-zoom" title="Current zoom">100%</div>
@@ -217,7 +234,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 </main>
 <script>
 // ═══ data ═══
-const VERSION='p2.3';
+const VERSION='p2.4';
 document.getElementById('ver').textContent=VERSION;
 let ELCOL={dirt:'#7a5230',grass:'#4a9a3a',sand:'#d8c070',bamboo:'#9abf5a',stone:'#888d96',cristal:'#7ad0e0'};   // overwritten by palette sync
 const AFFCOLS=['#57e389','#7ad0e0','#e0a23c','#c792ea','#f07178','#82aaff','#f0b040','#89ddff','#e0709a','#a3e07a'];
@@ -255,7 +272,21 @@ function setState(t){ const el=document.getElementById('saveState');
   const off=/offline/i.test(t);
   el.textContent = off?'Offline':(/saved/i.test(t)?'Saved':(/online/i.test(t)?'Online':t));
   el.className = 'sync ' + (off?'offline':(/saved|online/i.test(t)?'saved':'saving')); }
-function save(){ clearTimeout(saveT); saveT=setTimeout(async()=>{
+// ── undo/redo: snapshots taken at the save() chokepoint, so EVERY mutation is undoable ──
+let undoStack=[], redoStack=[], lastSnap=null, histSkip=false;
+const snapDoc=()=>JSON.stringify(doc);
+function updateUndoUI(){ const u=document.getElementById('btnUndoCv'), r=document.getElementById('btnRedoCv');
+  if(u) u.disabled=!undoStack.length; if(r) r.disabled=!redoStack.length; }
+function recordHistory(){
+  if(histSkip){ histSkip=false; lastSnap=snapDoc(); return; }
+  const now=snapDoc();
+  if(lastSnap!==null && now!==lastSnap){ undoStack.push(lastSnap); if(undoStack.length>50) undoStack.shift(); redoStack.length=0; }
+  lastSnap=now; updateUndoUI();
+}
+function restoreSnap(s){ const v=doc._version; doc=JSON.parse(s); doc._version=v; histSkip=true; save(); renderAll(); }
+function undoP(){ if(!undoStack.length) return; redoStack.push(snapDoc()); restoreSnap(undoStack.pop()); updateUndoUI(); }
+function redoP(){ if(!redoStack.length) return; undoStack.push(snapDoc()); restoreSnap(redoStack.pop()); updateUndoUI(); }
+function save(){ recordHistory(); clearTimeout(saveT); saveT=setTimeout(async()=>{
   try{ localStorage.setItem(LSKEY, JSON.stringify(doc)); }catch(e){}
   if(serverOk){ try{
     const r=await fetch('api/challenges',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(doc)});
@@ -300,6 +331,7 @@ async function boot(){
     if(r.ok){ const j=await r.json(); if(j&&j.challenges){ doc=j; } serverOk=true; } }catch(e){}
   const synced=await syncFromServer();
   setState(serverOk?'online':'offline (local only)');
+  lastSnap=snapDoc(); undoStack.length=0; redoStack.length=0; updateUndoUI();
   renderAll();
 }
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -688,6 +720,17 @@ function drawMinimap(){
   document.addEventListener('mousemove',e=>{ if(mmDrag) nav(e); });
   document.addEventListener('mouseup',()=>{ mmDrag=false; }); }
 document.getElementById('btnResetView').onclick=()=>{ gz=1; gpx=20; gpy=56; applyPan(); };
+document.getElementById('btnUndoCv').onclick=undoP;
+document.getElementById('btnRedoCv').onclick=redoP;
+{ const hp=document.getElementById('helpPop'), hb=document.getElementById('btnHelp');
+  hb.onclick=e=>{ e.stopPropagation(); hp.style.display = hp.style.display==='none' ? 'block' : 'none'; };
+  document.addEventListener('click',e=>{ if(hp.style.display!=='none' && !hp.contains(e.target) && e.target!==hb) hp.style.display='none'; }); }
+document.addEventListener('keydown',e=>{
+  const t=e.target; if(t && (t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT')) return;
+  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key.toLowerCase()==='z'){ e.preventDefault(); undoP(); }
+  else if((e.ctrlKey||e.metaKey) && (e.shiftKey && e.key.toLowerCase()==='z' || e.key.toLowerCase()==='y')){ e.preventDefault(); redoP(); }
+  else if(e.key==='Escape'){ const hp=document.getElementById('helpPop'); if(hp) hp.style.display='none'; }
+});
 applyPan();
 gWrap.addEventListener('wheel',e=>{ e.preventDefault();
   const r=gWrap.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
