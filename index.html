@@ -74,7 +74,7 @@
 /* app-specific styles — shared tokens & components live in style.css */
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
 
-#cvs-palname{position:absolute;left:56px;top:10px;height:38px;z-index:20;display:flex;align-items:center;
+#cvs-palname{position:absolute;left:312px;top:10px;height:38px;z-index:20;display:flex;align-items:center;
   color:var(--text);font-size:.84rem;font-weight:600;letter-spacing:.02em;pointer-events:none;max-width:42vw;}
 #cvs-palname span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
@@ -550,6 +550,7 @@ canvas.dragging{cursor:grabbing;}
     <div id="cvs-wrap">
       <canvas id="cvs"></canvas>
       <button class="btn-icon" id="menuToggle" title="Menu" aria-label="Menu"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button>
+      <nav class="app-tabs"><a class="on">Palette</a><a href="progression">Progression</a><button id="tabSettings" title="Shared appearance">⚙</button></nav>
       <div id="cvs-palname"><span id="palNameHdr">Palette Editor</span></div>
       <div id="appMenu" class="app-menu" role="menu">
         <div class="am-sec">
@@ -581,7 +582,6 @@ canvas.dragging{cursor:grabbing;}
         <button class="btn-icon" id="btnFit" title="Fit tree to view">⤢</button>
         <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
         <button class="btn-icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
-        <a class="btn-icon" id="appSwitch" href="progression" title="Switch to the Progression Editor" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">⚑</a>
       </div>
       <span id="cvs-hud"><span class="appver" id="appVer"></span><span id="syncStatus" class="sync" title="Storage status"></span></span>
       <div id="cvs-hint">Scroll to zoom · Drag to pan · Click a node to select &amp; edit</div>
@@ -680,7 +680,7 @@ canvas.dragging{cursor:grabbing;}
 
 <script>
 'use strict';
-const APP_VERSION = 'v3.20';
+const APP_VERSION = 'v3.21';
 
 // ── Device password gate (casual deterrence only; the check is client-side) ──
 (function(){
@@ -920,9 +920,42 @@ const DEFAULT_SETTINGS = {
 };
 let settings = { ...DEFAULT_SETTINGS };
 
+
+// ═══ shared UI settings (both editors) — background grid of the workspace ═══
+const SHARED_UI_KEY='mosaicSharedUI';
+function sharedUI(){ try{ return Object.assign({gridStyle:'dots',gridSize:'small',gridOpacity:6,gridDotSize:2.8}, JSON.parse(localStorage.getItem(SHARED_UI_KEY)||'{}')); }catch(e){ return {gridStyle:'dots',gridSize:'small',gridOpacity:6,gridDotSize:2.8}; } }
+function saveSharedUI(u){ try{ localStorage.setItem(SHARED_UI_KEY, JSON.stringify(u)); }catch(e){} }
+function openSharedSettings(){
+  let ov=document.getElementById('shwin-ov');
+  if(!ov){ ov=document.createElement('div'); ov.id='shwin-ov'; document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{ if(e.target===ov) ov.classList.remove('on'); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') ov.classList.remove('on'); }); }
+  const u=sharedUI();
+  const seg=(key,opts)=>`<span class="swseg">${opts.map(([v,l])=>`<button data-sw="${key}" data-v="${v}" class="${String(u[key])===String(v)?'on':''}">${l}</button>`).join('')}</span>`;
+  ov.innerHTML=`<div id="shwin">
+    <div class="swhead"><b>Shared appearance</b><button id="shwinClose" title="Close">✕</button></div>
+    <div class="swbody">
+      <div class="swhint">These parameters apply to the workspace background of <b>both</b> editors.</div>
+      <div class="swgroup"><label>Grid style</label>${seg('gridStyle',[['dots','Dots'],['lines','Lines'],['none','None']])}</div>
+      <div class="swgroup"><label>Grid size</label>${seg('gridSize',[['small','Small'],['medium','Medium'],['large','Large']])}</div>
+      <div class="swgroup"><label>Grid opacity</label><input type="range" class="swrange" id="swOp" min="0" max="40" step="2" value="${Math.min(40,u.gridOpacity)}"></div>
+      <div class="swgroup"><label>Grid dot size</label>${seg('gridDotSize',[[1.8,'S'],[2.8,'M'],[4,'L']])}</div>
+    </div></div>`;
+  ov.classList.add('on');
+  ov.querySelector('#shwinClose').onclick=()=>ov.classList.remove('on');
+  const commitUI=nu=>{ saveSharedUI(nu); applySharedUI(nu); openSharedSettings(); };
+  ov.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>{ const nu=sharedUI(); nu[b.dataset.sw] = b.dataset.sw==='gridDotSize'? parseFloat(b.dataset.v) : b.dataset.v; commitUI(nu); });
+  ov.querySelector('#swOp').oninput=e=>{ const nu=sharedUI(); nu.gridOpacity=+e.target.value; saveSharedUI(nu); applySharedUI(nu); };
+}
+
+function applySharedUI(u){ settings.gridStyle=u.gridStyle; settings.gridSize=u.gridSize; settings.gridOpacity=u.gridOpacity; settings.gridDotSize=u.gridDotSize; saveSettings(); applySettings(); if(typeof drawTree==='function') drawTree(); }
 function loadSettings() {
   try { const s = localStorage.getItem('paletteEditorSettings');
         if (s) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(s) }; } catch (e) {}
+  // shared UI values win over per-app stored ones — the ⚙ window is the single owner of the grid
+  try {
+    const u=sharedUI(); settings.gridStyle=u.gridStyle; settings.gridSize=u.gridSize; settings.gridOpacity=u.gridOpacity; settings.gridDotSize=u.gridDotSize;
+  } catch(e) {}
 }
 function saveSettings() {
   try { localStorage.setItem('paletteEditorSettings', JSON.stringify(settings)); } catch (e) {}
@@ -3387,10 +3420,7 @@ function renderSettings() {
   slider('Link opacity', 20, 100, 5, settings.linkOpacity==null?80:settings.linkOpacity, v=>settings.linkOpacity=v);
 
   section('Grid');
-  group('Grid style', seg([['dots','Dots'],['lines','Lines'],['none','None']], settings.gridStyle, v=>settings.gridStyle=v));
-  group('Grid size', seg([['small','Small'],['medium','Medium'],['large','Large'],['match','Match nodes']], settings.gridSize, v=>settings.gridSize=v));
-  slider('Grid opacity', 0, 40, 2, Math.min(40, settings.gridOpacity==null?40:settings.gridOpacity), v=>settings.gridOpacity=v);
-  group('Grid dot size', seg([[1.8,'S'],[2.8,'M'],[4,'L']], settings.gridDotSize||2.6, v=>settings.gridDotSize=v));
+  { const p=document.createElement('div'); p.style.cssText='color:var(--muted);font-size:.72rem;margin:2px 0 6px'; p.textContent='Background grid moved to the shared ⚙ settings (top tabs) — it applies to both editors.'; el.appendChild(p); }
 
   section('Coloring');
   group('Family coloring', seg([['off','Off'],['family','On']], settings.colorBy, v=>settings.colorBy=v));
@@ -3838,6 +3868,7 @@ function rebuildAll(){ renderBuild(); renderList(); renderValidation(); renderSt
 // (Legacy chain bulk-convert tool removed with the chain node type.)
 
 document.getElementById('btnFit').onclick = fitToView;
+document.getElementById('tabSettings').onclick = openSharedSettings;
 document.getElementById('btnResetView').onclick = resetView;
 
 (async function boot(){
@@ -3848,6 +3879,7 @@ document.getElementById('btnResetView').onclick = resetView;
   await loadStoredPalettes();      // server first, localStorage fallback
   syncPalSelect();
   loadPalette(pidx);
+  fitToView();                                   // default view: fit the whole tree
   updateUndoButtons();
   setSync(serverOk ? 'saved' : 'offline');
 })();

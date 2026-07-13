@@ -24,9 +24,7 @@ header .sp{flex:1}
 
 main{flex:1;display:flex;overflow:hidden;position:relative}
 #work{flex:1;position:relative;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-#graphWrap{flex:1;overflow:hidden;position:relative;cursor:grab;
-  background-image:radial-gradient(circle, rgba(255,255,255,.06) 5%, transparent 5.6%);
-  background-size:28px 28px;background-position:20px 56px;opacity:1}
+#graphWrap{flex:1;overflow:hidden;position:relative;cursor:grab}
 #graphWrap::before{content:'';position:absolute;inset:0;pointer-events:none}
 #graphWrap.panning{cursor:grabbing}
 #graphPan{position:absolute;left:0;top:0;transform-origin:0 0}
@@ -185,6 +183,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 
   <div id="work">
     <button class="btn-icon" id="menuToggle" title="Menu" aria-label="Menu"><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M2.5 4h11M2.5 8h11M2.5 12h11"/></svg></button>
+    <nav class="app-tabs"><a href="./">Palette</a><a class="on">Progression</a><button id="tabSettings" title="Shared appearance">⚙</button></nav>
     <div id="appMenu" class="app-menu" role="menu">
       <button class="menu-item" id="btnSync" title="Re-fetch recipes from the palette server">↻ Sync recipes</button>
       <button class="menu-item" id="btnImportPal" title="Offline fallback: load recipes from a JSON export">⇪ Import recipes file…</button>
@@ -208,7 +207,6 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
       <button class="btn-icon" id="btnFit" title="Fit graph to view">⤢</button>
       <button class="btn-icon" id="btnResetView" title="Reset view">⟲</button>
       <button class="btn-icon" id="btnHelp" title="Keyboard shortcuts (?)">?</button>
-      <a class="btn-icon" id="appSwitch" href="./" title="Switch to the Palette Editor" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;color:var(--accent)">🎨</a>
     </div>
     <div id="helpPop" style="display:none;position:absolute;right:10px;top:50px;z-index:40;width:230px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.5);padding:11px 13px;font-size:.76rem">
       <div class="ezh" style="margin-bottom:7px">Keyboard shortcuts</div>
@@ -234,7 +232,7 @@ main{flex:1;display:flex;overflow:hidden;position:relative}
 </main>
 <script>
 // ═══ data ═══
-const VERSION='p2.5';
+const VERSION='p2.6';
 document.getElementById('ver').textContent=VERSION;
 let ELCOL={dirt:'#7a5230',grass:'#4a9a3a',sand:'#d8c070',bamboo:'#9abf5a',stone:'#888d96',cristal:'#7ad0e0'};   // overwritten by palette sync
 const AFFCOLS=['#57e389','#7ad0e0','#e0a23c','#c792ea','#f07178','#82aaff','#f0b040','#89ddff','#e0709a','#a3e07a'];
@@ -687,11 +685,52 @@ document.getElementById('sidebar-show').onclick=function(){
   rz.addEventListener('mousedown',e=>{ drag=true; e.preventDefault(); });
   document.addEventListener('mousemove',e=>{ if(!drag) return; sb.style.width=Math.max(220,Math.min(560,e.clientX))+'px'; });
   document.addEventListener('mouseup',()=>{ if(drag){ drag=false; renderGraph(); } }); }
+
+// ═══ shared UI settings (both editors) — background grid of the workspace ═══
+const SHARED_UI_KEY='mosaicSharedUI';
+function sharedUI(){ try{ return Object.assign({gridStyle:'dots',gridSize:'small',gridOpacity:6,gridDotSize:2.8}, JSON.parse(localStorage.getItem(SHARED_UI_KEY)||'{}')); }catch(e){ return {gridStyle:'dots',gridSize:'small',gridOpacity:6,gridDotSize:2.8}; } }
+function saveSharedUI(u){ try{ localStorage.setItem(SHARED_UI_KEY, JSON.stringify(u)); }catch(e){} }
+function openSharedSettings(){
+  let ov=document.getElementById('shwin-ov');
+  if(!ov){ ov=document.createElement('div'); ov.id='shwin-ov'; document.body.appendChild(ov);
+    ov.addEventListener('click',e=>{ if(e.target===ov) ov.classList.remove('on'); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') ov.classList.remove('on'); }); }
+  const u=sharedUI();
+  const seg=(key,opts)=>`<span class="swseg">${opts.map(([v,l])=>`<button data-sw="${key}" data-v="${v}" class="${String(u[key])===String(v)?'on':''}">${l}</button>`).join('')}</span>`;
+  ov.innerHTML=`<div id="shwin">
+    <div class="swhead"><b>Shared appearance</b><button id="shwinClose" title="Close">✕</button></div>
+    <div class="swbody">
+      <div class="swhint">These parameters apply to the workspace background of <b>both</b> editors.</div>
+      <div class="swgroup"><label>Grid style</label>${seg('gridStyle',[['dots','Dots'],['lines','Lines'],['none','None']])}</div>
+      <div class="swgroup"><label>Grid size</label>${seg('gridSize',[['small','Small'],['medium','Medium'],['large','Large']])}</div>
+      <div class="swgroup"><label>Grid opacity</label><input type="range" class="swrange" id="swOp" min="0" max="40" step="2" value="${Math.min(40,u.gridOpacity)}"></div>
+      <div class="swgroup"><label>Grid dot size</label>${seg('gridDotSize',[[1.8,'S'],[2.8,'M'],[4,'L']])}</div>
+    </div></div>`;
+  ov.classList.add('on');
+  ov.querySelector('#shwinClose').onclick=()=>ov.classList.remove('on');
+  const commitUI=nu=>{ saveSharedUI(nu); applySharedUI(nu); openSharedSettings(); };
+  ov.querySelectorAll('[data-sw]').forEach(b=>b.onclick=()=>{ const nu=sharedUI(); nu[b.dataset.sw] = b.dataset.sw==='gridDotSize'? parseFloat(b.dataset.v) : b.dataset.v; commitUI(nu); });
+  ov.querySelector('#swOp').oninput=e=>{ const nu=sharedUI(); nu.gridOpacity=+e.target.value; saveSharedUI(nu); applySharedUI(nu); };
+}
+
+let GRID_CELL=28;
+function applySharedUI(u){
+  const base={small:28,medium:44,large:72}[u.gridSize]||28; GRID_CELL=base;
+  const a=Math.max(0,Math.min(40,+u.gridOpacity||0))/100;
+  if(u.gridStyle==='none'||a===0){ gWrap.style.backgroundImage='none'; }
+  else if(u.gridStyle==='lines'){
+    gWrap.style.backgroundImage=`linear-gradient(rgba(255,255,255,${a}) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,${a}) 1px, transparent 1px)`;
+  } else {
+    const pct=((u.gridDotSize||2.8)/base*100/2).toFixed(2);
+    gWrap.style.backgroundImage=`radial-gradient(circle, rgba(255,255,255,${a}) ${pct}%, transparent ${(+pct*1.12+0.4).toFixed(2)}%)`;
+  }
+  applyPan();
+}
 // ── graph exploration: wheel-zoom to cursor + drag-pan + fit (same feel as the palette trie) ──
 let gz=1, gpx=20, gpy=56;
 const gWrap=document.getElementById('graphWrap'), gPan=document.getElementById('graphPan');
 function applyPan(){ gPan.style.transform=`translate(${gpx}px,${gpy}px) scale(${gz})`;
-  const cell=28*gz; gWrap.style.backgroundSize=cell+'px '+cell+'px'; gWrap.style.backgroundPosition=gpx+'px '+gpy+'px';
+  const cell=GRID_CELL*gz; gWrap.style.backgroundSize=cell+'px '+cell+'px'; gWrap.style.backgroundPosition=gpx+'px '+gpy+'px';
   const z=document.getElementById('mm-zoom'); if(z) z.textContent=Math.round(gz*100)+'%';
   drawMinimap(); }
 // ── minimap: same chrome as the palette trie — overview + click/drag to navigate ──
@@ -726,6 +765,8 @@ function drawMinimap(){
   document.addEventListener('mousemove',e=>{ if(mmDrag) nav(e); });
   document.addEventListener('mouseup',()=>{ mmDrag=false; }); }
 document.getElementById('btnResetView').onclick=()=>{ gz=1; gpx=20; gpy=56; applyPan(); };
+document.getElementById('tabSettings').onclick=openSharedSettings;
+applySharedUI(sharedUI());
 document.getElementById('btnUndoCv').onclick=undoP;
 document.getElementById('btnRedoCv').onclick=redoP;
 { const hp=document.getElementById('helpPop'), hb=document.getElementById('btnHelp');
